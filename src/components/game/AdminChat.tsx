@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 interface AdminChatProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCommand?: (cmd: string) => void;
 }
 
 interface ChatMessage {
@@ -27,7 +28,7 @@ const COMMANDS = [
   { cmd: "/?", desc: "Show all commands" },
 ];
 
-export const AdminChat = ({ open, onOpenChange }: AdminChatProps) => {
+export const AdminChat = ({ open, onOpenChange, onCommand }: AdminChatProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [adminActive, setAdminActive] = useState(false);
@@ -113,6 +114,7 @@ export const AdminChat = ({ open, onOpenChange }: AdminChatProps) => {
 
     if (cmd.startsWith("/")) {
       handleCommand(cmd);
+      onCommand?.(cmd);
     } else {
       addMessage("You: " + cmd, "#ccc");
     }

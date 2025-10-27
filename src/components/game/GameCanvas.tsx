@@ -11,6 +11,12 @@ interface GameCanvasProps {
   onBack: () => void;
 }
 
+interface AdminState {
+  active: boolean;
+  godMode: boolean;
+  speedMultiplier: number;
+}
+
 type Weapon = "pistol" | "shotgun" | "minigun" | "sniper";
 
 interface WeaponConfig {
@@ -38,6 +44,10 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
   const [ammo, setAmmo] = useState(10);
   const [maxAmmo, setMaxAmmo] = useState(10);
   const [currentWeapon, setCurrentWeapon] = useState<Weapon>("pistol");
+  const [health, setHealth] = useState(100);
+  const [maxHealth] = useState(100);
+  const adminStateRef = useRef<AdminState>({ active: false, godMode: false, speedMultiplier: 1 });
+  const gameStateRef = useRef<any>({ enemies: [], pickups: [], W: 960, H: 640 });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -48,6 +58,8 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
 
     const W = canvas.width;
     const H = canvas.height;
+    gameStateRef.current.W = W;
+    gameStateRef.current.H = H;
 
     let keys: Record<string, boolean> = {};
     let mouse = { x: W / 2, y: H / 2, down: false };
@@ -60,15 +72,22 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
       angle: 0,
       weapon: "pistol" as Weapon,
       lastShot: -1,
+      hp: 100,
+      maxHp: 100,
+      score: 0,
     };
 
     let bullets: any[] = [];
+    let enemyBullets: any[] = [];
     let enemies: any[] = [];
     let pickups: any[] = [];
     let particles: any[] = [];
     let time = 0;
     let lastSpawn = 0;
     let enemySpawnInterval = 2.0;
+
+    gameStateRef.current.enemies = enemies;
+    gameStateRef.current.pickups = pickups;
 
     const rand = (min: number, max: number) => Math.random() * (max - min) + min;
 
@@ -79,7 +98,7 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
       else if (side === 1) { x = rand(-40, W + 40); y = H + 30; }
       else if (side === 2) { x = -30; y = rand(-40, H + 40); }
       else { x = W + 30; y = rand(-40, H + 40); }
-      enemies.push({ x, y, r: 16, speed: rand(40, 80), hp: 60, color: "#FF6B6B", stun: 0, lastHit: 0 });
+      enemies.push({ x, y, r: 16, speed: rand(40, 80), hp: 60, color: "#FF6B6B", stun: 0, lastHit: 0, lastShot: -1 });
     };
 
     const spawnPickup = () => {
@@ -94,7 +113,8 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
 
     const tryShoot = (t: number) => {
       const weapon = WEAPONS[player.weapon];
-      if (mouse.down && t - player.lastShot >= weapon.fireRate && ammo > 0) {
+      const fireRate = adminStateRef.current.active && adminStateRef.current.godMode ? 0 : weapon.fireRate;
+      if (mouse.down && t - player.lastShot >= fireRate && ammo > 0) {
         player.lastShot = t;
         setAmmo(prev => prev - 1);
 
@@ -122,7 +142,7 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
     // Event listeners
     const handleKeyDown = (e: KeyboardEvent) => {
       keys[e.key.toLowerCase()] = true;
-      if (e.key.toLowerCase() === "r") {
+      if (e.key.toLowerCase() === "r" && ammo < WEAPONS[player.weapon].maxAmmo) {
         const weapon = WEAPONS[player.weapon];
         setAmmo(weapon.maxAmmo);
       }
@@ -180,8 +200,9 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
         const len = Math.hypot(dx, dy);
         dx /= len;
         dy /= len;
-        player.x += dx * player.speed * dt;
-        player.y += dy * player.speed * dt;
+        const speedMultiplier = adminStateRef.current.speedMultiplier;
+        player.x += dx * player.speed * speedMultiplier * dt;
+        player.y += dy * player.speed * speedMultiplier * dt;
         player.x = Math.max(20, Math.min(W - 20, player.x));
         player.y = Math.max(20, Math.min(H - 20, player.y));
       }
@@ -209,12 +230,35 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
             if (e.hp <= 0) {
               spawnParticles(e.x, e.y, "#FF6B6B", 16);
               setScore(prev => prev + 10);
+              player.score += 10;
               if (Math.random() < 0.35) pickups.push({ x: e.x, y: e.y, r: 10, amt: 2, ttl: 18 });
               enemies.splice(j, 1);
             }
             bullets.splice(i, 1);
             break;
           }
+        }
+      }
+
+      // Update enemy bullets
+      for (let i = enemyBullets.length - 1; i >= 0; i--) {
+        const b = enemyBullets[i];
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.life -= dt;
+        if (b.life <= 0 || b.x < -50 || b.x > W + 50 || b.y < -50 || b.y > H + 50) {
+          enemyBullets.splice(i, 1);
+          continue;
+        }
+
+        const dx = b.x - player.x, dy = b.y - player.y;
+        if (dx * dx + dy * dy <= (b.r + player.r) * (b.r + player.r)) {
+          if (!adminStateRef.current.godMode) {
+            player.hp -= b.dmg;
+            setHealth(prev => Math.max(0, prev - b.dmg));
+            spawnParticles(b.x, b.y, "#FF6B6B", 8);
+          }
+          enemyBullets.splice(i, 1);
         }
       }
 
@@ -230,6 +274,22 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
         if (d > 0) {
           e.x += (vx / d) * e.speed * dt;
           e.y += (vy / d) * e.speed * dt;
+        }
+
+        // Enemy shooting
+        if (d < 350 && time - e.lastShot >= 2.0) {
+          e.lastShot = time;
+          const ang = Math.atan2(player.y - e.y, player.x - e.x);
+          enemyBullets.push({
+            x: e.x,
+            y: e.y,
+            vx: Math.cos(ang) * 200,
+            vy: Math.sin(ang) * 200,
+            r: 6,
+            life: 3,
+            dmg: 10,
+            color: "#FF4444",
+          });
         }
       }
 
@@ -265,6 +325,25 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
         lastSpawn = time;
         spawnEnemy();
         if (enemySpawnInterval > 0.6) enemySpawnInterval *= 0.993;
+      }
+
+      // Update game state refs
+      gameStateRef.current.enemies = enemies;
+      gameStateRef.current.pickups = pickups;
+
+      // Game over check
+      if (player.hp <= 0 && !adminStateRef.current.godMode) {
+        ctx.save();
+        ctx.fillStyle = "rgba(0,0,0,0.7)";
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = "#fff";
+        ctx.font = "48px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("GAME OVER", W / 2, H / 2 - 20);
+        ctx.font = "24px sans-serif";
+        ctx.fillText("Score: " + score, W / 2, H / 2 + 30);
+        ctx.restore();
+        return;
       }
 
       // Draw
@@ -306,6 +385,16 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
 
       // Draw bullets
       for (const b of bullets) {
+        ctx.save();
+        ctx.fillStyle = b.color;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Draw enemy bullets
+      for (const b of enemyBullets) {
         ctx.save();
         ctx.fillStyle = b.color;
         ctx.beginPath();
@@ -393,7 +482,7 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
       canvas.removeEventListener("mouseup", handleMouseUp);
       cancelAnimationFrame(animationId);
     };
-  }, [currentWeapon]);
+  }, [currentWeapon, ammo, score, health]);
 
   return (
     <div className="relative">
@@ -410,6 +499,8 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
 
       <div className="fixed right-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4">
         <div className="space-y-2 text-right">
+          <div className="text-sm text-muted-foreground">Health</div>
+          <div className="text-2xl font-bold text-destructive">{health}/{maxHealth}</div>
           <div className="text-sm text-muted-foreground">Weapon</div>
           <div className="text-lg font-bold text-primary">{WEAPONS[currentWeapon].name}</div>
           <div className="text-sm text-muted-foreground">Ammo</div>
@@ -435,7 +526,47 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
         className="rounded-lg shadow-2xl border border-border"
       />
 
-      <AdminChat open={chatOpen} onOpenChange={setChatOpen} />
+      <AdminChat 
+        open={chatOpen} 
+        onOpenChange={setChatOpen}
+        onCommand={(cmd) => {
+          if (cmd.startsWith("/activate auth 1082698")) {
+            adminStateRef.current.active = true;
+          } else if (cmd.startsWith("/deactivate auth 1082698")) {
+            adminStateRef.current.active = false;
+            adminStateRef.current.godMode = false;
+            adminStateRef.current.speedMultiplier = 1;
+          } else if (adminStateRef.current.active) {
+            if (cmd.startsWith("/godmode auth 1082698")) {
+              adminStateRef.current.godMode = !adminStateRef.current.godMode;
+              setHealth(100);
+              setAmmo(999);
+              setMaxAmmo(999);
+            } else if (cmd.startsWith("/speed")) {
+              const parts = cmd.split(" ");
+              const value = parseFloat(parts[1]);
+              if (!isNaN(value) && cmd.includes("auth 1082698")) {
+                adminStateRef.current.speedMultiplier = value;
+              }
+            } else if (cmd.startsWith("/score")) {
+              const parts = cmd.split(" ");
+              const value = parseInt(parts[1]);
+              if (!isNaN(value) && cmd.includes("auth 1082698")) {
+                setScore(value);
+              }
+            } else if (cmd.startsWith("/nuke auth 1082698")) {
+              gameStateRef.current.enemies.length = 0;
+            } else if (cmd.startsWith("/rain ammo auth 1082698")) {
+              const W = gameStateRef.current.W;
+              const H = gameStateRef.current.H;
+              for (let i = 0; i < 20; i++) {
+                const rand = (min: number, max: number) => Math.random() * (max - min) + min;
+                gameStateRef.current.pickups.push({ x: rand(80, W - 80), y: rand(80, H - 80), r: 10, amt: 10, ttl: 30 });
+              }
+            }
+          }
+        }}
+      />
     </div>
   );
 };

@@ -88,15 +88,15 @@ export const GameModeSelector = ({ username, onModeSelect }: GameModeSelectorPro
       </Card>
 
       <Card className="p-6 bg-card border-border hover:border-accent transition-colors cursor-pointer"
-        onClick={() => onModeSelect("offline")}
+        onClick={() => onModeSelect("solo")}
       >
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h3 className="text-lg font-bold flex items-center gap-2">
               <WifiOff className="w-5 h-5" />
-              Offline Mode (Bluetooth)
+              Play Offline Version
             </h3>
-            <p className="text-sm text-muted-foreground">Play with nearby friends without internet</p>
+            <p className="text-sm text-muted-foreground">Works without internet connection</p>
           </div>
           <Button variant="outline">
             Play Offline

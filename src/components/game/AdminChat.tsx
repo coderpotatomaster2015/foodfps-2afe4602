@@ -7,6 +7,7 @@ interface AdminChatProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCommand?: (cmd: string) => void;
+  onShowOnlinePlayers?: () => void;
 }
 
 interface ChatMessage {
@@ -25,11 +26,11 @@ const COMMANDS = [
   { cmd: "/speed [number] auth 1082698", desc: "Set player speed" },
   { cmd: "/nuke auth 1082698", desc: "Kill all enemies" },
   { cmd: "/rain ammo auth 1082698", desc: "Spawn ammo pickups" },
-  { cmd: "/join [username] auth 1082698", desc: "Join any player's game (SUPER OP)" },
+  { cmd: "/join auth 1082698", desc: "Show online players to join (SUPER OP)" },
   { cmd: "/?", desc: "Show all commands" },
 ];
 
-export const AdminChat = ({ open, onOpenChange, onCommand }: AdminChatProps) => {
+export const AdminChat = ({ open, onOpenChange, onCommand, onShowOnlinePlayers }: AdminChatProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [adminActive, setAdminActive] = useState(false);
@@ -100,13 +101,10 @@ export const AdminChat = ({ open, onOpenChange, onCommand }: AdminChatProps) => 
       addMessage("✓ All enemies eliminated!", "#FFB84D");
     } else if (cmd.startsWith("/rain ammo auth 1082698")) {
       addMessage("✓ Ammo rain activated!", "#A6FFB3");
-    } else if (cmd.startsWith("/join ")) {
-      const match = cmd.match(/\/join (\w+) auth 1082698/);
-      if (match) {
-        addMessage(`✓ Attempting to join ${match[1]}'s game...`, "#A6FFB3");
-        addMessage("⚠ Multiplayer backend not yet implemented", "#FFB84D");
-      } else {
-        addMessage("✗ Invalid format. Use: /join [username] auth 1082698", "#ff6b6b");
+    } else if (cmd.startsWith("/join") && cmd.includes("auth 1082698")) {
+      addMessage("✓ Opening online players window...", "#A6FFB3");
+      if (onShowOnlinePlayers) {
+        onShowOnlinePlayers();
       }
     } else {
       addMessage("✗ Unknown command. Type /? for help", "#ff6b6b");

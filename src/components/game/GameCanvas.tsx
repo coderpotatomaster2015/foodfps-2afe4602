@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, MessageSquare } from "lucide-react";
 import { AdminChat } from "./AdminChat";
+import { OnlinePlayersModal } from "./OnlinePlayersModal";
 import type { GameMode } from "@/pages/Index";
 
 interface GameCanvasProps {
@@ -40,6 +41,7 @@ const WEAPONS: Record<Weapon, WeaponConfig> = {
 export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [onlinePlayersOpen, setOnlinePlayersOpen] = useState(false);
   const [score, setScore] = useState(0);
   const [ammo, setAmmo] = useState(10);
   const [maxAmmo, setMaxAmmo] = useState(10);
@@ -545,6 +547,7 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
       <AdminChat 
         open={chatOpen} 
         onOpenChange={setChatOpen}
+        onShowOnlinePlayers={() => setOnlinePlayersOpen(true)}
         onCommand={(cmd) => {
           if (cmd.startsWith("/activate auth 1082698")) {
             adminStateRef.current.active = true;
@@ -581,6 +584,16 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
               }
             }
           }
+        }}
+      />
+
+      <OnlinePlayersModal
+        open={onlinePlayersOpen}
+        onOpenChange={setOnlinePlayersOpen}
+        currentUsername={username}
+        onJoinGame={(targetUsername, roomCode) => {
+          console.log(`Joining ${targetUsername}'s game with room code: ${roomCode}`);
+          setOnlinePlayersOpen(false);
         }}
       />
     </div>

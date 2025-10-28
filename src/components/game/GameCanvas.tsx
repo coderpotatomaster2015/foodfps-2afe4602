@@ -16,6 +16,7 @@ interface AdminState {
   active: boolean;
   godMode: boolean;
   speedMultiplier: number;
+  infiniteAmmo: boolean;
 }
 
 type Weapon = "pistol" | "shotgun" | "minigun" | "sniper";
@@ -48,7 +49,7 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
   const [currentWeapon, setCurrentWeapon] = useState<Weapon>("pistol");
   const [health, setHealth] = useState(100);
   const [maxHealth] = useState(100);
-  const adminStateRef = useRef<AdminState>({ active: false, godMode: false, speedMultiplier: 1 });
+  const adminStateRef = useRef<AdminState>({ active: false, godMode: false, speedMultiplier: 1, infiniteAmmo: false });
   const gameStateRef = useRef<any>({ enemies: [], pickups: [], W: 960, H: 640 });
   const playerRef = useRef<any>(null);
 
@@ -121,10 +122,13 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
     const tryShoot = (t: number) => {
       const weapon = WEAPONS[player.weapon];
       const fireRate = adminStateRef.current.active && adminStateRef.current.godMode ? 0 : weapon.fireRate;
-      if (mouse.down && t - player.lastShot >= fireRate && player.ammo > 0) {
+      const hasInfiniteAmmo = adminStateRef.current.godMode || adminStateRef.current.infiniteAmmo;
+      if (mouse.down && t - player.lastShot >= fireRate && (hasInfiniteAmmo || player.ammo > 0)) {
         player.lastShot = t;
-        player.ammo--;
-        setAmmo(player.ammo);
+        if (!hasInfiniteAmmo) {
+          player.ammo--;
+          setAmmo(player.ammo);
+        }
 
         const bulletsToFire = player.weapon === "shotgun" ? 5 : 1;
         for (let i = 0; i < bulletsToFire; i++) {
@@ -589,6 +593,7 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
             adminStateRef.current.active = false;
             adminStateRef.current.godMode = false;
             adminStateRef.current.speedMultiplier = 1;
+            adminStateRef.current.infiniteAmmo = false;
           } else if (adminStateRef.current.active) {
             if (cmd.startsWith("/godmode auth 1082698")) {
               adminStateRef.current.godMode = !adminStateRef.current.godMode;
@@ -621,6 +626,8 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
                 const rand = (min: number, max: number) => Math.random() * (max - min) + min;
                 gameStateRef.current.pickups.push({ x: rand(80, W - 80), y: rand(80, H - 80), r: 10, amt: 10, ttl: 30 });
               }
+            } else if (cmd.startsWith("/infiniteammo auth 1082698")) {
+              adminStateRef.current.infiniteAmmo = !adminStateRef.current.infiniteAmmo;
             }
           }
         }}

@@ -26,6 +26,7 @@ const COMMANDS = [
   { cmd: "/speed [number] auth 1082698", desc: "Set player speed" },
   { cmd: "/nuke auth 1082698", desc: "Kill all enemies" },
   { cmd: "/rain ammo auth 1082698", desc: "Spawn ammo pickups" },
+  { cmd: "/infiniteammo auth 1082698", desc: "Toggle infinite ammo" },
   { cmd: "/join auth 1082698", desc: "Show online players to join (SUPER OP)" },
   { cmd: "/?", desc: "Show all commands" },
 ];
@@ -101,6 +102,8 @@ export const AdminChat = ({ open, onOpenChange, onCommand, onShowOnlinePlayers }
       addMessage("✓ All enemies eliminated!", "#FFB84D");
     } else if (cmd.startsWith("/rain ammo auth 1082698")) {
       addMessage("✓ Ammo rain activated!", "#A6FFB3");
+    } else if (cmd.startsWith("/infiniteammo auth 1082698")) {
+      addMessage("✓ Infinite ammo toggled!", "#FFB84D");
     } else if (cmd.startsWith("/join") && cmd.includes("auth 1082698")) {
       addMessage("✓ Opening online players window...", "#A6FFB3");
       if (onShowOnlinePlayers) {

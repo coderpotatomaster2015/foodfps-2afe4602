@@ -25,6 +25,7 @@ const COMMANDS = [
   { cmd: "/speed [number] auth 1082698", desc: "Set player speed" },
   { cmd: "/nuke auth 1082698", desc: "Kill all enemies" },
   { cmd: "/rain ammo auth 1082698", desc: "Spawn ammo pickups" },
+  { cmd: "/join [username] auth 1082698", desc: "Join any player's game (SUPER OP)" },
   { cmd: "/?", desc: "Show all commands" },
 ];
 
@@ -66,8 +67,7 @@ export const AdminChat = ({ open, onOpenChange, onCommand }: AdminChatProps) => 
     }
 
     if (!adminActive) {
-      addMessage("⚠ You must activate admin mode first", "#ff6b6b");
-      addMessage("Use: /activate auth 1082698", "#9aa");
+      // Do nothing if admin is not active
       return;
     }
 
@@ -100,6 +100,14 @@ export const AdminChat = ({ open, onOpenChange, onCommand }: AdminChatProps) => 
       addMessage("✓ All enemies eliminated!", "#FFB84D");
     } else if (cmd.startsWith("/rain ammo auth 1082698")) {
       addMessage("✓ Ammo rain activated!", "#A6FFB3");
+    } else if (cmd.startsWith("/join ")) {
+      const match = cmd.match(/\/join (\w+) auth 1082698/);
+      if (match) {
+        addMessage(`✓ Attempting to join ${match[1]}'s game...`, "#A6FFB3");
+        addMessage("⚠ Multiplayer backend not yet implemented", "#FFB84D");
+      } else {
+        addMessage("✗ Invalid format. Use: /join [username] auth 1082698", "#ff6b6b");
+      }
     } else {
       addMessage("✗ Unknown command. Type /? for help", "#ff6b6b");
     }

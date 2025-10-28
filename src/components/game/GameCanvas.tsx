@@ -276,21 +276,21 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
           e.y += (vy / d) * e.speed * dt;
         }
 
-        // Enemy shooting
-        if (d < 350 && time - e.lastShot >= 2.0) {
-          e.lastShot = time;
-          const ang = Math.atan2(player.y - e.y, player.x - e.x);
-          enemyBullets.push({
-            x: e.x,
-            y: e.y,
-            vx: Math.cos(ang) * 200,
-            vy: Math.sin(ang) * 200,
-            r: 6,
-            life: 3,
-            dmg: 10,
-            color: "#FF4444",
-          });
-        }
+      // Enemy shooting (slower rate)
+      if (d < 350 && time - e.lastShot >= 3.5) {
+        e.lastShot = time;
+        const ang = Math.atan2(player.y - e.y, player.x - e.x);
+        enemyBullets.push({
+          x: e.x,
+          y: e.y,
+          vx: Math.cos(ang) * 200,
+          vy: Math.sin(ang) * 200,
+          r: 6,
+          life: 3,
+          dmg: 10,
+          color: "#FF4444",
+        });
+      }
       }
 
       // Update pickups
@@ -482,7 +482,7 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
       canvas.removeEventListener("mouseup", handleMouseUp);
       cancelAnimationFrame(animationId);
     };
-  }, [currentWeapon, ammo, score, health]);
+  }, []);
 
   return (
     <div className="relative">
@@ -497,16 +497,32 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
         </div>
       </div>
 
-      <div className="fixed right-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4">
-        <div className="space-y-2 text-right">
-          <div className="text-sm text-muted-foreground">Health</div>
-          <div className="text-2xl font-bold text-destructive">{health}/{maxHealth}</div>
-          <div className="text-sm text-muted-foreground">Weapon</div>
-          <div className="text-lg font-bold text-primary">{WEAPONS[currentWeapon].name}</div>
-          <div className="text-sm text-muted-foreground">Ammo</div>
-          <div className="text-2xl font-bold">{ammo}/{maxAmmo}</div>
-          <div className="text-sm text-muted-foreground">Score</div>
-          <div className="text-2xl font-bold text-accent">{score}</div>
+      <div className="fixed right-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4 min-w-[200px]">
+        <div className="space-y-3">
+          <div>
+            <div className="text-sm text-muted-foreground mb-1">Health</div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-4 bg-muted/30 rounded-full overflow-hidden border border-border">
+                <div 
+                  className="h-full bg-destructive transition-all duration-300"
+                  style={{ width: `${(health / maxHealth) * 100}%` }}
+                />
+              </div>
+              <div className="text-sm font-bold text-destructive min-w-[50px]">{health}/{maxHealth}</div>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-sm text-muted-foreground">Weapon</div>
+            <div className="text-lg font-bold text-primary">{WEAPONS[currentWeapon].name}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-sm text-muted-foreground">Ammo</div>
+            <div className="text-2xl font-bold">{ammo}/{maxAmmo}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-sm text-muted-foreground">Score</div>
+            <div className="text-2xl font-bold text-accent">{score}</div>
+          </div>
         </div>
       </div>
 

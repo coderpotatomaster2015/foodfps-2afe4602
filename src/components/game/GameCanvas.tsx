@@ -50,6 +50,7 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
   const [maxHealth] = useState(100);
   const adminStateRef = useRef<AdminState>({ active: false, godMode: false, speedMultiplier: 1 });
   const gameStateRef = useRef<any>({ enemies: [], pickups: [], W: 960, H: 640 });
+  const playerRef = useRef<any>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -77,7 +78,11 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
       hp: 100,
       maxHp: 100,
       score: 0,
+      ammo: 10,
+      maxAmmo: 10,
     };
+
+    playerRef.current = player;
 
     let bullets: any[] = [];
     let enemyBullets: any[] = [];
@@ -116,9 +121,10 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
     const tryShoot = (t: number) => {
       const weapon = WEAPONS[player.weapon];
       const fireRate = adminStateRef.current.active && adminStateRef.current.godMode ? 0 : weapon.fireRate;
-      if (mouse.down && t - player.lastShot >= fireRate && ammo > 0) {
+      if (mouse.down && t - player.lastShot >= fireRate && player.ammo > 0) {
         player.lastShot = t;
-        setAmmo(prev => prev - 1);
+        player.ammo--;
+        setAmmo(player.ammo);
 
         const bulletsToFire = player.weapon === "shotgun" ? 5 : 1;
         for (let i = 0; i < bulletsToFire; i++) {
@@ -144,15 +150,43 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
     // Event listeners
     const handleKeyDown = (e: KeyboardEvent) => {
       keys[e.key.toLowerCase()] = true;
-      if (e.key.toLowerCase() === "r" && ammo < WEAPONS[player.weapon].maxAmmo) {
-        const weapon = WEAPONS[player.weapon];
-        setAmmo(weapon.maxAmmo);
+      if (e.key.toLowerCase() === "r" && player.ammo < player.maxAmmo) {
+        player.ammo = player.maxAmmo;
+        setAmmo(player.ammo);
       }
       // Weapon switching
-      if (e.key === "1") { player.weapon = "pistol"; setCurrentWeapon("pistol"); setAmmo(WEAPONS.pistol.ammo); setMaxAmmo(WEAPONS.pistol.maxAmmo); }
-      if (e.key === "2") { player.weapon = "shotgun"; setCurrentWeapon("shotgun"); setAmmo(WEAPONS.shotgun.ammo); setMaxAmmo(WEAPONS.shotgun.maxAmmo); }
-      if (e.key === "3") { player.weapon = "minigun"; setCurrentWeapon("minigun"); setAmmo(WEAPONS.minigun.ammo); setMaxAmmo(WEAPONS.minigun.maxAmmo); }
-      if (e.key === "4") { player.weapon = "sniper"; setCurrentWeapon("sniper"); setAmmo(WEAPONS.sniper.ammo); setMaxAmmo(WEAPONS.sniper.maxAmmo); }
+      if (e.key === "1") { 
+        player.weapon = "pistol"; 
+        player.ammo = WEAPONS.pistol.ammo; 
+        player.maxAmmo = WEAPONS.pistol.maxAmmo;
+        setCurrentWeapon("pistol"); 
+        setAmmo(player.ammo); 
+        setMaxAmmo(player.maxAmmo); 
+      }
+      if (e.key === "2") { 
+        player.weapon = "shotgun"; 
+        player.ammo = WEAPONS.shotgun.ammo; 
+        player.maxAmmo = WEAPONS.shotgun.maxAmmo;
+        setCurrentWeapon("shotgun"); 
+        setAmmo(player.ammo); 
+        setMaxAmmo(player.maxAmmo); 
+      }
+      if (e.key === "3") { 
+        player.weapon = "minigun"; 
+        player.ammo = WEAPONS.minigun.ammo; 
+        player.maxAmmo = WEAPONS.minigun.maxAmmo;
+        setCurrentWeapon("minigun"); 
+        setAmmo(player.ammo); 
+        setMaxAmmo(player.maxAmmo); 
+      }
+      if (e.key === "4") { 
+        player.weapon = "sniper"; 
+        player.ammo = WEAPONS.sniper.ammo; 
+        player.maxAmmo = WEAPONS.sniper.maxAmmo;
+        setCurrentWeapon("sniper"); 
+        setAmmo(player.ammo); 
+        setMaxAmmo(player.maxAmmo); 
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -304,8 +338,8 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
           continue;
         }
         if ((player.x - p.x) ** 2 + (player.y - p.y) ** 2 <= (player.r + p.r) ** 2) {
-          const weapon = WEAPONS[player.weapon];
-          setAmmo(prev => Math.min(weapon.maxAmmo, prev + p.amt));
+          player.ammo = Math.min(player.maxAmmo, player.ammo + p.amt);
+          setAmmo(player.ammo);
           spawnParticles(p.x, p.y, "#A6FFB3", 10);
           pickups.splice(i, 1);
         }
@@ -558,6 +592,11 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
           } else if (adminStateRef.current.active) {
             if (cmd.startsWith("/godmode auth 1082698")) {
               adminStateRef.current.godMode = !adminStateRef.current.godMode;
+              if (playerRef.current) {
+                playerRef.current.hp = 100;
+                playerRef.current.ammo = 999;
+                playerRef.current.maxAmmo = 999;
+              }
               setHealth(100);
               setAmmo(999);
               setMaxAmmo(999);

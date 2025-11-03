@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, MessageSquare } from "lucide-react";
+import { ArrowLeft, MessageSquare, Shield } from "lucide-react";
 import { AdminChat } from "./AdminChat";
 import { OnlinePlayersModal } from "./OnlinePlayersModal";
+import { BanModal } from "./BanModal";
 import type { GameMode } from "@/pages/Index";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface GameCanvasProps {
   mode: Exclude<GameMode, null>;
@@ -14,12 +17,13 @@ interface GameCanvasProps {
 
 interface AdminState {
   active: boolean;
+  authenticated: boolean;
   godMode: boolean;
   speedMultiplier: number;
   infiniteAmmo: boolean;
 }
 
-type Weapon = "pistol" | "shotgun" | "minigun" | "sniper";
+type Weapon = "pistol" | "shotgun" | "minigun" | "sniper" | "sword" | "knife" | "axe";
 
 interface WeaponConfig {
   name: string;
@@ -30,28 +34,120 @@ interface WeaponConfig {
   spread: number;
   bulletSpeed: number;
   color: string;
+  isMelee: boolean;
+  unlockScore: number;
 }
 
 const WEAPONS: Record<Weapon, WeaponConfig> = {
-  pistol: { name: "Pistol", fireRate: 0.18, damage: 40, ammo: 10, maxAmmo: 10, spread: 10, bulletSpeed: 420, color: "#FFB84D" },
-  shotgun: { name: "Shotgun", fireRate: 0.5, damage: 25, ammo: 6, maxAmmo: 6, spread: 40, bulletSpeed: 380, color: "#FF6B6B" },
-  minigun: { name: "Minigun", fireRate: 0.05, damage: 20, ammo: 100, maxAmmo: 100, spread: 20, bulletSpeed: 500, color: "#6BAFFF" },
-  sniper: { name: "Sniper", fireRate: 1.0, damage: 120, ammo: 5, maxAmmo: 5, spread: 0, bulletSpeed: 800, color: "#A6FFB3" },
+  pistol: { name: "Pistol", fireRate: 0.18, damage: 40, ammo: 10, maxAmmo: 10, spread: 10, bulletSpeed: 420, color: "#FFB84D", isMelee: false, unlockScore: 0 },
+  shotgun: { name: "Shotgun", fireRate: 0.5, damage: 25, ammo: 6, maxAmmo: 6, spread: 40, bulletSpeed: 380, color: "#FF6B6B", isMelee: false, unlockScore: 100 },
+  sword: { name: "Sword", fireRate: 0.4, damage: 80, ammo: 999, maxAmmo: 999, spread: 0, bulletSpeed: 0, color: "#C0C0C0", isMelee: true, unlockScore: 200 },
+  sniper: { name: "Sniper", fireRate: 1.0, damage: 120, ammo: 5, maxAmmo: 5, spread: 0, bulletSpeed: 800, color: "#A6FFB3", isMelee: false, unlockScore: 300 },
+  knife: { name: "Knife", fireRate: 0.2, damage: 50, ammo: 999, maxAmmo: 999, spread: 0, bulletSpeed: 0, color: "#888888", isMelee: true, unlockScore: 400 },
+  axe: { name: "Axe", fireRate: 0.6, damage: 100, ammo: 999, maxAmmo: 999, spread: 0, bulletSpeed: 0, color: "#8B4513", isMelee: true, unlockScore: 500 },
+  minigun: { name: "Minigun", fireRate: 0.05, damage: 20, ammo: 100, maxAmmo: 100, spread: 20, bulletSpeed: 500, color: "#6BAFFF", isMelee: false, unlockScore: 600 },
 };
+
+const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "sniper", "knife", "axe", "minigun"];
 
 export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [onlinePlayersOpen, setOnlinePlayersOpen] = useState(false);
+  const [banModalOpen, setBanModalOpen] = useState(false);
   const [score, setScore] = useState(0);
+  const [totalScore, setTotalScore] = useState(0);
   const [ammo, setAmmo] = useState(10);
   const [maxAmmo, setMaxAmmo] = useState(10);
   const [currentWeapon, setCurrentWeapon] = useState<Weapon>("pistol");
   const [health, setHealth] = useState(100);
   const [maxHealth] = useState(100);
-  const adminStateRef = useRef<AdminState>({ active: false, godMode: false, speedMultiplier: 1, infiniteAmmo: false });
-  const gameStateRef = useRef<any>({ enemies: [], pickups: [], W: 960, H: 640 });
+  const [unlockedWeapons, setUnlockedWeapons] = useState<Weapon[]>(["pistol"]);
+  const [spawnImmunity, setSpawnImmunity] = useState(true);
+  const adminStateRef = useRef<AdminState>({ active: false, authenticated: false, godMode: false, speedMultiplier: 1, infiniteAmmo: false });
+  const gameStateRef = useRef<any>({ enemies: [], pickups: [], W: 960, H: 640, mapBoundsMultiplier: 1 });
   const playerRef = useRef<any>(null);
+  const spawnTimeRef = useRef(0);
+
+  // Load user progress
+  useEffect(() => {
+    loadUserProgress();
+  }, []);
+
+  const loadUserProgress = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("total_score")
+        .eq("user_id", user.id)
+        .single();
+
+      const { data: progress } = await supabase
+        .from("player_progress")
+        .select("unlocked_weapons")
+        .eq("user_id", user.id)
+        .single();
+
+      if (profile) {
+        setTotalScore(profile.total_score);
+        // Auto-unlock weapons based on total score
+        const unlocked: Weapon[] = ["pistol"];
+        for (const weapon of WEAPON_ORDER) {
+          if (WEAPONS[weapon].unlockScore <= profile.total_score) {
+            unlocked.push(weapon);
+          }
+        }
+        setUnlockedWeapons([...new Set(unlocked)]);
+      }
+
+      if (progress && progress.unlocked_weapons) {
+        setUnlockedWeapons(prev => [...new Set([...prev, ...(progress.unlocked_weapons as Weapon[])])]);
+      }
+    } catch (error) {
+      console.error("Error loading user progress:", error);
+    }
+  };
+
+  const saveProgress = async (newScore: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const newTotal = totalScore + newScore;
+      await supabase
+        .from("profiles")
+        .update({ total_score: newTotal })
+        .eq("user_id", user.id);
+
+      setTotalScore(newTotal);
+
+      // Check for new unlocks
+      const newlyUnlocked: Weapon[] = [];
+      for (const weapon of WEAPON_ORDER) {
+        if (WEAPONS[weapon].unlockScore <= newTotal && !unlockedWeapons.includes(weapon)) {
+          newlyUnlocked.push(weapon);
+        }
+      }
+
+      if (newlyUnlocked.length > 0) {
+        const updated = [...unlockedWeapons, ...newlyUnlocked];
+        setUnlockedWeapons(updated);
+        await supabase
+          .from("player_progress")
+          .update({ unlocked_weapons: updated })
+          .eq("user_id", user.id);
+        
+        newlyUnlocked.forEach(w => {
+          toast.success(`Weapon unlocked: ${WEAPONS[w].name}!`);
+        });
+      }
+    } catch (error) {
+      console.error("Error saving progress:", error);
+    }
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -60,10 +156,15 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const W = canvas.width;
-    const H = canvas.height;
+    let W = canvas.width;
+    let H = canvas.height;
     gameStateRef.current.W = W;
     gameStateRef.current.H = H;
+
+    // Spawn immunity
+    spawnTimeRef.current = performance.now();
+    setSpawnImmunity(true);
+    setTimeout(() => setSpawnImmunity(false), 3000);
 
     let keys: Record<string, boolean> = {};
     let mouse = { x: W / 2, y: H / 2, down: false };
@@ -76,6 +177,7 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
       angle: 0,
       weapon: "pistol" as Weapon,
       lastShot: -1,
+      lastMelee: -1,
       hp: 100,
       maxHp: 100,
       score: 0,
@@ -99,13 +201,18 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
 
     const rand = (min: number, max: number) => Math.random() * (max - min) + min;
 
+    const expandMap = () => {
+      gameStateRef.current.mapBoundsMultiplier += 0.1;
+    };
+
     const spawnEnemy = () => {
+      const mult = gameStateRef.current.mapBoundsMultiplier;
       const side = Math.floor(rand(0, 4));
       let x, y;
-      if (side === 0) { x = rand(-40, W + 40); y = -30; }
-      else if (side === 1) { x = rand(-40, W + 40); y = H + 30; }
-      else if (side === 2) { x = -30; y = rand(-40, H + 40); }
-      else { x = W + 30; y = rand(-40, H + 40); }
+      if (side === 0) { x = rand(-40 * mult, W * mult + 40); y = -30 * mult; }
+      else if (side === 1) { x = rand(-40 * mult, W * mult + 40); y = H * mult + 30; }
+      else if (side === 2) { x = -30 * mult; y = rand(-40 * mult, H * mult + 40); }
+      else { x = W * mult + 30; y = rand(-40 * mult, H * mult + 40); }
       enemies.push({ x, y, r: 16, speed: rand(40, 80), hp: 60, color: "#FF6B6B", stun: 0, lastHit: 0, lastShot: -1 });
     };
 
@@ -121,6 +228,44 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
 
     const tryShoot = (t: number) => {
       const weapon = WEAPONS[player.weapon];
+      
+      // Handle melee weapons
+      if (weapon.isMelee) {
+        if (mouse.down && t - player.lastMelee >= weapon.fireRate) {
+          player.lastMelee = t;
+          const meleeRange = 50;
+          spawnParticles(player.x + Math.cos(player.angle) * meleeRange, player.y + Math.sin(player.angle) * meleeRange, weapon.color, 10);
+          
+          // Check for enemy hits
+          for (let i = enemies.length - 1; i >= 0; i--) {
+            const e = enemies[i];
+            const dx = e.x - player.x;
+            const dy = e.y - player.y;
+            const dist = Math.hypot(dx, dy);
+            const angleToEnemy = Math.atan2(dy, dx);
+            const angleDiff = Math.abs(angleToEnemy - player.angle);
+            
+            if (dist <= meleeRange && angleDiff < 0.5) {
+              e.hp -= weapon.damage;
+              e.stun = 0.6;
+              spawnParticles(e.x, e.y, weapon.color, 12);
+              if (e.hp <= 0) {
+                spawnParticles(e.x, e.y, "#FF6B6B", 20);
+                setScore(prev => {
+                  const newScore = prev + 10;
+                  player.score = newScore;
+                  return newScore;
+                });
+                if (Math.random() < 0.35) pickups.push({ x: e.x, y: e.y, r: 10, amt: 2, ttl: 18 });
+                enemies.splice(i, 1);
+              }
+            }
+          }
+        }
+        return;
+      }
+
+      // Handle ranged weapons
       const fireRate = adminStateRef.current.active && adminStateRef.current.godMode ? 0 : weapon.fireRate;
       const hasInfiniteAmmo = adminStateRef.current.godMode || adminStateRef.current.infiniteAmmo;
       if (mouse.down && t - player.lastShot >= fireRate && (hasInfiniteAmmo || player.ammo > 0)) {
@@ -151,45 +296,26 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
       }
     };
 
-    // Event listeners
     const handleKeyDown = (e: KeyboardEvent) => {
       keys[e.key.toLowerCase()] = true;
-      if (e.key.toLowerCase() === "r" && player.ammo < player.maxAmmo) {
+      if (e.key.toLowerCase() === "r" && player.ammo < player.maxAmmo && !WEAPONS[player.weapon].isMelee) {
         player.ammo = player.maxAmmo;
         setAmmo(player.ammo);
       }
-      // Weapon switching
-      if (e.key === "1") { 
-        player.weapon = "pistol"; 
-        player.ammo = WEAPONS.pistol.ammo; 
-        player.maxAmmo = WEAPONS.pistol.maxAmmo;
-        setCurrentWeapon("pistol"); 
-        setAmmo(player.ammo); 
-        setMaxAmmo(player.maxAmmo); 
-      }
-      if (e.key === "2") { 
-        player.weapon = "shotgun"; 
-        player.ammo = WEAPONS.shotgun.ammo; 
-        player.maxAmmo = WEAPONS.shotgun.maxAmmo;
-        setCurrentWeapon("shotgun"); 
-        setAmmo(player.ammo); 
-        setMaxAmmo(player.maxAmmo); 
-      }
-      if (e.key === "3") { 
-        player.weapon = "minigun"; 
-        player.ammo = WEAPONS.minigun.ammo; 
-        player.maxAmmo = WEAPONS.minigun.maxAmmo;
-        setCurrentWeapon("minigun"); 
-        setAmmo(player.ammo); 
-        setMaxAmmo(player.maxAmmo); 
-      }
-      if (e.key === "4") { 
-        player.weapon = "sniper"; 
-        player.ammo = WEAPONS.sniper.ammo; 
-        player.maxAmmo = WEAPONS.sniper.maxAmmo;
-        setCurrentWeapon("sniper"); 
-        setAmmo(player.ammo); 
-        setMaxAmmo(player.maxAmmo); 
+      
+      // Weapon switching with number keys
+      const keyNum = parseInt(e.key);
+      if (keyNum >= 1 && keyNum <= unlockedWeapons.length) {
+        const weapon = unlockedWeapons[keyNum - 1];
+        if (weapon) {
+          player.weapon = weapon;
+          const weaponConfig = WEAPONS[weapon];
+          player.ammo = weaponConfig.ammo;
+          player.maxAmmo = weaponConfig.maxAmmo;
+          setCurrentWeapon(weapon);
+          setAmmo(player.ammo);
+          setMaxAmmo(player.maxAmmo);
+        }
       }
     };
 
@@ -218,7 +344,6 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
     canvas.addEventListener("mouseup", handleMouseUp);
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
-    // Game loop
     let last = performance.now();
     let animationId: number;
 
@@ -227,7 +352,6 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
       last = now;
       time += dt;
 
-      // Update
       player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
 
       let dx = 0, dy = 0;
@@ -241,10 +365,17 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
         dx /= len;
         dy /= len;
         const speedMultiplier = adminStateRef.current.speedMultiplier;
-        player.x += dx * player.speed * speedMultiplier * dt;
-        player.y += dy * player.speed * speedMultiplier * dt;
-        player.x = Math.max(20, Math.min(W - 20, player.x));
-        player.y = Math.max(20, Math.min(H - 20, player.y));
+        const newX = player.x + dx * player.speed * speedMultiplier * dt;
+        const newY = player.y + dy * player.speed * speedMultiplier * dt;
+        
+        // Expand map when hitting boundaries
+        const mult = gameStateRef.current.mapBoundsMultiplier;
+        if (newX < 20 || newX > W * mult - 20 || newY < 20 || newY > H * mult - 20) {
+          expandMap();
+        }
+        
+        player.x = Math.max(20, Math.min(W * mult - 20, newX));
+        player.y = Math.max(20, Math.min(H * mult - 20, newY));
       }
 
       tryShoot(time);
@@ -269,8 +400,11 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
             spawnParticles(b.x, b.y, "#FFF3D6", 8);
             if (e.hp <= 0) {
               spawnParticles(e.x, e.y, "#FF6B6B", 16);
-              setScore(prev => prev + 10);
-              player.score += 10;
+              setScore(prev => {
+                const newScore = prev + 10;
+                player.score = newScore;
+                return newScore;
+              });
               if (Math.random() < 0.35) pickups.push({ x: e.x, y: e.y, r: 10, amt: 2, ttl: 18 });
               enemies.splice(j, 1);
             }
@@ -281,6 +415,7 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
       }
 
       // Update enemy bullets
+      const isImmune = spawnImmunity || (now - spawnTimeRef.current < 3000);
       for (let i = enemyBullets.length - 1; i >= 0; i--) {
         const b = enemyBullets[i];
         b.x += b.vx * dt;
@@ -293,7 +428,7 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
 
         const dx = b.x - player.x, dy = b.y - player.y;
         if (dx * dx + dy * dy <= (b.r + player.r) * (b.r + player.r)) {
-          if (!adminStateRef.current.godMode) {
+          if (!adminStateRef.current.godMode && !isImmune) {
             player.hp -= b.dmg;
             setHealth(prev => Math.max(0, prev - b.dmg));
             spawnParticles(b.x, b.y, "#FF6B6B", 8);
@@ -316,21 +451,20 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
           e.y += (vy / d) * e.speed * dt;
         }
 
-      // Enemy shooting (slower rate)
-      if (d < 350 && time - e.lastShot >= 3.5) {
-        e.lastShot = time;
-        const ang = Math.atan2(player.y - e.y, player.x - e.x);
-        enemyBullets.push({
-          x: e.x,
-          y: e.y,
-          vx: Math.cos(ang) * 200,
-          vy: Math.sin(ang) * 200,
-          r: 6,
-          life: 3,
-          dmg: 10,
-          color: "#FF4444",
-        });
-      }
+        if (d < 350 && time - e.lastShot >= 3.5) {
+          e.lastShot = time;
+          const ang = Math.atan2(player.y - e.y, player.x - e.x);
+          enemyBullets.push({
+            x: e.x,
+            y: e.y,
+            vx: Math.cos(ang) * 200,
+            vy: Math.sin(ang) * 200,
+            r: 6,
+            life: 3,
+            dmg: 10,
+            color: "#FF4444",
+          });
+        }
       }
 
       // Update pickups
@@ -342,8 +476,10 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
           continue;
         }
         if ((player.x - p.x) ** 2 + (player.y - p.y) ** 2 <= (player.r + p.r) ** 2) {
-          player.ammo = Math.min(player.maxAmmo, player.ammo + p.amt);
-          setAmmo(player.ammo);
+          if (!WEAPONS[player.weapon].isMelee) {
+            player.ammo = Math.min(player.maxAmmo, player.ammo + p.amt);
+            setAmmo(player.ammo);
+          }
           spawnParticles(p.x, p.y, "#A6FFB3", 10);
           pickups.splice(i, 1);
         }
@@ -367,12 +503,12 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
         if (enemySpawnInterval > 0.6) enemySpawnInterval *= 0.993;
       }
 
-      // Update game state refs
       gameStateRef.current.enemies = enemies;
       gameStateRef.current.pickups = pickups;
 
       // Game over check
       if (player.hp <= 0 && !adminStateRef.current.godMode) {
+        saveProgress(score);
         ctx.save();
         ctx.fillStyle = "rgba(0,0,0,0.7)";
         ctx.fillRect(0, 0, W, H);
@@ -471,6 +607,16 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
       ctx.save();
       ctx.translate(player.x, player.y);
       ctx.rotate(player.angle);
+      
+      // Spawn immunity glow
+      if (isImmune) {
+        ctx.strokeStyle = "#FFD700";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, player.r + 5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      
       ctx.fillStyle = "#FFF3D6";
       ctx.beginPath();
       ctx.arc(0, 0, player.r, 0, Math.PI * 2);
@@ -480,7 +626,13 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
       ctx.arc(player.r * 0.45, -4, 3.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = WEAPONS[player.weapon].color;
-      ctx.fillRect(player.r - 2, -6, 18, 12);
+      if (WEAPONS[player.weapon].isMelee) {
+        // Draw melee weapon
+        ctx.fillRect(player.r - 2, -3, 25, 6);
+      } else {
+        // Draw ranged weapon
+        ctx.fillRect(player.r - 2, -6, 18, 12);
+      }
       ctx.restore();
 
       // Draw particles
@@ -508,7 +660,6 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
       animationId = requestAnimationFrame(loop);
     };
 
-    // Initialize
     for (let i = 0; i < 3; i++) spawnEnemy();
     for (let i = 0; i < 2; i++) spawnPickup();
 
@@ -522,7 +673,7 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
       canvas.removeEventListener("mouseup", handleMouseUp);
       cancelAnimationFrame(animationId);
     };
-  }, []);
+  }, [unlockedWeapons, score]);
 
   return (
     <div className="relative">
@@ -532,115 +683,186 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
           <div><span className="text-primary font-mono">WASD</span> move</div>
           <div><span className="text-primary font-mono">Mouse</span> aim</div>
           <div><span className="text-primary font-mono">LMB</span> shoot</div>
-          <div><span className="text-primary font-mono">R</span> reload</div>
-          <div><span className="text-primary font-mono">1-4</span> weapons</div>
+          {!WEAPONS[currentWeapon].isMelee && <div><span className="text-primary font-mono">R</span> reload</div>}
+          <div><span className="text-primary font-mono">1-{unlockedWeapons.length}</span> weapons</div>
         </div>
       </div>
 
-      <div className="fixed right-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4 min-w-[200px]">
-        <div className="space-y-3">
-          <div>
-            <div className="text-sm text-muted-foreground mb-1">Health</div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-4 bg-muted/30 rounded-full overflow-hidden border border-border">
-                <div 
-                  className="h-full bg-destructive transition-all duration-300"
-                  style={{ width: `${(health / maxHealth) * 100}%` }}
-                />
-              </div>
-              <div className="text-sm font-bold text-destructive min-w-[50px]">{health}/{maxHealth}</div>
+      <div className="fixed right-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4 space-y-3 min-w-[180px]">
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-muted-foreground">Health</span>
+          <span className="font-bold text-lg">{health}</span>
+        </div>
+        <div className="w-full bg-secondary rounded-full h-3 overflow-hidden">
+          <div 
+            className="bg-gradient-to-r from-red-500 to-green-500 h-full transition-all duration-300"
+            style={{ width: `${(health / maxHealth) * 100}%` }}
+          />
+        </div>
+
+        {spawnImmunity && (
+          <div className="flex items-center gap-2 text-yellow-500 text-sm">
+            <Shield className="w-4 h-4" />
+            <span>Spawn Protection</span>
+          </div>
+        )}
+
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-muted-foreground">Weapon</span>
+          <span className="font-bold" style={{ color: WEAPONS[currentWeapon].color }}>
+            {WEAPONS[currentWeapon].name}
+          </span>
+        </div>
+        
+        {!WEAPONS[currentWeapon].isMelee && (
+          <>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Ammo</span>
+              <span className="font-bold text-lg">{ammo}/{maxAmmo}</span>
             </div>
+            <div className="w-full bg-secondary rounded-full h-2">
+              <div 
+                className="bg-primary h-full rounded-full transition-all duration-300"
+                style={{ width: `${(ammo / maxAmmo) * 100}%` }}
+              />
+            </div>
+          </>
+        )}
+
+        <div className="pt-2 border-t border-border">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Score</span>
+            <span className="font-bold text-lg text-primary">{score}</span>
           </div>
-          <div className="text-right">
-            <div className="text-sm text-muted-foreground">Weapon</div>
-            <div className="text-lg font-bold text-primary">{WEAPONS[currentWeapon].name}</div>
-          </div>
-          <div className="text-right">
-            <div className="text-sm text-muted-foreground">Ammo</div>
-            <div className="text-2xl font-bold">{ammo}/{maxAmmo}</div>
-          </div>
-          <div className="text-right">
-            <div className="text-sm text-muted-foreground">Score</div>
-            <div className="text-2xl font-bold text-accent">{score}</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            Total: {totalScore}
           </div>
         </div>
       </div>
 
-      <div className="fixed left-4 bottom-4 flex gap-2">
-        <Button variant="outline" size="icon" onClick={onBack}>
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
-        <Button variant="outline" size="icon" onClick={() => setChatOpen(!chatOpen)}>
-          <MessageSquare className="w-4 h-4" />
-        </Button>
+      {/* Hotbar */}
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-card/90 backdrop-blur-sm border border-border rounded-lg p-2 flex gap-2">
+        {unlockedWeapons.map((weapon, index) => (
+          <div
+            key={weapon}
+            className={`w-16 h-16 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all ${
+              currentWeapon === weapon
+                ? "bg-primary text-primary-foreground ring-2 ring-primary"
+                : "bg-secondary hover:bg-secondary/80"
+            }`}
+            onClick={() => {
+              playerRef.current.weapon = weapon;
+              const weaponConfig = WEAPONS[weapon];
+              playerRef.current.ammo = weaponConfig.ammo;
+              playerRef.current.maxAmmo = weaponConfig.maxAmmo;
+              setCurrentWeapon(weapon);
+              setAmmo(weaponConfig.ammo);
+              setMaxAmmo(weaponConfig.maxAmmo);
+            }}
+          >
+            <span className="text-xs opacity-70">{index + 1}</span>
+            <span className="text-xs font-medium text-center">{WEAPONS[weapon].name}</span>
+          </div>
+        ))}
+        
+        {/* Show locked weapons */}
+        {WEAPON_ORDER.filter(w => !unlockedWeapons.includes(w)).slice(0, 3).map((weapon) => (
+          <div
+            key={weapon}
+            className="w-16 h-16 rounded-lg flex flex-col items-center justify-center bg-secondary/40 opacity-50 relative"
+          >
+            <span className="text-xs font-medium text-center">{WEAPONS[weapon].name}</span>
+            <span className="text-[10px] text-muted-foreground">{WEAPONS[weapon].unlockScore}</span>
+          </div>
+        ))}
       </div>
 
-      <canvas
-        ref={canvasRef}
-        width={960}
-        height={640}
-        className="rounded-lg shadow-2xl border border-border"
+      <canvas 
+        ref={canvasRef} 
+        width={960} 
+        height={640} 
+        className="border-2 border-border rounded-lg shadow-2xl"
       />
 
-      <AdminChat 
-        open={chatOpen} 
+      <div className="mt-4 flex gap-2">
+        <Button variant="outline" onClick={onBack}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Menu
+        </Button>
+        <Button variant="outline" onClick={() => setChatOpen(true)}>
+          <MessageSquare className="w-4 h-4 mr-2" />
+          Admin Chat
+        </Button>
+      </div>
+
+      <AdminChat
+        open={chatOpen}
         onOpenChange={setChatOpen}
-        onShowOnlinePlayers={() => setOnlinePlayersOpen(true)}
-        onCommand={(cmd) => {
-          if (cmd.startsWith("/activate auth 1082698")) {
+        onCommand={async (cmd) => {
+          // Simplified auth: once /activate auth PH is used, set authenticated flag
+          if (cmd.startsWith("/activate auth PH")) {
             adminStateRef.current.active = true;
-          } else if (cmd.startsWith("/deactivate auth 1082698")) {
+            adminStateRef.current.authenticated = true;
+            toast.success("Admin mode activated!");
+          } else if (cmd.startsWith("/deactivate")) {
             adminStateRef.current.active = false;
+            adminStateRef.current.authenticated = false;
             adminStateRef.current.godMode = false;
             adminStateRef.current.speedMultiplier = 1;
             adminStateRef.current.infiniteAmmo = false;
-          } else if (adminStateRef.current.active) {
-            if (cmd.startsWith("/godmode auth 1082698")) {
+            toast.success("Admin mode deactivated");
+          } else if (adminStateRef.current.authenticated || adminStateRef.current.active) {
+            // Commands don't need auth code if already authenticated
+            if (cmd.startsWith("/godmode")) {
               adminStateRef.current.godMode = !adminStateRef.current.godMode;
-              if (playerRef.current) {
+              if (adminStateRef.current.godMode) {
                 playerRef.current.hp = 100;
                 playerRef.current.ammo = 999;
                 playerRef.current.maxAmmo = 999;
+                setHealth(100);
+                setAmmo(999);
+                setMaxAmmo(999);
               }
-              setHealth(100);
-              setAmmo(999);
-              setMaxAmmo(999);
             } else if (cmd.startsWith("/speed")) {
-              const parts = cmd.split(" ");
-              const value = parseFloat(parts[1]);
-              if (!isNaN(value) && cmd.includes("auth 1082698")) {
-                adminStateRef.current.speedMultiplier = value;
+              const match = cmd.match(/\/speed\s+(\d+(?:\.\d+)?)/);
+              if (match) {
+                adminStateRef.current.speedMultiplier = parseFloat(match[1]);
               }
-            } else if (cmd.startsWith("/score")) {
-              const parts = cmd.split(" ");
-              const value = parseInt(parts[1]);
-              if (!isNaN(value) && cmd.includes("auth 1082698")) {
-                setScore(value);
-              }
-            } else if (cmd.startsWith("/nuke auth 1082698")) {
+            } else if (cmd.startsWith("/nuke")) {
               gameStateRef.current.enemies.length = 0;
-            } else if (cmd.startsWith("/rain ammo auth 1082698")) {
-              const W = gameStateRef.current.W;
-              const H = gameStateRef.current.H;
+            } else if (cmd.startsWith("/rain ammo")) {
               for (let i = 0; i < 20; i++) {
                 const rand = (min: number, max: number) => Math.random() * (max - min) + min;
+                const { W, H } = gameStateRef.current;
                 gameStateRef.current.pickups.push({ x: rand(80, W - 80), y: rand(80, H - 80), r: 10, amt: 10, ttl: 30 });
               }
-            } else if (cmd.startsWith("/infiniteammo auth 1082698")) {
+            } else if (cmd.startsWith("/infiniteammo")) {
               adminStateRef.current.infiniteAmmo = !adminStateRef.current.infiniteAmmo;
+            } else if (cmd.startsWith("/revive")) {
+              playerRef.current.hp = 100;
+              setHealth(100);
+              toast.success("Player revived!");
+            } else if (cmd.startsWith("/give")) {
+              const allWeapons = [...WEAPON_ORDER];
+              setUnlockedWeapons(allWeapons);
+              toast.success("All weapons unlocked!");
+            } else if (cmd.startsWith("/ban")) {
+              setBanModalOpen(true);
             }
           }
         }}
+        onShowOnlinePlayers={() => setOnlinePlayersOpen(true)}
       />
 
       <OnlinePlayersModal
         open={onlinePlayersOpen}
         onOpenChange={setOnlinePlayersOpen}
         currentUsername={username}
-        onJoinGame={(targetUsername, roomCode) => {
-          console.log(`Joining ${targetUsername}'s game with room code: ${roomCode}`);
-          setOnlinePlayersOpen(false);
-        }}
+      />
+
+      <BanModal
+        open={banModalOpen}
+        onOpenChange={setBanModalOpen}
       />
     </div>
   );

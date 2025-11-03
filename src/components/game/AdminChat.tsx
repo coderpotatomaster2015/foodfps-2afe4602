@@ -17,17 +17,17 @@ interface ChatMessage {
 }
 
 const COMMANDS = [
-  { cmd: "/activate auth 1082698", desc: "Activate admin mode" },
-  { cmd: "/deactivate auth 1082698", desc: "Deactivate admin mode" },
-  { cmd: "/give minigun auth 1082698", desc: "Get minigun (infinite ammo)" },
-  { cmd: "/score [number] auth 1082698", desc: "Set your score" },
-  { cmd: "/spawn enemy [count] auth 1082698", desc: "Spawn enemies" },
-  { cmd: "/godmode auth 1082698", desc: "Toggle invincibility" },
-  { cmd: "/speed [number] auth 1082698", desc: "Set player speed" },
-  { cmd: "/nuke auth 1082698", desc: "Kill all enemies" },
-  { cmd: "/rain ammo auth 1082698", desc: "Spawn ammo pickups" },
-  { cmd: "/infiniteammo auth 1082698", desc: "Toggle infinite ammo" },
-  { cmd: "/join auth 1082698", desc: "Show online players to join (SUPER OP)" },
+  { cmd: "/activate auth PH", desc: "Activate admin mode (use auth PH)" },
+  { cmd: "/deactivate", desc: "Deactivate admin mode" },
+  { cmd: "/godmode", desc: "Toggle invincibility & max ammo" },
+  { cmd: "/speed [number]", desc: "Set player speed" },
+  { cmd: "/nuke", desc: "Kill all enemies" },
+  { cmd: "/rain ammo", desc: "Spawn ammo pickups" },
+  { cmd: "/infiniteammo", desc: "Toggle infinite ammo" },
+  { cmd: "/revive", desc: "Revive player (restore full health)" },
+  { cmd: "/give", desc: "Unlock all weapons" },
+  { cmd: "/ban", desc: "Open ban management (admin only)" },
+  { cmd: "/join", desc: "Show online players to join" },
   { cmd: "/?", desc: "Show all commands" },
 ];
 
@@ -50,65 +50,43 @@ export const AdminChat = ({ open, onOpenChange, onCommand, onShowOnlinePlayers }
   const handleCommand = (cmd: string) => {
     if (cmd === "/?") {
       addMessage("Available commands:", "#FFB84D");
-      COMMANDS.forEach(c => {
-        addMessage(`  ${c.cmd} - ${c.desc}`, "#9aa");
-      });
+      COMMANDS.forEach(c => addMessage(`  ${c.cmd} - ${c.desc}`, "#9aa"));
       return;
     }
 
-    if (cmd.startsWith("/activate auth 1082698")) {
+    if (cmd.startsWith("/activate auth PH")) {
       setAdminActive(true);
-      addMessage("✓ Admin mode activated!", "#4cff4c");
+      addMessage("✓ Admin activated! No auth code needed for other commands.", "#4cff4c");
       return;
     }
 
-    if (cmd.startsWith("/deactivate auth 1082698")) {
+    if (cmd.startsWith("/deactivate")) {
       setAdminActive(false);
       addMessage("✗ Admin mode deactivated.", "#ff6b6b");
       return;
     }
 
-    if (!adminActive) {
-      // Do nothing if admin is not active
-      return;
-    }
+    if (!adminActive) return;
 
-    if (cmd.startsWith("/give minigun auth 1082698")) {
-      addMessage("✓ Minigun granted: Infinite ammo, instant fire", "#FFB84D");
-    } else if (cmd.startsWith("/score ")) {
-      const match = cmd.match(/\/score (\d+) auth 1082698/);
-      if (match) {
-        addMessage(`✓ Score set to ${match[1]}`, "#FFB84D");
-      } else {
-        addMessage("✗ Invalid format. Use: /score [number] auth 1082698", "#ff6b6b");
-      }
-    } else if (cmd.startsWith("/spawn enemy ")) {
-      const match = cmd.match(/\/spawn enemy (\d+) auth 1082698/);
-      if (match) {
-        addMessage(`✓ Spawned ${match[1]} enemies`, "#FFB84D");
-      } else {
-        addMessage("✗ Invalid format. Use: /spawn enemy [count] auth 1082698", "#ff6b6b");
-      }
-    } else if (cmd.startsWith("/godmode auth 1082698")) {
+    if (cmd.startsWith("/godmode")) {
       addMessage("✓ God mode toggled", "#FFB84D");
-    } else if (cmd.startsWith("/speed ")) {
-      const match = cmd.match(/\/speed (\d+) auth 1082698/);
-      if (match) {
-        addMessage(`✓ Speed set to ${match[1]}`, "#FFB84D");
-      } else {
-        addMessage("✗ Invalid format. Use: /speed [number] auth 1082698", "#ff6b6b");
-      }
-    } else if (cmd.startsWith("/nuke auth 1082698")) {
+    } else if (cmd.startsWith("/speed")) {
+      addMessage("✓ Speed set", "#FFB84D");
+    } else if (cmd.startsWith("/nuke")) {
       addMessage("✓ All enemies eliminated!", "#FFB84D");
-    } else if (cmd.startsWith("/rain ammo auth 1082698")) {
+    } else if (cmd.startsWith("/rain ammo")) {
       addMessage("✓ Ammo rain activated!", "#A6FFB3");
-    } else if (cmd.startsWith("/infiniteammo auth 1082698")) {
+    } else if (cmd.startsWith("/infiniteammo")) {
       addMessage("✓ Infinite ammo toggled!", "#FFB84D");
-    } else if (cmd.startsWith("/join") && cmd.includes("auth 1082698")) {
-      addMessage("✓ Opening online players window...", "#A6FFB3");
-      if (onShowOnlinePlayers) {
-        onShowOnlinePlayers();
-      }
+    } else if (cmd.startsWith("/revive")) {
+      addMessage("✓ Player revived!", "#A6FFB3");
+    } else if (cmd.startsWith("/give")) {
+      addMessage("✓ All weapons unlocked!", "#FFD700");
+    } else if (cmd.startsWith("/ban")) {
+      addMessage("✓ Opening ban management...", "#FF6B6B");
+    } else if (cmd.startsWith("/join")) {
+      addMessage("✓ Opening online players...", "#A6FFB3");
+      if (onShowOnlinePlayers) onShowOnlinePlayers();
     } else {
       addMessage("✗ Unknown command. Type /? for help", "#ff6b6b");
     }

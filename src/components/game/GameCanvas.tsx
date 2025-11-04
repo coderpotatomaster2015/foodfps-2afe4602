@@ -7,6 +7,7 @@ import { BanModal } from "./BanModal";
 import type { GameMode } from "@/pages/Index";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useMultiplayer } from "@/hooks/useMultiplayer";
 
 interface GameCanvasProps {
   mode: Exclude<GameMode, null>;
@@ -55,7 +56,7 @@ const WEAPONS: Record<Weapon, WeaponConfig> = {
 
 const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "rifle", "sniper", "smg", "knife", "rpg", "axe", "flamethrower", "minigun", "railgun"];
 
-export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
+export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [onlinePlayersOpen, setOnlinePlayersOpen] = useState(false);
@@ -73,11 +74,37 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
   const gameStateRef = useRef<any>({ enemies: [], pickups: [], W: 960, H: 640, mapBoundsMultiplier: 1 });
   const playerRef = useRef<any>(null);
   const spawnTimeRef = useRef(0);
+  const positionUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Multiplayer hook for online modes
+  const { players, updatePlayerPosition } = useMultiplayer(mode, roomCode, username);
 
   // Load user progress
   useEffect(() => {
     loadUserProgress();
   }, []);
+
+  // Sync player position for multiplayer modes
+  useEffect(() => {
+    if ((mode === "host" || mode === "join") && playerRef.current) {
+      positionUpdateIntervalRef.current = setInterval(() => {
+        if (playerRef.current) {
+          updatePlayerPosition(
+            playerRef.current.x,
+            playerRef.current.y,
+            playerRef.current.hp,
+            playerRef.current.weapon
+          );
+        }
+      }, 100); // Update every 100ms
+
+      return () => {
+        if (positionUpdateIntervalRef.current) {
+          clearInterval(positionUpdateIntervalRef.current);
+        }
+      };
+    }
+  }, [mode, updatePlayerPosition]);
 
   const loadUserProgress = async () => {
     try {
@@ -639,6 +666,37 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
         ctx.fillRect(player.r - 2, -6, 18, 12);
       }
       ctx.restore();
+
+      // Draw other players (multiplayer)
+      if (mode === "host" || mode === "join") {
+        for (const otherPlayer of players) {
+          if (otherPlayer.username === username) continue; // Skip self
+          
+          ctx.save();
+          ctx.translate(otherPlayer.position_x, otherPlayer.position_y);
+          
+          // Player body
+          ctx.fillStyle = "#A6FFB3";
+          ctx.beginPath();
+          ctx.arc(0, 0, player.r, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Player name tag
+          ctx.fillStyle = "#fff";
+          ctx.font = "10px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(otherPlayer.username, 0, -player.r - 10);
+          
+          // Health bar
+          const hpW = 30;
+          ctx.fillStyle = "#333";
+          ctx.fillRect(-hpW / 2, -player.r - 8, hpW, 4);
+          ctx.fillStyle = "#22c55e";
+          ctx.fillRect(-hpW / 2, -player.r - 8, hpW * (otherPlayer.health / 100), 4);
+          
+          ctx.restore();
+        }
+      }
 
       // Draw particles
       for (const p of particles) {

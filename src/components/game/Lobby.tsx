@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Copy, Check, UserCheck, UserX } from "lucide-react";
+import { Copy, Check } from "lucide-react";
 import { toast } from "sonner";
+import { useMultiplayer } from "@/hooks/useMultiplayer";
 
 interface LobbyProps {
   mode: "host" | "join";
@@ -12,46 +13,27 @@ interface LobbyProps {
   onBack: () => void;
 }
 
-interface JoinRequest {
-  id: string;
-  username: string;
-  timestamp: number;
-}
-
 export const Lobby = ({ mode, username, roomCode, onStartGame, onBack }: LobbyProps) => {
   const [generatedCode, setGeneratedCode] = useState("");
   const [copied, setCopied] = useState(false);
-  const [players, setPlayers] = useState<string[]>([username]);
-  const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [isConnecting, setIsConnecting] = useState(mode === "join");
+  const { players, createRoom, joinRoom } = useMultiplayer(mode, roomCode, username);
 
   useEffect(() => {
-    if (mode === "host") {
-      // Generate 5-digit code
-      const code = Math.floor(10000 + Math.random() * 90000).toString();
-      setGeneratedCode(code);
-    }
-
-    // Simulate join request for demo (in real app, this would come from websocket)
-    if (mode === "host") {
-      setTimeout(() => {
-        const demoRequest: JoinRequest = {
-          id: "demo-" + Date.now(),
-          username: "Player" + Math.floor(Math.random() * 1000),
-          timestamp: Date.now()
-        };
-        setJoinRequests([demoRequest]);
-      }, 3000);
-    }
-
-    // Simulate successful connection for join mode
-    if (mode === "join") {
-      setTimeout(() => {
+    const init = async () => {
+      if (mode === "host") {
+        const code = await createRoom();
+        if (code) setGeneratedCode(code);
+      } else if (mode === "join" && roomCode) {
+        const success = await joinRoom(roomCode);
         setIsConnecting(false);
-        toast.success("Connected to game!");
-      }, 2000);
-    }
-  }, [mode]);
+        if (success) {
+          toast.success("Connected to game!");
+        }
+      }
+    };
+    init();
+  }, [mode, roomCode, createRoom, joinRoom]);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(generatedCode);
@@ -60,16 +42,7 @@ export const Lobby = ({ mode, username, roomCode, onStartGame, onBack }: LobbyPr
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleAcceptRequest = (request: JoinRequest) => {
-    setPlayers([...players, request.username]);
-    setJoinRequests(joinRequests.filter(r => r.id !== request.id));
-    toast.success(`${request.username} joined the game!`);
-  };
-
-  const handleRejectRequest = (request: JoinRequest) => {
-    setJoinRequests(joinRequests.filter(r => r.id !== request.id));
-    toast.error(`Rejected ${request.username}`);
-  };
+  const playerNames = players.map(p => p.username);
 
   return (
     <div className="w-full max-w-2xl space-y-6">
@@ -106,9 +79,9 @@ export const Lobby = ({ mode, username, roomCode, onStartGame, onBack }: LobbyPr
       )}
 
       <Card className="p-6 bg-card border-border">
-        <h3 className="text-xl font-bold mb-4">Players ({players.length})</h3>
+        <h3 className="text-xl font-bold mb-4">Players ({playerNames.length})</h3>
         <div className="space-y-2">
-          {players.map((player, index) => (
+          {playerNames.map((player, index) => (
             <div 
               key={index}
               className="flex items-center gap-3 p-3 bg-secondary rounded-lg"
@@ -125,38 +98,6 @@ export const Lobby = ({ mode, username, roomCode, onStartGame, onBack }: LobbyPr
         </div>
       </Card>
 
-      {mode === "host" && joinRequests.length > 0 && (
-        <Card className="p-6 bg-card border-accent animate-pulse-glow">
-          <h3 className="text-xl font-bold mb-4">Join Requests</h3>
-          <div className="space-y-2">
-            {joinRequests.map((request) => (
-              <div 
-                key={request.id}
-                className="flex items-center justify-between p-3 bg-secondary rounded-lg"
-              >
-                <span className="font-medium">{request.username}</span>
-                <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="accent"
-                    onClick={() => handleAcceptRequest(request)}
-                  >
-                    <UserCheck className="w-4 h-4" />
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="destructive"
-                    onClick={() => handleRejectRequest(request)}
-                  >
-                    <UserX className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
       {mode === "join" && isConnecting && (
         <Card className="p-8 bg-card border-border">
           <div className="text-center space-y-4">
@@ -172,7 +113,7 @@ export const Lobby = ({ mode, username, roomCode, onStartGame, onBack }: LobbyPr
           size="lg" 
           className="w-full"
           onClick={onStartGame}
-          disabled={players.length < 1}
+          disabled={playerNames.length < 1}
         >
           Start Game
         </Button>

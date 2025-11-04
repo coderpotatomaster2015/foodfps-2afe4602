@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Users, User, Wifi, WifiOff } from "lucide-react";
 import type { GameMode } from "@/pages/Index";
+import { openOfflineGame } from "@/utils/offlineGame";
+import { toast } from "sonner";
 
 interface GameModeSelectorProps {
   username: string;
@@ -88,7 +90,10 @@ export const GameModeSelector = ({ username, onModeSelect }: GameModeSelectorPro
       </Card>
 
       <Card className="p-6 bg-card border-border hover:border-accent transition-colors cursor-pointer"
-        onClick={() => onModeSelect("solo")}
+        onClick={() => {
+          openOfflineGame(username);
+          toast.success("Offline game opened in new window!");
+        }}
       >
         <div className="flex items-center justify-between">
           <div className="space-y-1">

@@ -44,6 +44,36 @@ export type Database = {
         }
         Relationships: []
       }
+      game_rooms: {
+        Row: {
+          code: string
+          created_at: string
+          ended_at: string | null
+          host_id: string
+          id: string
+          max_players: number
+          started_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          ended_at?: string | null
+          host_id: string
+          id?: string
+          max_players?: number
+          started_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          ended_at?: string | null
+          host_id?: string
+          id?: string
+          max_players?: number
+          started_at?: string | null
+        }
+        Relationships: []
+      }
       player_progress: {
         Row: {
           created_at: string
@@ -94,6 +124,59 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      room_players: {
+        Row: {
+          health: number | null
+          id: string
+          is_alive: boolean | null
+          joined_at: string
+          last_update: string
+          position_x: number | null
+          position_y: number | null
+          room_id: string
+          score: number | null
+          user_id: string | null
+          username: string
+          weapon: string | null
+        }
+        Insert: {
+          health?: number | null
+          id?: string
+          is_alive?: boolean | null
+          joined_at?: string
+          last_update?: string
+          position_x?: number | null
+          position_y?: number | null
+          room_id: string
+          score?: number | null
+          user_id?: string | null
+          username: string
+          weapon?: string | null
+        }
+        Update: {
+          health?: number | null
+          id?: string
+          is_alive?: boolean | null
+          joined_at?: string
+          last_update?: string
+          position_x?: number | null
+          position_y?: number | null
+          room_id?: string
+          score?: number | null
+          user_id?: string | null
+          username?: string
+          weapon?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_players_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "game_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

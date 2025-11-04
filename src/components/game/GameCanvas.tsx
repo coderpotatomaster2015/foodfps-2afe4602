@@ -23,7 +23,7 @@ interface AdminState {
   infiniteAmmo: boolean;
 }
 
-type Weapon = "pistol" | "shotgun" | "minigun" | "sniper" | "sword" | "knife" | "axe";
+type Weapon = "pistol" | "shotgun" | "minigun" | "sniper" | "sword" | "knife" | "axe" | "rifle" | "smg" | "rpg" | "flamethrower" | "railgun";
 
 interface WeaponConfig {
   name: string;
@@ -42,13 +42,18 @@ const WEAPONS: Record<Weapon, WeaponConfig> = {
   pistol: { name: "Pistol", fireRate: 0.18, damage: 40, ammo: 10, maxAmmo: 10, spread: 10, bulletSpeed: 420, color: "#FFB84D", isMelee: false, unlockScore: 0 },
   shotgun: { name: "Shotgun", fireRate: 0.5, damage: 25, ammo: 6, maxAmmo: 6, spread: 40, bulletSpeed: 380, color: "#FF6B6B", isMelee: false, unlockScore: 100 },
   sword: { name: "Sword", fireRate: 0.4, damage: 80, ammo: 999, maxAmmo: 999, spread: 0, bulletSpeed: 0, color: "#C0C0C0", isMelee: true, unlockScore: 200 },
+  rifle: { name: "Rifle", fireRate: 0.12, damage: 35, ammo: 30, maxAmmo: 30, spread: 5, bulletSpeed: 600, color: "#8B7355", isMelee: false, unlockScore: 250 },
   sniper: { name: "Sniper", fireRate: 1.0, damage: 120, ammo: 5, maxAmmo: 5, spread: 0, bulletSpeed: 800, color: "#A6FFB3", isMelee: false, unlockScore: 300 },
+  smg: { name: "SMG", fireRate: 0.08, damage: 25, ammo: 40, maxAmmo: 40, spread: 15, bulletSpeed: 480, color: "#FFD700", isMelee: false, unlockScore: 350 },
   knife: { name: "Knife", fireRate: 0.2, damage: 50, ammo: 999, maxAmmo: 999, spread: 0, bulletSpeed: 0, color: "#888888", isMelee: true, unlockScore: 400 },
+  rpg: { name: "RPG", fireRate: 2.5, damage: 200, ammo: 3, maxAmmo: 3, spread: 0, bulletSpeed: 300, color: "#FF00FF", isMelee: false, unlockScore: 450 },
   axe: { name: "Axe", fireRate: 0.6, damage: 100, ammo: 999, maxAmmo: 999, spread: 0, bulletSpeed: 0, color: "#8B4513", isMelee: true, unlockScore: 500 },
+  flamethrower: { name: "Flamethrower", fireRate: 0.03, damage: 15, ammo: 200, maxAmmo: 200, spread: 25, bulletSpeed: 200, color: "#FF4500", isMelee: false, unlockScore: 550 },
   minigun: { name: "Minigun", fireRate: 0.05, damage: 20, ammo: 100, maxAmmo: 100, spread: 20, bulletSpeed: 500, color: "#6BAFFF", isMelee: false, unlockScore: 600 },
+  railgun: { name: "Railgun", fireRate: 1.8, damage: 250, ammo: 4, maxAmmo: 4, spread: 0, bulletSpeed: 1200, color: "#00FFFF", isMelee: false, unlockScore: 700 },
 };
 
-const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "sniper", "knife", "axe", "minigun"];
+const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "rifle", "sniper", "smg", "knife", "rpg", "axe", "flamethrower", "minigun", "railgun"];
 
 export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -161,10 +166,10 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
     gameStateRef.current.W = W;
     gameStateRef.current.H = H;
 
-    // Spawn immunity
+    // Spawn immunity (5 seconds)
     spawnTimeRef.current = performance.now();
     setSpawnImmunity(true);
-    setTimeout(() => setSpawnImmunity(false), 3000);
+    setTimeout(() => setSpawnImmunity(false), 5000);
 
     let keys: Record<string, boolean> = {};
     let mouse = { x: W / 2, y: H / 2, down: false };
@@ -415,7 +420,7 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
       }
 
       // Update enemy bullets
-      const isImmune = spawnImmunity || (now - spawnTimeRef.current < 3000);
+      const isImmune = spawnImmunity || (now - spawnTimeRef.current < 5000);
       for (let i = enemyBullets.length - 1; i >= 0; i--) {
         const b = enemyBullets[i];
         b.x += b.vx * dt;
@@ -673,7 +678,7 @@ export const GameCanvas = ({ mode, username, onBack }: GameCanvasProps) => {
       canvas.removeEventListener("mouseup", handleMouseUp);
       cancelAnimationFrame(animationId);
     };
-  }, [unlockedWeapons, score]);
+  }, [unlockedWeapons]); // Removed score from dependencies to prevent reset on score change
 
   return (
     <div className="relative">

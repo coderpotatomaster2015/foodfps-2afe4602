@@ -77,7 +77,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
   const positionUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Multiplayer hook for online modes
-  const { players, updatePlayerPosition } = useMultiplayer(mode, roomCode, username);
+  const { players, updatePlayerPosition, broadcastBullet, otherPlayersBullets } = useMultiplayer(mode, roomCode, username);
 
   // Load user progress
   useEffect(() => {
@@ -93,7 +93,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
             playerRef.current.x,
             playerRef.current.y,
             playerRef.current.hp,
-            playerRef.current.weapon
+            playerRef.current.weapon,
+            playerRef.current.angle
           );
         }
       }, 100); // Update every 100ms
@@ -325,6 +326,24 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
           });
         }
         spawnParticles(player.x + Math.cos(player.angle) * player.r * 1.6, player.y + Math.sin(player.angle) * player.r * 1.6, weapon.color, 6);
+        
+        // Broadcast bullets in multiplayer
+        if (mode === "host" || mode === "join") {
+          bullets.forEach(b => {
+            if (t - (b.createdAt || 0) < 0.1) { // Only broadcast new bullets
+              broadcastBullet({
+                x: b.x,
+                y: b.y,
+                vx: b.vx,
+                vy: b.vy,
+                r: b.r,
+                life: b.life,
+                dmg: b.dmg,
+                color: b.color,
+              });
+            }
+          });
+        }
       }
     };
 
@@ -696,6 +715,25 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
           
           ctx.restore();
         }
+
+        // Draw other players' bullets
+        const now = Date.now();
+        otherPlayersBullets.forEach((playerBullets) => {
+          playerBullets.forEach(b => {
+            const age = (now - b.timestamp) / 1000;
+            if (age < b.life) {
+              const x = b.x + b.vx * age;
+              const y = b.y + b.vy * age;
+              ctx.save();
+              ctx.fillStyle = b.color;
+              ctx.globalAlpha = 1 - age / b.life;
+              ctx.beginPath();
+              ctx.arc(x, y, b.r, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+          });
+        });
       }
 
       // Draw particles

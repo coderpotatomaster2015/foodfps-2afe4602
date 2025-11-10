@@ -13,10 +13,24 @@ interface PlayerData {
   is_alive: boolean;
 }
 
+interface BulletData {
+  playerId: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  r: number;
+  life: number;
+  dmg: number;
+  color: string;
+  timestamp: number;
+}
+
 interface MultiplayerState {
   roomId: string | null;
   players: PlayerData[];
   isHost: boolean;
+  otherPlayersBullets: Map<string, BulletData[]>;
 }
 
 export const useMultiplayer = (mode: string, roomCode: string, username: string) => {
@@ -24,6 +38,7 @@ export const useMultiplayer = (mode: string, roomCode: string, username: string)
     roomId: null,
     players: [],
     isHost: false,
+    otherPlayersBullets: new Map(),
   });
 
   const createRoom = useCallback(async () => {
@@ -91,12 +106,14 @@ export const useMultiplayer = (mode: string, roomCode: string, username: string)
     }
   }, [username]);
 
-  const updatePlayerPosition = useCallback(async (x: number, y: number, health: number, weapon: string) => {
+  const updatePlayerPosition = useCallback(async (x: number, y: number, health: number, weapon: string, angle: number) => {
     if (!state.roomId) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      const playerId = user?.id || username;
       
+      // Update position in database
       await supabase
         .from("room_players")
         .update({
@@ -108,9 +125,31 @@ export const useMultiplayer = (mode: string, roomCode: string, username: string)
         })
         .eq("room_id", state.roomId)
         .eq(user ? "user_id" : "username", user ? user.id : username);
+
+      // Broadcast position via realtime for smoother updates
+      const channel = supabase.channel(`room:${state.roomId}`);
+      channel.send({
+        type: 'broadcast',
+        event: 'player_move',
+        payload: { playerId, x, y, health, weapon, angle }
+      });
     } catch (error) {
       console.error("Error updating position:", error);
     }
+  }, [state.roomId, username]);
+
+  const broadcastBullet = useCallback((bullet: any) => {
+    if (!state.roomId) return;
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      const playerId = user?.id || username;
+      const channel = supabase.channel(`room:${state.roomId}`);
+      channel.send({
+        type: 'broadcast',
+        event: 'bullet_fired',
+        payload: { ...bullet, playerId, timestamp: Date.now() }
+      });
+    });
   }, [state.roomId, username]);
 
   // Subscribe to room updates
@@ -139,6 +178,28 @@ export const useMultiplayer = (mode: string, roomCode: string, username: string)
           }
         }
       )
+      .on('broadcast', { event: 'player_move' }, ({ payload }) => {
+        // Update player position in real-time
+        setState(prev => ({
+          ...prev,
+          players: prev.players.map(p => 
+            p.id === payload.playerId || p.username === payload.playerId
+              ? { ...p, position_x: payload.x, position_y: payload.y, health: payload.health, weapon: payload.weapon }
+              : p
+          )
+        }));
+      })
+      .on('broadcast', { event: 'bullet_fired' }, ({ payload }) => {
+        // Add bullet to other players' bullets
+        const bullet = payload as BulletData;
+        setState(prev => {
+          const newBullets = new Map(prev.otherPlayersBullets);
+          const playerBullets = newBullets.get(bullet.playerId) || [];
+          playerBullets.push(bullet);
+          newBullets.set(bullet.playerId, playerBullets);
+          return { ...prev, otherPlayersBullets: newBullets };
+        });
+      })
       .subscribe();
 
     return () => {
@@ -151,5 +212,6 @@ export const useMultiplayer = (mode: string, roomCode: string, username: string)
     createRoom,
     joinRoom,
     updatePlayerPosition,
+    broadcastBullet,
   };
 };

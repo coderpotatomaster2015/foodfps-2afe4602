@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, MessageSquare, Shield } from "lucide-react";
 import { AdminChat } from "./AdminChat";
 import { OnlinePlayersModal } from "./OnlinePlayersModal";
 import { BanModal } from "./BanModal";
+import { Scoreboard } from "./Scoreboard";
 import type { GameMode } from "@/pages/Index";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -18,7 +19,6 @@ interface GameCanvasProps {
 
 interface AdminState {
   active: boolean;
-  authenticated: boolean;
   godMode: boolean;
   speedMultiplier: number;
   infiniteAmmo: boolean;
@@ -70,21 +70,60 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
   const [maxHealth] = useState(100);
   const [unlockedWeapons, setUnlockedWeapons] = useState<Weapon[]>(["pistol"]);
   const [spawnImmunity, setSpawnImmunity] = useState(true);
-  const adminStateRef = useRef<AdminState>({ active: false, authenticated: false, godMode: false, speedMultiplier: 1, infiniteAmmo: false });
+  const [gameOver, setGameOver] = useState(false);
+  const [showScoreboard, setShowScoreboard] = useState(false);
+  const [kills, setKills] = useState(0);
+  const [deaths, setDeaths] = useState(0);
+  const [hasPermission, setHasPermission] = useState(false);
+  
+  const adminStateRef = useRef<AdminState>({ active: false, godMode: false, speedMultiplier: 1, infiniteAmmo: false });
   const gameStateRef = useRef<any>({ enemies: [], pickups: [], W: 960, H: 640, mapBoundsMultiplier: 1 });
   const playerRef = useRef<any>(null);
   const spawnTimeRef = useRef(0);
+  const spawnImmunityRef = useRef(true);
   const positionUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const gameLoopRef = useRef<number | null>(null);
   
-  // Multiplayer hook for online modes
   const { players, updatePlayerPosition, broadcastBullet, otherPlayersBullets } = useMultiplayer(mode, roomCode, username);
 
-  // Load user progress
+  // Check command permissions
+  useEffect(() => {
+    checkPermissions();
+  }, []);
+
+  const checkPermissions = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .single();
+
+    if (roleData) {
+      setHasPermission(true);
+      adminStateRef.current.active = true;
+      return;
+    }
+
+    const { data: permData } = await supabase
+      .from("chat_permissions")
+      .select("can_use_commands")
+      .eq("user_id", user.id)
+      .single();
+
+    if (permData?.can_use_commands) {
+      setHasPermission(true);
+      adminStateRef.current.active = true;
+    }
+  };
+
   useEffect(() => {
     loadUserProgress();
   }, []);
 
-  // Sync player position for multiplayer modes
   useEffect(() => {
     if ((mode === "host" || mode === "join") && playerRef.current) {
       positionUpdateIntervalRef.current = setInterval(() => {
@@ -97,7 +136,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
             playerRef.current.angle
           );
         }
-      }, 100); // Update every 100ms
+      }, 50);
 
       return () => {
         if (positionUpdateIntervalRef.current) {
@@ -126,7 +165,6 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
 
       if (profile) {
         setTotalScore(profile.total_score);
-        // Auto-unlock weapons based on total score
         const unlocked: Weapon[] = ["pistol"];
         for (const weapon of WEAPON_ORDER) {
           if (WEAPONS[weapon].unlockScore <= profile.total_score) {
@@ -157,7 +195,6 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
 
       setTotalScore(newTotal);
 
-      // Check for new unlocks
       const newlyUnlocked: Weapon[] = [];
       for (const weapon of WEAPON_ORDER) {
         if (WEAPONS[weapon].unlockScore <= newTotal && !unlockedWeapons.includes(weapon)) {
@@ -182,6 +219,68 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
     }
   };
 
+  const revivePlayer = useCallback(() => {
+    if (playerRef.current) {
+      playerRef.current.hp = 100;
+      setHealth(100);
+      setGameOver(false);
+      spawnTimeRef.current = performance.now();
+      spawnImmunityRef.current = true;
+      setSpawnImmunity(true);
+      setTimeout(() => {
+        spawnImmunityRef.current = false;
+        setSpawnImmunity(false);
+      }, 5000);
+      toast.success("Player revived!");
+    }
+  }, []);
+
+  const handleCommand = useCallback((cmd: string) => {
+    if (!hasPermission && !adminStateRef.current.active) return;
+
+    if (cmd.startsWith("/godmode")) {
+      adminStateRef.current.godMode = !adminStateRef.current.godMode;
+      if (adminStateRef.current.godMode && playerRef.current) {
+        playerRef.current.hp = 100;
+        playerRef.current.ammo = 999;
+        playerRef.current.maxAmmo = 999;
+        setHealth(100);
+        setAmmo(999);
+        setMaxAmmo(999);
+      }
+    } else if (cmd.startsWith("/speed")) {
+      const match = cmd.match(/\/speed\s+(\d+(?:\.\d+)?)/);
+      if (match) {
+        adminStateRef.current.speedMultiplier = parseFloat(match[1]);
+      }
+    } else if (cmd.startsWith("/nuke")) {
+      gameStateRef.current.enemies.length = 0;
+    } else if (cmd.startsWith("/rain ammo")) {
+      for (let i = 0; i < 20; i++) {
+        const rand = (min: number, max: number) => Math.random() * (max - min) + min;
+        const { W, H } = gameStateRef.current;
+        gameStateRef.current.pickups.push({ x: rand(80, W - 80), y: rand(80, H - 80), r: 10, amt: 10, ttl: 30 });
+      }
+    } else if (cmd.startsWith("/infiniteammo")) {
+      adminStateRef.current.infiniteAmmo = !adminStateRef.current.infiniteAmmo;
+    } else if (cmd.startsWith("/revive")) {
+      revivePlayer();
+    } else if (cmd.startsWith("/give")) {
+      const allWeapons = [...WEAPON_ORDER];
+      setUnlockedWeapons(allWeapons);
+      toast.success("All weapons unlocked!");
+    } else if (cmd.startsWith("/ban")) {
+      setBanModalOpen(true);
+    } else if (cmd.startsWith("/join")) {
+      const match = cmd.match(/\/join\s+(\d{5})/);
+      if (match) {
+        toast.info(`To join room ${match[1]}, go back to menu and use Join Game`);
+      } else {
+        setOnlinePlayersOpen(true);
+      }
+    }
+  }, [hasPermission, revivePlayer]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -194,10 +293,13 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
     gameStateRef.current.W = W;
     gameStateRef.current.H = H;
 
-    // Spawn immunity (5 seconds)
     spawnTimeRef.current = performance.now();
+    spawnImmunityRef.current = true;
     setSpawnImmunity(true);
-    setTimeout(() => setSpawnImmunity(false), 5000);
+    setTimeout(() => {
+      spawnImmunityRef.current = false;
+      setSpawnImmunity(false);
+    }, 5000);
 
     let keys: Record<string, boolean> = {};
     let mouse = { x: W / 2, y: H / 2, down: false };
@@ -262,14 +364,12 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
     const tryShoot = (t: number) => {
       const weapon = WEAPONS[player.weapon];
       
-      // Handle melee weapons
       if (weapon.isMelee) {
         if (mouse.down && t - player.lastMelee >= weapon.fireRate) {
           player.lastMelee = t;
           const meleeRange = 50;
           spawnParticles(player.x + Math.cos(player.angle) * meleeRange, player.y + Math.sin(player.angle) * meleeRange, weapon.color, 10);
           
-          // Check for enemy hits
           for (let i = enemies.length - 1; i >= 0; i--) {
             const e = enemies[i];
             const dx = e.x - player.x;
@@ -289,6 +389,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
                   player.score = newScore;
                   return newScore;
                 });
+                setKills(prev => prev + 1);
                 if (Math.random() < 0.35) pickups.push({ x: e.x, y: e.y, r: 10, amt: 2, ttl: 18 });
                 enemies.splice(i, 1);
               }
@@ -298,8 +399,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
         return;
       }
 
-      // Handle ranged weapons
-      const fireRate = adminStateRef.current.active && adminStateRef.current.godMode ? 0 : weapon.fireRate;
+      const fireRate = adminStateRef.current.godMode ? 0 : weapon.fireRate;
       const hasInfiniteAmmo = adminStateRef.current.godMode || adminStateRef.current.infiniteAmmo;
       if (mouse.down && t - player.lastShot >= fireRate && (hasInfiniteAmmo || player.ammo > 0)) {
         player.lastShot = t;
@@ -314,7 +414,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
           const spread = weapon.spread * (Math.PI / 180);
           const finalAngle = ang + rand(-spread, spread);
           const speed = weapon.bulletSpeed;
-          bullets.push({
+          const newBullet = {
             x: player.x + Math.cos(ang) * player.r * 1.6,
             y: player.y + Math.sin(ang) * player.r * 1.6,
             vx: Math.cos(finalAngle) * speed,
@@ -323,27 +423,24 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
             life: 2.5,
             dmg: weapon.damage,
             color: weapon.color,
-          });
+            createdAt: t,
+          };
+          bullets.push(newBullet);
+          
+          if (mode === "host" || mode === "join") {
+            broadcastBullet({
+              x: newBullet.x,
+              y: newBullet.y,
+              vx: newBullet.vx,
+              vy: newBullet.vy,
+              r: newBullet.r,
+              life: newBullet.life,
+              dmg: newBullet.dmg,
+              color: newBullet.color,
+            });
+          }
         }
         spawnParticles(player.x + Math.cos(player.angle) * player.r * 1.6, player.y + Math.sin(player.angle) * player.r * 1.6, weapon.color, 6);
-        
-        // Broadcast bullets in multiplayer
-        if (mode === "host" || mode === "join") {
-          bullets.forEach(b => {
-            if (t - (b.createdAt || 0) < 0.1) { // Only broadcast new bullets
-              broadcastBullet({
-                x: b.x,
-                y: b.y,
-                vx: b.vx,
-                vy: b.vy,
-                r: b.r,
-                life: b.life,
-                dmg: b.dmg,
-                color: b.color,
-              });
-            }
-          });
-        }
       }
     };
 
@@ -354,7 +451,6 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
         setAmmo(player.ammo);
       }
       
-      // Weapon switching with number keys
       const keyNum = parseInt(e.key);
       if (keyNum >= 1 && keyNum <= unlockedWeapons.length) {
         const weapon = unlockedWeapons[keyNum - 1];
@@ -396,12 +492,38 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
     let last = performance.now();
-    let animationId: number;
 
     const loop = (now: number) => {
       const dt = Math.min(0.033, (now - last) / 1000);
       last = now;
       time += dt;
+
+      // Check if game over
+      if (player.hp <= 0 && !adminStateRef.current.godMode) {
+        if (!gameOver) {
+          setGameOver(true);
+          setDeaths(prev => prev + 1);
+          saveProgress(score);
+        }
+        
+        ctx.save();
+        ctx.fillStyle = "rgba(0,0,0,0.7)";
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = "#fff";
+        ctx.font = "48px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("GAME OVER", W / 2, H / 2 - 20);
+        ctx.font = "24px sans-serif";
+        ctx.fillText("Score: " + score, W / 2, H / 2 + 30);
+        ctx.fillText("Kills: " + kills + " | Deaths: " + deaths, W / 2, H / 2 + 65);
+        ctx.font = "16px sans-serif";
+        ctx.fillStyle = "#aaa";
+        ctx.fillText("Use /revive command or press Back to Menu", W / 2, H / 2 + 100);
+        ctx.restore();
+        
+        gameLoopRef.current = requestAnimationFrame(loop);
+        return;
+      }
 
       player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
 
@@ -419,7 +541,6 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
         const newX = player.x + dx * player.speed * speedMultiplier * dt;
         const newY = player.y + dy * player.speed * speedMultiplier * dt;
         
-        // Expand map when hitting boundaries
         const mult = gameStateRef.current.mapBoundsMultiplier;
         if (newX < 20 || newX > W * mult - 20 || newY < 20 || newY > H * mult - 20) {
           expandMap();
@@ -456,6 +577,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
                 player.score = newScore;
                 return newScore;
               });
+              setKills(prev => prev + 1);
               if (Math.random() < 0.35) pickups.push({ x: e.x, y: e.y, r: 10, amt: 2, ttl: 18 });
               enemies.splice(j, 1);
             }
@@ -465,8 +587,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
         }
       }
 
-      // Update enemy bullets
-      const isImmune = spawnImmunity || (now - spawnTimeRef.current < 5000);
+      // Update enemy bullets - use ref for spawn immunity check
+      const isImmune = spawnImmunityRef.current;
       for (let i = enemyBullets.length - 1; i >= 0; i--) {
         const b = enemyBullets[i];
         b.x += b.vx * dt;
@@ -477,11 +599,11 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
           continue;
         }
 
-        const dx = b.x - player.x, dy = b.y - player.y;
-        if (dx * dx + dy * dy <= (b.r + player.r) * (b.r + player.r)) {
+        const bx = b.x - player.x, by = b.y - player.y;
+        if (bx * bx + by * by <= (b.r + player.r) * (b.r + player.r)) {
           if (!adminStateRef.current.godMode && !isImmune) {
             player.hp -= b.dmg;
-            setHealth(prev => Math.max(0, prev - b.dmg));
+            setHealth(Math.max(0, player.hp));
             spawnParticles(b.x, b.y, "#FF6B6B", 8);
           }
           enemyBullets.splice(i, 1);
@@ -500,6 +622,14 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
         if (d > 0) {
           e.x += (vx / d) * e.speed * dt;
           e.y += (vy / d) * e.speed * dt;
+        }
+
+        // Enemy collision damage
+        if (d < player.r + e.r) {
+          if (!adminStateRef.current.godMode && !isImmune) {
+            player.hp -= 5 * dt;
+            setHealth(Math.max(0, player.hp));
+          }
         }
 
         if (d < 350 && time - e.lastShot >= 3.5) {
@@ -556,22 +686,6 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
 
       gameStateRef.current.enemies = enemies;
       gameStateRef.current.pickups = pickups;
-
-      // Game over check
-      if (player.hp <= 0 && !adminStateRef.current.godMode) {
-        saveProgress(score);
-        ctx.save();
-        ctx.fillStyle = "rgba(0,0,0,0.7)";
-        ctx.fillRect(0, 0, W, H);
-        ctx.fillStyle = "#fff";
-        ctx.font = "48px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("GAME OVER", W / 2, H / 2 - 20);
-        ctx.font = "24px sans-serif";
-        ctx.fillText("Score: " + score, W / 2, H / 2 + 30);
-        ctx.restore();
-        return;
-      }
 
       // Draw
       ctx.clearRect(0, 0, W, H);
@@ -678,10 +792,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
       ctx.fill();
       ctx.fillStyle = WEAPONS[player.weapon].color;
       if (WEAPONS[player.weapon].isMelee) {
-        // Draw melee weapon
         ctx.fillRect(player.r - 2, -3, 25, 6);
       } else {
-        // Draw ranged weapon
         ctx.fillRect(player.r - 2, -6, 18, 12);
       }
       ctx.restore();
@@ -689,24 +801,21 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
       // Draw other players (multiplayer)
       if (mode === "host" || mode === "join") {
         for (const otherPlayer of players) {
-          if (otherPlayer.username === username) continue; // Skip self
+          if (otherPlayer.username === username) continue;
           
           ctx.save();
           ctx.translate(otherPlayer.position_x, otherPlayer.position_y);
           
-          // Player body
           ctx.fillStyle = "#A6FFB3";
           ctx.beginPath();
           ctx.arc(0, 0, player.r, 0, Math.PI * 2);
           ctx.fill();
           
-          // Player name tag
           ctx.fillStyle = "#fff";
           ctx.font = "10px sans-serif";
           ctx.textAlign = "center";
           ctx.fillText(otherPlayer.username, 0, -player.r - 10);
           
-          // Health bar
           const hpW = 30;
           ctx.fillStyle = "#333";
           ctx.fillRect(-hpW / 2, -player.r - 8, hpW, 4);
@@ -758,13 +867,13 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
       ctx.stroke();
       ctx.restore();
 
-      animationId = requestAnimationFrame(loop);
+      gameLoopRef.current = requestAnimationFrame(loop);
     };
 
     for (let i = 0; i < 3; i++) spawnEnemy();
     for (let i = 0; i < 2; i++) spawnPickup();
 
-    animationId = requestAnimationFrame(loop);
+    gameLoopRef.current = requestAnimationFrame(loop);
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
@@ -772,9 +881,17 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
       canvas.removeEventListener("mousemove", handleMouseMove);
       canvas.removeEventListener("mousedown", handleMouseDown);
       canvas.removeEventListener("mouseup", handleMouseUp);
-      cancelAnimationFrame(animationId);
+      if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
-  }, [unlockedWeapons]); // Removed score from dependencies to prevent reset on score change
+  }, [unlockedWeapons, mode, broadcastBullet, players, username, otherPlayersBullets]);
+
+  const handleBackWithScoreboard = () => {
+    if (mode === "host" || mode === "join") {
+      setShowScoreboard(true);
+    } else {
+      onBack();
+    }
+  };
 
   return (
     <div className="relative">
@@ -792,7 +909,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
       <div className="fixed right-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4 space-y-3 min-w-[180px]">
         <div className="flex justify-between items-center">
           <span className="text-sm text-muted-foreground">Health</span>
-          <span className="font-bold text-lg">{health}</span>
+          <span className="font-bold text-lg">{Math.round(health)}</span>
         </div>
         <div className="w-full bg-secondary rounded-full h-3 overflow-hidden">
           <div 
@@ -835,8 +952,9 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
             <span className="text-sm text-muted-foreground">Score</span>
             <span className="font-bold text-lg text-primary">{score}</span>
           </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            Total: {totalScore}
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <span>K: {kills} | D: {deaths}</span>
+            <span>Total: {totalScore}</span>
           </div>
         </div>
       </div>
@@ -852,13 +970,15 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
                 : "bg-secondary hover:bg-secondary/80"
             }`}
             onClick={() => {
-              playerRef.current.weapon = weapon;
-              const weaponConfig = WEAPONS[weapon];
-              playerRef.current.ammo = weaponConfig.ammo;
-              playerRef.current.maxAmmo = weaponConfig.maxAmmo;
-              setCurrentWeapon(weapon);
-              setAmmo(weaponConfig.ammo);
-              setMaxAmmo(weaponConfig.maxAmmo);
+              if (playerRef.current) {
+                playerRef.current.weapon = weapon;
+                const weaponConfig = WEAPONS[weapon];
+                playerRef.current.ammo = weaponConfig.ammo;
+                playerRef.current.maxAmmo = weaponConfig.maxAmmo;
+                setCurrentWeapon(weapon);
+                setAmmo(weaponConfig.ammo);
+                setMaxAmmo(weaponConfig.maxAmmo);
+              }
             }}
           >
             <span className="text-xs opacity-70">{index + 1}</span>
@@ -866,7 +986,6 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
           </div>
         ))}
         
-        {/* Show locked weapons */}
         {WEAPON_ORDER.filter(w => !unlockedWeapons.includes(w)).slice(0, 3).map((weapon) => (
           <div
             key={weapon}
@@ -886,72 +1005,20 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
       />
 
       <div className="mt-4 flex gap-2">
-        <Button variant="outline" onClick={onBack}>
+        <Button variant="outline" onClick={handleBackWithScoreboard}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Menu
         </Button>
-        <Button variant="outline" onClick={() => setChatOpen(true)}>
+        <Button variant="outline" onClick={() => setChatOpen(!chatOpen)}>
           <MessageSquare className="w-4 h-4 mr-2" />
-          Admin Chat
+          Console
         </Button>
       </div>
 
       <AdminChat
         open={chatOpen}
         onOpenChange={setChatOpen}
-        onCommand={async (cmd) => {
-          // Simplified auth: once /activate auth PH is used, set authenticated flag
-          if (cmd.startsWith("/activate auth PH")) {
-            adminStateRef.current.active = true;
-            adminStateRef.current.authenticated = true;
-            toast.success("Admin mode activated!");
-          } else if (cmd.startsWith("/deactivate")) {
-            adminStateRef.current.active = false;
-            adminStateRef.current.authenticated = false;
-            adminStateRef.current.godMode = false;
-            adminStateRef.current.speedMultiplier = 1;
-            adminStateRef.current.infiniteAmmo = false;
-            toast.success("Admin mode deactivated");
-          } else if (adminStateRef.current.authenticated || adminStateRef.current.active) {
-            // Commands don't need auth code if already authenticated
-            if (cmd.startsWith("/godmode")) {
-              adminStateRef.current.godMode = !adminStateRef.current.godMode;
-              if (adminStateRef.current.godMode) {
-                playerRef.current.hp = 100;
-                playerRef.current.ammo = 999;
-                playerRef.current.maxAmmo = 999;
-                setHealth(100);
-                setAmmo(999);
-                setMaxAmmo(999);
-              }
-            } else if (cmd.startsWith("/speed")) {
-              const match = cmd.match(/\/speed\s+(\d+(?:\.\d+)?)/);
-              if (match) {
-                adminStateRef.current.speedMultiplier = parseFloat(match[1]);
-              }
-            } else if (cmd.startsWith("/nuke")) {
-              gameStateRef.current.enemies.length = 0;
-            } else if (cmd.startsWith("/rain ammo")) {
-              for (let i = 0; i < 20; i++) {
-                const rand = (min: number, max: number) => Math.random() * (max - min) + min;
-                const { W, H } = gameStateRef.current;
-                gameStateRef.current.pickups.push({ x: rand(80, W - 80), y: rand(80, H - 80), r: 10, amt: 10, ttl: 30 });
-              }
-            } else if (cmd.startsWith("/infiniteammo")) {
-              adminStateRef.current.infiniteAmmo = !adminStateRef.current.infiniteAmmo;
-            } else if (cmd.startsWith("/revive")) {
-              playerRef.current.hp = 100;
-              setHealth(100);
-              toast.success("Player revived!");
-            } else if (cmd.startsWith("/give")) {
-              const allWeapons = [...WEAPON_ORDER];
-              setUnlockedWeapons(allWeapons);
-              toast.success("All weapons unlocked!");
-            } else if (cmd.startsWith("/ban")) {
-              setBanModalOpen(true);
-            }
-          }
-        }}
+        onCommand={handleCommand}
         onShowOnlinePlayers={() => setOnlinePlayersOpen(true)}
       />
 
@@ -965,6 +1032,22 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
         open={banModalOpen}
         onOpenChange={setBanModalOpen}
       />
+
+      {showScoreboard && (
+        <Scoreboard
+          players={[
+            { username, kills, deaths, score },
+            ...players
+              .filter(p => p.username !== username)
+              .map(p => ({ username: p.username, kills: 0, deaths: 0, score: p.score || 0 }))
+          ]}
+          currentPlayer={username}
+          onBack={() => {
+            setShowScoreboard(false);
+            onBack();
+          }}
+        />
+      )}
     </div>
   );
 };

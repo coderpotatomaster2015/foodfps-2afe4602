@@ -44,6 +44,30 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_permissions: {
+        Row: {
+          can_use_commands: boolean
+          granted_at: string
+          granted_by: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          can_use_commands?: boolean
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          can_use_commands?: boolean
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       game_rooms: {
         Row: {
           code: string
@@ -73,6 +97,65 @@ export type Database = {
           started_at?: string | null
         }
         Relationships: []
+      }
+      game_settings: {
+        Row: {
+          created_at: string
+          disabled_message: string | null
+          id: string
+          updated_at: string
+          website_enabled: boolean
+        }
+        Insert: {
+          created_at?: string
+          disabled_message?: string | null
+          id?: string
+          updated_at?: string
+          website_enabled?: boolean
+        }
+        Update: {
+          created_at?: string
+          disabled_message?: string | null
+          id?: string
+          updated_at?: string
+          website_enabled?: boolean
+        }
+        Relationships: []
+      }
+      kill_stats: {
+        Row: {
+          created_at: string
+          deaths: number
+          id: string
+          kills: number
+          room_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deaths?: number
+          id?: string
+          kills?: number
+          room_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deaths?: number
+          id?: string
+          kills?: number
+          room_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kill_stats_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "game_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       player_progress: {
         Row: {

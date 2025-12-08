@@ -8,7 +8,7 @@ import { AdminPanel } from "@/components/game/AdminPanel";
 import { WebsiteDisabled } from "@/components/game/WebsiteDisabled";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Shield } from "lucide-react";
+import { Shield, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type GameMode = "solo" | "host" | "join" | "offline" | null;
@@ -26,8 +26,9 @@ const Index = () => {
   const [websiteEnabled, setWebsiteEnabled] = useState(true);
   const [disabledMessage, setDisabledMessage] = useState("");
   const [checkingStatus, setCheckingStatus] = useState(true);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
-  // Check website status and admin role
+  // Check website status
   useEffect(() => {
     checkWebsiteStatus();
   }, []);
@@ -45,13 +46,15 @@ const Index = () => {
     if (user) {
       checkAdminRole();
       loadUserProfile();
-    } else {
+    } else if (isGuest) {
       // For guests, use local storage
       const stored = localStorage.getItem("foodfps_username");
       if (stored) {
         setUsername(stored);
+        setProfileLoaded(true);
       } else {
         setShowUsernameModal(true);
+        setProfileLoaded(true);
       }
     }
   }, [user, loading, isGuest, navigate]);
@@ -62,7 +65,7 @@ const Index = () => {
         .from("game_settings")
         .select("*")
         .eq("id", "00000000-0000-0000-0000-000000000001")
-        .single();
+        .maybeSingle();
 
       if (data) {
         setWebsiteEnabled(data.website_enabled);
@@ -83,19 +86,39 @@ const Index = () => {
       .select("role")
       .eq("user_id", user.id)
       .eq("role", "admin")
-      .single();
+      .maybeSingle();
 
     setIsAdmin(!!data);
   };
 
   const loadUserProfile = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("profiles")
-      .select("username")
-      .eq("user_id", user.id)
-      .single();
-    if (data) setUsername(data.username);
+    if (!user) {
+      setProfileLoaded(true);
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (data) {
+        setUsername(data.username);
+      } else {
+        // Profile might not exist yet (new user), use email username part
+        const emailUsername = user.email?.split("@")[0] || `user_${user.id.slice(0, 8)}`;
+        setUsername(emailUsername);
+      }
+    } catch (error) {
+      console.error("Error loading profile:", error);
+      // Fallback to email username
+      const emailUsername = user.email?.split("@")[0] || `user_${user.id.slice(0, 8)}`;
+      setUsername(emailUsername);
+    } finally {
+      setProfileLoaded(true);
+    }
   };
 
   const handleUsernameSet = (name: string) => {
@@ -119,10 +142,20 @@ const Index = () => {
     setIsInGame(false);
   };
 
-  if (loading || checkingStatus) {
+  const handleLogout = async () => {
+    localStorage.removeItem("play_as_guest");
+    localStorage.removeItem("foodfps_username");
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
+
+  if (loading || checkingStatus || !profileLoaded) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full" />
+        <div className="text-center space-y-4">
+          <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -135,7 +168,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       {/* Top bar with logout and admin button */}
-      <div className="fixed top-4 right-4 flex gap-2">
+      <div className="fixed top-4 right-4 flex gap-2 z-50">
         {isAdmin && (
           <Button
             variant="default"
@@ -147,23 +180,20 @@ const Index = () => {
             Admin Panel
           </Button>
         )}
-        {user && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              await supabase.auth.signOut();
-              navigate("/auth");
-            }}
-          >
-            Logout
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleLogout}
+          className="gap-2"
+        >
+          <LogOut className="w-4 h-4" />
+          {user ? "Logout" : "Exit Guest"}
+        </Button>
       </div>
 
       {/* Website disabled banner for admins */}
       {!websiteEnabled && isAdmin && (
-        <div className="fixed top-4 left-4 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm">
+        <div className="fixed top-4 left-4 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm z-50">
           ⚠️ Website is disabled for regular users
         </div>
       )}

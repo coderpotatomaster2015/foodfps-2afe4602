@@ -5,10 +5,15 @@ import { GameModeSelector } from "@/components/game/GameModeSelector";
 import { GameCanvas } from "@/components/game/GameCanvas";
 import { Lobby } from "@/components/game/Lobby";
 import { AdminPanel } from "@/components/game/AdminPanel";
+import { AdminCodeModal } from "@/components/game/AdminCodeModal";
 import { WebsiteDisabled } from "@/components/game/WebsiteDisabled";
+import { MessagesPanel } from "@/components/game/MessagesPanel";
+import { UpdatesHub } from "@/components/game/UpdatesHub";
+import { SocialFeed } from "@/components/game/SocialFeed";
+import { BetaTesterPanel } from "@/components/game/BetaTesterPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Shield, LogOut } from "lucide-react";
+import { Shield, LogOut, Mail, Sparkles, Globe, FlaskConical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type GameMode = "solo" | "host" | "join" | "offline" | null;
@@ -22,13 +27,19 @@ const Index = () => {
   const [isInGame, setIsInGame] = useState(false);
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isBetaTester, setIsBetaTester] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [showAdminCode, setShowAdminCode] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
+  const [showUpdates, setShowUpdates] = useState(false);
+  const [showSocial, setShowSocial] = useState(false);
+  const [showBetaPanel, setShowBetaPanel] = useState(false);
   const [websiteEnabled, setWebsiteEnabled] = useState(true);
   const [disabledMessage, setDisabledMessage] = useState("");
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
-  // Check website status
   useEffect(() => {
     checkWebsiteStatus();
   }, []);
@@ -36,18 +47,17 @@ const Index = () => {
   useEffect(() => {
     if (loading) return;
     
-    // If not logged in and not guest, redirect to auth
     if (!user && !isGuest) {
       navigate("/auth");
       return;
     }
 
-    // For logged in users, check admin role and get username
     if (user) {
       checkAdminRole();
+      checkBetaTester();
       loadUserProfile();
+      loadUnreadMessages();
     } else if (isGuest) {
-      // For guests, use local storage
       const stored = localStorage.getItem("foodfps_username");
       if (stored) {
         setUsername(stored);
@@ -91,6 +101,18 @@ const Index = () => {
     setIsAdmin(!!data);
   };
 
+  const checkBetaTester = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from("beta_testers")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    setIsBetaTester(!!data);
+  };
+
   const loadUserProfile = async () => {
     if (!user) {
       setProfileLoaded(true);
@@ -98,7 +120,7 @@ const Index = () => {
     }
     
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("profiles")
         .select("username")
         .eq("user_id", user.id)
@@ -107,18 +129,28 @@ const Index = () => {
       if (data) {
         setUsername(data.username);
       } else {
-        // Profile might not exist yet (new user), use email username part
         const emailUsername = user.email?.split("@")[0] || `user_${user.id.slice(0, 8)}`;
         setUsername(emailUsername);
       }
     } catch (error) {
       console.error("Error loading profile:", error);
-      // Fallback to email username
       const emailUsername = user.email?.split("@")[0] || `user_${user.id.slice(0, 8)}`;
       setUsername(emailUsername);
     } finally {
       setProfileLoaded(true);
     }
+  };
+
+  const loadUnreadMessages = async () => {
+    if (!user) return;
+    
+    const { count } = await supabase
+      .from("messages")
+      .select("*", { count: "exact", head: true })
+      .eq("to_user_id", user.id)
+      .eq("is_read", false);
+
+    setUnreadMessages(count || 0);
   };
 
   const handleUsernameSet = (name: string) => {
@@ -132,9 +164,7 @@ const Index = () => {
     if (code) setRoomCode(code);
   };
 
-  const handleStartGame = () => {
-    setIsInGame(true);
-  };
+  const handleStartGame = () => setIsInGame(true);
 
   const handleBackToMenu = () => {
     setGameMode(null);
@@ -149,6 +179,10 @@ const Index = () => {
     navigate("/auth");
   };
 
+  const handleAdminClick = () => {
+    setShowAdminCode(true);
+  };
+
   if (loading || checkingStatus || !profileLoaded) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -160,79 +194,75 @@ const Index = () => {
     );
   }
 
-  // Show disabled page for non-admins when website is disabled
   if (!websiteEnabled && !isAdmin) {
     return <WebsiteDisabled message={disabledMessage} />;
   }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      {/* Top bar with logout and admin button */}
-      <div className="fixed top-4 right-4 flex gap-2 z-50">
+      {/* Top bar */}
+      <div className="fixed top-4 right-4 flex gap-2 z-50 flex-wrap justify-end">
+        {user && (
+          <>
+            <Button variant="outline" size="sm" onClick={() => setShowMessages(true)} className="gap-1 relative">
+              <Mail className="w-4 h-4" />
+              {unreadMessages > 0 && (
+                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs w-4 h-4 rounded-full flex items-center justify-center">
+                  {unreadMessages}
+                </span>
+              )}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowUpdates(true)} className="gap-1">
+              <Sparkles className="w-4 h-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowSocial(true)} className="gap-1">
+              <Globe className="w-4 h-4" />
+            </Button>
+            {(isBetaTester || isAdmin) && (
+              <Button variant="outline" size="sm" onClick={() => setShowBetaPanel(true)} className="gap-1">
+                <FlaskConical className="w-4 h-4" />
+              </Button>
+            )}
+          </>
+        )}
         {isAdmin && (
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => setShowAdminPanel(true)}
-            className="gap-2"
-          >
+          <Button variant="default" size="sm" onClick={handleAdminClick} className="gap-2">
             <Shield className="w-4 h-4" />
-            Admin Panel
+            Admin
           </Button>
         )}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleLogout}
-          className="gap-2"
-        >
+        <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
           <LogOut className="w-4 h-4" />
-          {user ? "Logout" : "Exit Guest"}
+          {user ? "Logout" : "Exit"}
         </Button>
       </div>
 
-      {/* Website disabled banner for admins */}
       {!websiteEnabled && isAdmin && (
         <div className="fixed top-4 left-4 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm z-50">
-          ⚠️ Website is disabled for regular users
+          ⚠️ Website disabled for users
         </div>
       )}
 
-      <UsernameModal 
-        open={showUsernameModal} 
-        onUsernameSet={handleUsernameSet} 
-      />
+      <UsernameModal open={showUsernameModal} onUsernameSet={handleUsernameSet} />
       
       {!gameMode && !showUsernameModal && username && (
-        <GameModeSelector 
-          username={username} 
-          onModeSelect={handleModeSelect} 
-        />
+        <GameModeSelector username={username} onModeSelect={handleModeSelect} />
       )}
 
       {gameMode && !isInGame && (gameMode === "host" || gameMode === "join") && (
-        <Lobby
-          mode={gameMode}
-          username={username}
-          roomCode={roomCode}
-          onStartGame={handleStartGame}
-          onBack={handleBackToMenu}
-        />
+        <Lobby mode={gameMode} username={username} roomCode={roomCode} onStartGame={handleStartGame} onBack={handleBackToMenu} />
       )}
 
       {(isInGame || gameMode === "solo" || gameMode === "offline") && (
-        <GameCanvas
-          mode={gameMode as Exclude<GameMode, null>}
-          username={username}
-          roomCode={roomCode}
-          onBack={handleBackToMenu}
-        />
+        <GameCanvas mode={gameMode as Exclude<GameMode, null>} username={username} roomCode={roomCode} onBack={handleBackToMenu} />
       )}
 
-      <AdminPanel
-        open={showAdminPanel}
-        onClose={() => setShowAdminPanel(false)}
-      />
+      <AdminCodeModal open={showAdminCode} onOpenChange={setShowAdminCode} onSuccess={() => setShowAdminPanel(true)} />
+      <AdminPanel open={showAdminPanel} onClose={() => setShowAdminPanel(false)} />
+      <MessagesPanel open={showMessages} onOpenChange={setShowMessages} />
+      <UpdatesHub open={showUpdates} onOpenChange={setShowUpdates} />
+      <SocialFeed open={showSocial} onOpenChange={setShowSocial} />
+      <BetaTesterPanel open={showBetaPanel} onOpenChange={setShowBetaPanel} />
     </div>
   );
 };

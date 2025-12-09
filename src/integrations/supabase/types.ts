@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      active_players: {
+        Row: {
+          created_at: string
+          id: string
+          last_seen: string
+          mode: string
+          room_code: string | null
+          user_id: string | null
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_seen?: string
+          mode: string
+          room_code?: string | null
+          user_id?: string | null
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_seen?: string
+          mode?: string
+          room_code?: string | null
+          user_id?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
       bans: {
         Row: {
           banned_at: string
@@ -40,6 +70,27 @@ export type Database = {
           hours?: number
           id?: string
           reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      beta_testers: {
+        Row: {
+          granted_at: string
+          granted_by: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          granted_by: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string
+          id?: string
           user_id?: string
         }
         Relationships: []
@@ -122,6 +173,42 @@ export type Database = {
         }
         Relationships: []
       }
+      game_updates: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          is_beta: boolean
+          is_released: boolean
+          name: string
+          released_at: string | null
+          summary: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description: string
+          id?: string
+          is_beta?: boolean
+          is_released?: boolean
+          name: string
+          released_at?: string | null
+          summary?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string
+          id?: string
+          is_beta?: boolean
+          is_released?: boolean
+          name?: string
+          released_at?: string | null
+          summary?: string | null
+        }
+        Relationships: []
+      }
       kill_stats: {
         Row: {
           created_at: string
@@ -156,6 +243,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      messages: {
+        Row: {
+          content: string
+          created_at: string
+          from_user_id: string
+          from_username: string
+          id: string
+          is_appeal: boolean
+          is_feedback: boolean
+          is_read: boolean
+          subject: string
+          to_user_id: string
+          to_username: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          from_user_id: string
+          from_username: string
+          id?: string
+          is_appeal?: boolean
+          is_feedback?: boolean
+          is_read?: boolean
+          subject: string
+          to_user_id: string
+          to_username: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          from_user_id?: string
+          from_username?: string
+          id?: string
+          is_appeal?: boolean
+          is_feedback?: boolean
+          is_read?: boolean
+          subject?: string
+          to_user_id?: string
+          to_username?: string
+        }
+        Relationships: []
       }
       player_progress: {
         Row: {
@@ -260,6 +389,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      social_posts: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          content: string
+          created_at: string
+          id: string
+          image_url: string | null
+          is_approved: boolean
+          is_pending: boolean
+          user_id: string
+          username: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_approved?: boolean
+          is_pending?: boolean
+          user_id: string
+          username: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_approved?: boolean
+          is_pending?: boolean
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {

@@ -269,15 +269,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
       const allWeapons = [...WEAPON_ORDER];
       setUnlockedWeapons(allWeapons);
       toast.success("All weapons unlocked!");
-    } else if (cmd.startsWith("/ban")) {
-      setBanModalOpen(true);
     } else if (cmd.startsWith("/join")) {
-      const match = cmd.match(/\/join\s+(\d{5})/);
-      if (match) {
-        toast.info(`To join room ${match[1]}, go back to menu and use Join Game`);
-      } else {
-        setOnlinePlayersOpen(true);
-      }
+      setOnlinePlayersOpen(true);
     }
   }, [hasPermission, revivePlayer]);
 

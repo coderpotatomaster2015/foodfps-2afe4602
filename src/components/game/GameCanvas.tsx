@@ -163,22 +163,30 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
         .eq("user_id", user.id)
         .single();
 
-      if (profile) {
-        setTotalScore(profile.total_score);
-        const unlocked: Weapon[] = ["pistol"];
-        for (const weapon of WEAPON_ORDER) {
-          if (WEAPONS[weapon].unlockScore <= profile.total_score) {
-            unlocked.push(weapon);
-          }
+      // Fixed weapon progression - calculate based on total score
+      const currentTotalScore = profile?.total_score || 0;
+      setTotalScore(currentTotalScore);
+      
+      // Build unlocked weapons list based on score thresholds
+      const scoreUnlocked: Weapon[] = [];
+      for (const weapon of WEAPON_ORDER) {
+        if (WEAPONS[weapon].unlockScore <= currentTotalScore) {
+          scoreUnlocked.push(weapon);
         }
-        setUnlockedWeapons([...new Set(unlocked)]);
       }
-
-      if (progress && progress.unlocked_weapons) {
-        setUnlockedWeapons(prev => [...new Set([...prev, ...(progress.unlocked_weapons as Weapon[])])]);
-      }
+      
+      // Merge with database-stored unlocked weapons (for /give command)
+      const dbUnlocked = (progress?.unlocked_weapons as Weapon[]) || [];
+      const allUnlocked = [...new Set([...scoreUnlocked, ...dbUnlocked])];
+      
+      // Sort by weapon order to maintain correct hotbar
+      const sortedUnlocked = WEAPON_ORDER.filter(w => allUnlocked.includes(w));
+      setUnlockedWeapons(sortedUnlocked.length > 0 ? sortedUnlocked : ["pistol"]);
+      
+      console.log("Weapon progression loaded:", { totalScore: currentTotalScore, unlocked: sortedUnlocked });
     } catch (error) {
       console.error("Error loading user progress:", error);
+      setUnlockedWeapons(["pistol"]);
     }
   };
 
@@ -791,29 +799,75 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
       }
       ctx.restore();
 
-      // Draw other players (multiplayer)
+      // Draw other players (multiplayer) - Enhanced visibility
       if (mode === "host" || mode === "join") {
         for (const otherPlayer of players) {
           if (otherPlayer.username === username) continue;
           
-          ctx.save();
-          ctx.translate(otherPlayer.position_x, otherPlayer.position_y);
+          const opx = otherPlayer.position_x || 480;
+          const opy = otherPlayer.position_y || 320;
+          const opAngle = (otherPlayer as any).angle || 0;
+          const opWeapon = (otherPlayer.weapon || "pistol") as Weapon;
+          const opHealth = otherPlayer.health ?? 100;
           
+          ctx.save();
+          ctx.translate(opx, opy);
+          
+          // Player shadow
+          ctx.fillStyle = "rgba(0,0,0,0.2)";
+          ctx.beginPath();
+          ctx.ellipse(0, player.r * 0.8, player.r * 1.1, player.r * 0.6, 0, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Rotate for weapon direction
+          ctx.rotate(opAngle);
+          
+          // Player body - distinct color for other players
           ctx.fillStyle = "#A6FFB3";
           ctx.beginPath();
           ctx.arc(0, 0, player.r, 0, Math.PI * 2);
           ctx.fill();
           
-          ctx.fillStyle = "#fff";
-          ctx.font = "10px sans-serif";
-          ctx.textAlign = "center";
-          ctx.fillText(otherPlayer.username, 0, -player.r - 10);
+          // Player eye
+          ctx.fillStyle = "#2b2b2b";
+          ctx.beginPath();
+          ctx.arc(player.r * 0.45, -4, 3.5, 0, Math.PI * 2);
+          ctx.fill();
           
-          const hpW = 30;
+          // Player weapon
+          const weaponConfig = WEAPONS[opWeapon];
+          ctx.fillStyle = weaponConfig?.color || "#FFB84D";
+          if (weaponConfig?.isMelee) {
+            ctx.fillRect(player.r - 2, -3, 25, 6);
+          } else {
+            ctx.fillRect(player.r - 2, -6, 18, 12);
+          }
+          
+          ctx.restore();
+          
+          // Draw UI elements without rotation
+          ctx.save();
+          ctx.translate(opx, opy);
+          
+          // Username label with background
+          ctx.font = "bold 11px sans-serif";
+          ctx.textAlign = "center";
+          const nameWidth = ctx.measureText(otherPlayer.username).width + 10;
+          ctx.fillStyle = "rgba(0,0,0,0.6)";
+          ctx.roundRect(-nameWidth / 2, -player.r - 26, nameWidth, 14, 3);
+          ctx.fill();
+          ctx.fillStyle = "#fff";
+          ctx.fillText(otherPlayer.username, 0, -player.r - 16);
+          
+          // Health bar with border
+          const hpW = 36;
+          ctx.fillStyle = "#222";
+          ctx.fillRect(-hpW / 2 - 1, -player.r - 9, hpW + 2, 6);
           ctx.fillStyle = "#333";
           ctx.fillRect(-hpW / 2, -player.r - 8, hpW, 4);
-          ctx.fillStyle = "#22c55e";
-          ctx.fillRect(-hpW / 2, -player.r - 8, hpW * (otherPlayer.health / 100), 4);
+          const healthColor = opHealth > 60 ? "#22c55e" : opHealth > 30 ? "#eab308" : "#ef4444";
+          ctx.fillStyle = healthColor;
+          ctx.fillRect(-hpW / 2, -player.r - 8, hpW * Math.max(0, opHealth / 100), 4);
           
           ctx.restore();
         }
@@ -828,9 +882,14 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
               const y = b.y + b.vy * age;
               ctx.save();
               ctx.fillStyle = b.color;
-              ctx.globalAlpha = 1 - age / b.life;
+              ctx.globalAlpha = Math.max(0.3, 1 - age / b.life);
               ctx.beginPath();
               ctx.arc(x, y, b.r, 0, Math.PI * 2);
+              ctx.fill();
+              // Bullet glow
+              ctx.globalAlpha = 0.3;
+              ctx.beginPath();
+              ctx.arc(x, y, b.r * 1.5, 0, Math.PI * 2);
               ctx.fill();
               ctx.restore();
             }

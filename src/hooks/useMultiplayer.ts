@@ -205,14 +205,36 @@ export const useMultiplayer = (mode: string, roomCode: string, username: string)
         // Update player position in real-time (skip self)
         if (payload.playerId === playerIdRef.current || payload.username === username) return;
         
-        setState(prev => ({
-          ...prev,
-          players: prev.players.map(p => 
-            p.username === payload.username
-              ? { ...p, position_x: payload.x, position_y: payload.y, health: payload.health, weapon: payload.weapon }
-              : p
-          )
-        }));
+        setState(prev => {
+          // Check if player exists, if not add them
+          const playerExists = prev.players.some(p => p.username === payload.username);
+          
+          if (!playerExists) {
+            return {
+              ...prev,
+              players: [...prev.players, {
+                id: payload.playerId,
+                username: payload.username,
+                position_x: payload.x,
+                position_y: payload.y,
+                health: payload.health,
+                score: 0,
+                weapon: payload.weapon,
+                is_alive: true,
+                angle: payload.angle,
+              }]
+            };
+          }
+          
+          return {
+            ...prev,
+            players: prev.players.map(p => 
+              p.username === payload.username
+                ? { ...p, position_x: payload.x, position_y: payload.y, health: payload.health, weapon: payload.weapon, angle: payload.angle }
+                : p
+            )
+          };
+        });
       })
       .on('broadcast', { event: 'bullet_fired' }, ({ payload }) => {
         // Add bullet to other players' bullets (skip self)

@@ -23,6 +23,8 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    console.log("Admin AI request:", { message, action });
+
     // Handle direct actions
     if (action) {
       if (action === "disable_website") {
@@ -57,9 +59,11 @@ serve(async (req) => {
         const { data: profiles } = await supabase.from("profiles").select("*");
         const { data: rooms } = await supabase.from("game_rooms").select("*");
         const { data: settings } = await supabase.from("game_settings").select("*").single();
+        const { data: updates } = await supabase.from("game_updates").select("*");
+        const { data: betaTesters } = await supabase.from("beta_testers").select("*");
         
         return new Response(JSON.stringify({ 
-          response: `Stats:\n- Total Users: ${profiles?.length || 0}\n- Active Rooms: ${rooms?.length || 0}\n- Website Enabled: ${settings?.website_enabled || false}`
+          response: `📊 Stats:\n- Total Users: ${profiles?.length || 0}\n- Active Rooms: ${rooms?.length || 0}\n- Website Enabled: ${settings?.website_enabled || false}\n- Total Updates: ${updates?.length || 0}\n- Beta Testers: ${betaTesters?.length || 0}`
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -86,7 +90,7 @@ serve(async (req) => {
 
         const { error } = await supabase.from("bans").insert({
           user_id: profile.user_id,
-          banned_by: profile.user_id, // Will be overwritten by proper admin ID in frontend
+          banned_by: profile.user_id,
           hours: 24,
           reason: "Banned by admin via AI chatbot",
           expires_at: expiresAt.toISOString(),
@@ -129,34 +133,202 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
+      // Create update action
+      if (action.startsWith("create_update:")) {
+        const parts = action.replace("create_update:", "").split("|");
+        const name = parts[0];
+        const description = parts[1] || "New update";
+
+        // Get admin user (first admin role)
+        const { data: adminRole } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "admin")
+          .limit(1)
+          .single();
+
+        if (!adminRole) {
+          return new Response(JSON.stringify({ 
+            response: "No admin found to create update." 
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const { error } = await supabase.from("game_updates").insert({
+          name,
+          description,
+          created_by: adminRole.user_id,
+          is_released: false,
+          is_beta: false,
+        });
+
+        if (error) throw error;
+        return new Response(JSON.stringify({ 
+          response: `✨ Update "${name}" has been created as a draft.\n\nDescription: ${description}\n\nYou can now:\n- Release it to beta testers first\n- Release it publicly to all users` 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Beta release action
+      if (action.startsWith("beta_release:")) {
+        const updateName = action.replace("beta_release:", "").trim();
+        
+        const { data: update, error: findError } = await supabase
+          .from("game_updates")
+          .select("*")
+          .ilike("name", `%${updateName}%`)
+          .limit(1)
+          .single();
+
+        if (findError || !update) {
+          return new Response(JSON.stringify({ 
+            response: `Update "${updateName}" not found. Make sure the update exists.` 
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const { error } = await supabase
+          .from("game_updates")
+          .update({ 
+            is_beta: true,
+            is_released: false,
+            released_at: new Date().toISOString()
+          })
+          .eq("id", update.id);
+
+        if (error) throw error;
+        return new Response(JSON.stringify({ 
+          response: `🧪 Update "${update.name}" has been released to BETA TESTERS ONLY.\n\nBeta testers can now access this update. Regular users will not see it until you release it publicly.` 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Public release action
+      if (action.startsWith("release_update:")) {
+        const updateName = action.replace("release_update:", "").trim();
+        
+        const { data: update, error: findError } = await supabase
+          .from("game_updates")
+          .select("*")
+          .ilike("name", `%${updateName}%`)
+          .limit(1)
+          .single();
+
+        if (findError || !update) {
+          return new Response(JSON.stringify({ 
+            response: `Update "${updateName}" not found. Make sure the update exists.` 
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Generate summary (hide admin-only features)
+        const description = update.description.toLowerCase();
+        let summary = update.description;
+        
+        // Filter out admin-related content for public summary
+        const adminKeywords = ['admin', 'command', 'ban', 'godmode', 'infinite ammo', '/'];
+        const lines = summary.split('\n');
+        const publicLines = lines.filter((line: string) => {
+          const lower = line.toLowerCase();
+          return !adminKeywords.some(keyword => lower.includes(keyword));
+        });
+        summary = publicLines.join('\n') || "New features and improvements!";
+
+        const { error } = await supabase
+          .from("game_updates")
+          .update({ 
+            is_beta: false,
+            is_released: true,
+            released_at: new Date().toISOString(),
+            summary: summary
+          })
+          .eq("id", update.id);
+
+        if (error) throw error;
+        return new Response(JSON.stringify({ 
+          response: `🚀 Update "${update.name}" has been RELEASED PUBLICLY!\n\nAll users can now see this update in the Updates Hub.\n\nPublic Summary: ${summary}` 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Grant beta tester
+      if (action.startsWith("grant_beta:")) {
+        const targetUsername = action.replace("grant_beta:", "");
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("username", targetUsername)
+          .single();
+
+        if (!profile) {
+          return new Response(JSON.stringify({ 
+            response: `User "${targetUsername}" not found.` 
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const { data: adminRole } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "admin")
+          .limit(1)
+          .single();
+
+        const { error } = await supabase.from("beta_testers").insert({
+          user_id: profile.user_id,
+          granted_by: adminRole?.user_id || profile.user_id,
+        });
+
+        if (error && error.code !== '23505') throw error;
+        return new Response(JSON.stringify({ 
+          response: `🧪 "${targetUsername}" is now a beta tester and can access unreleased updates.` 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // AI Chat response
-    const systemPrompt = `You are the Admin AI Assistant for Food FPS, a multiplayer shooting game. You have full control over the game and website.
+    const systemPrompt = `You are the Admin AI Assistant for Food FPS, a multiplayer food-themed shooting game. You have FULL control over the game and website.
 
-You can help admins with:
-1. Website Management: Enable/disable the website
-2. User Management: Ban users, grant command permissions
-3. Game Stats: View player counts, active rooms
-4. Game Information: Explain game mechanics, weapons, modes
+AVAILABLE ACTIONS YOU CAN PERFORM:
+1. Website Management:
+   - "Disable the website" → Blocks all non-admin users
+   - "Enable the website" → Allows users to play
+   
+2. Update Management (IMPORTANT - Beta tester exclusivity):
+   - "Create update [name] with: [description]" → Creates a new update draft
+   - "Release [update name] to beta testers" → Makes update available ONLY to beta testers
+   - "Release [update name] publicly" → Makes update available to ALL users
+   
+3. User Management:
+   - "Ban [username]" → 24 hour ban
+   - "Grant commands to [username]" → Gives admin commands
+   - "Make [username] a beta tester" → Adds beta tester role
+   
+4. Stats: "Get stats" → Shows user counts, rooms, etc.
 
-Available weapons: Pistol, Shotgun, Sword, Rifle, Sniper, SMG, Knife, RPG, Axe, Flamethrower, Minigun, Railgun
+GAME INFO:
+- Weapons: Pistol, Shotgun, Sword, Rifle, Sniper, SMG, Knife, RPG, Axe, Flamethrower, Minigun, Railgun
+- Modes: Solo (vs bots), Host/Join (multiplayer), Offline
+- Admin Commands: /godmode, /speed, /nuke, /rain ammo, /revive, /give, /infiniteammo
 
-Game modes: Solo (vs bots), Host (create multiplayer room), Join (join room), Offline (no account needed)
+When summarizing updates for public release, HIDE admin-only features (commands, ban features, admin panel details).
 
-Admin commands available in-game:
-- /godmode - Invincibility
-- /speed [num] - Change speed
-- /nuke - Kill all enemies
-- /rain ammo - Spawn ammo
-- /revive - Restore health
-- /give - Unlock all weapons
-- /ban - Ban management
-- /join - See online players
+EXAMPLES:
+- "Create update v1.2 with: Added new weapons and fixed bugs" → Creates draft
+- "Release v1.2 to beta testers" → Beta testers only see it
+- "Release v1.2 publicly" → Everyone sees it
 
-When asked to perform actions, respond with specific instructions. If asked to ban a user or enable/disable the website, confirm you'll do it and the action will be taken.
-
-Be helpful, concise, and professional.`;
+Be helpful, concise, and proactive. Confirm actions taken.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

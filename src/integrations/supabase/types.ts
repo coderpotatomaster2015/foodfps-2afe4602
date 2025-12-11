@@ -44,6 +44,30 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_conversations: {
+        Row: {
+          admin_id: string
+          created_at: string
+          id: string
+          messages: Json
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          id?: string
+          messages?: Json
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          id?: string
+          messages?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bans: {
         Row: {
           banned_at: string

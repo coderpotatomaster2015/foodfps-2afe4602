@@ -3,8 +3,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X } from "lucide-react";
+import { X, Send, Loader2, Brain, Trash2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface AdminChatProps {
   open: boolean;
@@ -14,8 +15,8 @@ interface AdminChatProps {
 }
 
 interface ChatMessage {
-  text: string;
-  color: string;
+  role: "user" | "assistant" | "system";
+  content: string;
   timestamp: number;
 }
 
@@ -32,11 +33,19 @@ const COMMANDS = [
   { cmd: "/?", desc: "Show all commands" },
 ];
 
+const QUICK_ACTIONS = [
+  { label: "📊 Stats", action: "get_stats" },
+  { label: "🔒 Disable Site", action: "disable_website" },
+  { label: "✅ Enable Site", action: "enable_website" },
+];
+
 export const AdminChat = ({ open, onOpenChange, onCommand, onShowOnlinePlayers }: AdminChatProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showAI, setShowAI] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,11 +54,13 @@ export const AdminChat = ({ open, onOpenChange, onCommand, onShowOnlinePlayers }
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const scrollElement = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollElement) {
+        scrollElement.scrollTop = scrollElement.scrollHeight;
+      }
     }
   }, [messages]);
 
-  // Handle escape key to close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && open) {
@@ -65,7 +76,6 @@ export const AdminChat = ({ open, onOpenChange, onCommand, onShowOnlinePlayers }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Check if admin
     const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
@@ -79,7 +89,6 @@ export const AdminChat = ({ open, onOpenChange, onCommand, onShowOnlinePlayers }
       return;
     }
 
-    // Check if granted permissions
     const { data: permData } = await supabase
       .from("chat_permissions")
       .select("can_use_commands")
@@ -91,79 +100,158 @@ export const AdminChat = ({ open, onOpenChange, onCommand, onShowOnlinePlayers }
     }
   };
 
-  const addMessage = (text: string, color = "#ccc") => {
-    setMessages(prev => [...prev, { text, color, timestamp: Date.now() }]);
+  const addMessage = (role: "user" | "assistant" | "system", content: string) => {
+    setMessages(prev => [...prev, { role, content, timestamp: Date.now() }]);
   };
 
   const handleCommand = (cmd: string) => {
     if (cmd === "/?") {
-      addMessage("Available commands:", "#FFB84D");
-      COMMANDS.forEach(c => addMessage(`  ${c.cmd} - ${c.desc}`, "#9aa"));
+      addMessage("system", "📋 Available commands:\n" + COMMANDS.map(c => `${c.cmd} - ${c.desc}`).join("\n"));
       return;
     }
 
     if (!hasPermission && !isAdmin) {
-      addMessage("✗ You don't have permission to use commands. Ask an admin to grant you access.", "#ff6b6b");
+      addMessage("system", "❌ You don't have permission to use commands.");
       return;
     }
 
-    if (cmd.startsWith("/godmode")) {
-      addMessage("✓ God mode toggled", "#FFB84D");
-    } else if (cmd.startsWith("/speed")) {
-      addMessage("✓ Speed set", "#FFB84D");
-    } else if (cmd.startsWith("/nuke")) {
-      addMessage("✓ All enemies eliminated!", "#FFB84D");
-    } else if (cmd.startsWith("/rain ammo")) {
-      addMessage("✓ Ammo rain activated!", "#A6FFB3");
-    } else if (cmd.startsWith("/infiniteammo")) {
-      addMessage("✓ Infinite ammo toggled!", "#FFB84D");
-    } else if (cmd.startsWith("/revive")) {
-      addMessage("✓ Player revived!", "#A6FFB3");
-    } else if (cmd.startsWith("/give")) {
-      addMessage("✓ All weapons unlocked!", "#FFD700");
+    const commandMap: Record<string, string> = {
+      "/godmode": "✓ God mode toggled",
+      "/speed": "✓ Speed set",
+      "/nuke": "✓ All enemies eliminated!",
+      "/rain ammo": "✓ Ammo rain activated!",
+      "/infiniteammo": "✓ Infinite ammo toggled!",
+      "/revive": "✓ Player revived!",
+      "/give": "✓ All weapons unlocked!",
+    };
+
+    const matchedCmd = Object.keys(commandMap).find(c => cmd.startsWith(c));
+    if (matchedCmd) {
+      addMessage("system", commandMap[matchedCmd]);
+      onCommand?.(cmd);
     } else if (cmd.startsWith("/ban")) {
       if (!isAdmin) {
-        addMessage("✗ Only admins can use ban commands.", "#ff6b6b");
+        addMessage("system", "❌ Only admins can use ban commands.");
         return;
       }
-      addMessage("✓ Opening ban management...", "#FF6B6B");
+      addMessage("system", "✓ Opening ban management...");
+      onCommand?.(cmd);
     } else if (cmd.startsWith("/join")) {
       const match = cmd.match(/\/join\s+(\d{5})/);
       if (match) {
-        addMessage(`✓ Attempting to join room ${match[1]}...`, "#A6FFB3");
+        addMessage("system", `✓ Joining room ${match[1]}...`);
+        onCommand?.(cmd);
       } else {
-        addMessage("✓ Opening online players...", "#A6FFB3");
-        if (onShowOnlinePlayers) onShowOnlinePlayers();
+        addMessage("system", "✓ Opening online players...");
+        onShowOnlinePlayers?.();
       }
     } else {
-      addMessage("✗ Unknown command. Type /? for help", "#ff6b6b");
+      addMessage("system", "❌ Unknown command. Type /? for help");
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cmd = input.trim();
-    if (!cmd) return;
+  const sendToAI = async (userMessage: string, action?: string) => {
+    setIsLoading(true);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Get conversation history (last 20 messages for context)
+      const conversationHistory = messages.slice(-20).map(m => ({
+        role: m.role === "system" ? "assistant" : m.role,
+        content: m.content,
+      }));
 
-    addMessage("> " + cmd, "#aaa");
+      const { data, error } = await supabase.functions.invoke("admin-ai", {
+        body: { 
+          message: userMessage, 
+          action,
+          conversationHistory,
+          adminId: user?.id
+        },
+      });
 
-    if (cmd.startsWith("/")) {
-      handleCommand(cmd);
-      onCommand?.(cmd);
-    } else {
-      addMessage("You: " + cmd, "#ccc");
+      if (error) throw error;
+      
+      if (data.response) {
+        addMessage("assistant", data.response);
+      }
+    } catch (error) {
+      console.error("AI Error:", error);
+      addMessage("assistant", "❌ Sorry, I encountered an error. Please try again.");
+      toast.error("AI error occurred");
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || isLoading) return;
 
     setInput("");
+
+    if (text.startsWith("/")) {
+      addMessage("user", text);
+      handleCommand(text);
+    } else if (showAI && isAdmin) {
+      addMessage("user", text);
+      await sendToAI(text);
+    } else {
+      addMessage("user", text);
+      addMessage("system", "💬 Message sent to chat.");
+    }
+  };
+
+  const handleQuickAction = async (action: string) => {
+    if (isLoading) return;
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-ai", {
+        body: { action },
+      });
+
+      if (error) throw error;
+      
+      if (data.response) {
+        addMessage("assistant", data.response);
+      }
+    } catch (error) {
+      console.error("Action error:", error);
+      toast.error("Action failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const clearHistory = () => {
+    setMessages([]);
+    toast.success("Conversation cleared");
   };
 
   if (!open) return null;
 
   return (
-    <Card className="fixed bottom-20 left-4 w-80 bg-card/95 backdrop-blur-sm border-border p-4 z-40">
-      <div className="space-y-4">
+    <Card className="fixed bottom-20 left-4 w-96 max-w-[calc(100vw-2rem)] bg-card/95 backdrop-blur-sm border-border p-4 z-40 shadow-2xl">
+      <div className="space-y-3">
+        {/* Header */}
         <div className="flex items-center justify-between">
-          <h3 className="font-bold">Console</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-lg">Console</h3>
+            {isAdmin && (
+              <Button
+                variant={showAI ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowAI(!showAI)}
+                className="h-7 gap-1"
+              >
+                <Brain className="w-3 h-3" />
+                AI
+              </Button>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {isAdmin && (
               <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
@@ -174,6 +262,17 @@ export const AdminChat = ({ open, onOpenChange, onCommand, onShowOnlinePlayers }
               <span className="text-xs bg-accent text-accent-foreground px-2 py-1 rounded">
                 COMMANDS
               </span>
+            )}
+            {messages.length > 0 && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6"
+                onClick={clearHistory}
+                title="Clear history"
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
             )}
             <Button 
               variant="ghost" 
@@ -186,27 +285,89 @@ export const AdminChat = ({ open, onOpenChange, onCommand, onShowOnlinePlayers }
           </div>
         </div>
 
-        <ScrollArea className="h-48 pr-4" ref={scrollRef}>
-          <div className="space-y-1 text-sm font-mono">
+        {/* Quick Actions for Admin AI */}
+        {showAI && isAdmin && (
+          <div className="flex flex-wrap gap-1">
+            {QUICK_ACTIONS.map((qa) => (
+              <Button
+                key={qa.action}
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickAction(qa.action)}
+                disabled={isLoading}
+                className="h-7 text-xs"
+              >
+                {qa.label}
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {/* Messages */}
+        <ScrollArea className="h-64 pr-4" ref={scrollRef}>
+          <div className="space-y-2">
+            {messages.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                {showAI ? (
+                  <div className="space-y-2">
+                    <Sparkles className="w-8 h-8 mx-auto opacity-50" />
+                    <p>AI Assistant ready!</p>
+                    <p className="text-xs">Ask me to manage updates, users, or get stats.</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p>Type /? for commands</p>
+                    {isAdmin && <p className="text-xs mt-1">Click "AI" to chat with the admin AI</p>}
+                  </div>
+                )}
+              </div>
+            )}
             {messages.map((msg, i) => (
-              <div key={i} style={{ color: msg.color }}>
-                {msg.text}
+              <div 
+                key={i} 
+                className={`text-sm p-2 rounded-lg ${
+                  msg.role === "user" 
+                    ? "bg-primary/20 ml-8" 
+                    : msg.role === "assistant"
+                    ? "bg-accent/30 mr-8"
+                    : "bg-muted/50 text-muted-foreground"
+                }`}
+              >
+                <div className="whitespace-pre-wrap break-words font-mono text-xs">
+                  {msg.content}
+                </div>
               </div>
             ))}
+            {isLoading && (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm p-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Thinking...
+              </div>
+            )}
           </div>
         </ScrollArea>
 
-        <form onSubmit={handleSubmit}>
+        {/* Input */}
+        <form onSubmit={handleSubmit} className="flex gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type command or message..."
-            className="bg-input border-border font-mono text-sm"
+            placeholder={showAI ? "Ask the AI anything..." : "Type command or message..."}
+            className="bg-input border-border font-mono text-sm flex-1"
+            disabled={isLoading}
           />
+          <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+            <Send className="w-4 h-4" />
+          </Button>
         </form>
 
+        {/* Help text */}
         <div className="text-xs text-muted-foreground">
-          Type <span className="text-primary">/?</span> for commands • Press <span className="text-primary">ESC</span> to close
+          {showAI ? (
+            <span>AI remembers your conversation • <span className="text-primary cursor-pointer" onClick={clearHistory}>Clear</span></span>
+          ) : (
+            <span>Type <span className="text-primary">/?</span> for commands • Press <span className="text-primary">ESC</span> to close</span>
+          )}
         </div>
       </div>
     </Card>

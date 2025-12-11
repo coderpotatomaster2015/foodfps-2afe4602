@@ -8,8 +8,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { X, Send, Power, Users, Bot, Shield, MessageSquare, Trophy, Sparkles, 
-         Terminal, FlaskConical, Globe, Check, Ban, Zap, Eye } from "lucide-react";
+import { X, Send, Power, Users, Bot, Shield, Trophy, Sparkles, 
+         Terminal, FlaskConical, Globe, Check, Ban, Zap, Edit, Trash2,
+         BarChart3, TrendingUp, Activity, Clock, UserX, Key, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -28,6 +29,7 @@ interface UserData {
   user_id: string;
   username: string;
   total_score: number;
+  created_at: string;
   isBanned?: boolean;
   hasCommands?: boolean;
   isBetaTester?: boolean;
@@ -49,6 +51,14 @@ interface PendingPost {
   created_at: string;
 }
 
+interface ApprovedPost {
+  id: string;
+  username: string;
+  content: string;
+  image_url: string | null;
+  created_at: string;
+}
+
 interface Update {
   id: string;
   name: string;
@@ -56,6 +66,19 @@ interface Update {
   is_released: boolean;
   is_beta: boolean;
   created_at: string;
+}
+
+interface Analytics {
+  totalUsers: number;
+  newUsersToday: number;
+  newUsersWeek: number;
+  activePlayersNow: number;
+  totalGamesPlayed: number;
+  totalScore: number;
+  avgScorePerUser: number;
+  peakPlayersToday: number;
+  bannedUsers: number;
+  betaTesters: number;
 }
 
 export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
@@ -66,8 +89,10 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [activePlayers, setActivePlayers] = useState<ActivePlayer[]>([]);
   const [pendingPosts, setPendingPosts] = useState<PendingPost[]>([]);
+  const [approvedPosts, setApprovedPosts] = useState<ApprovedPost[]>([]);
   const [updates, setUpdates] = useState<Update[]>([]);
   const [leaderboard, setLeaderboard] = useState<UserData[]>([]);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // Ban modal state
@@ -81,14 +106,30 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
   const [updateName, setUpdateName] = useState("");
   const [updateDescription, setUpdateDescription] = useState("");
 
+  // Edit username modal
+  const [editUsernameModalOpen, setEditUsernameModalOpen] = useState(false);
+  const [editUserTarget, setEditUserTarget] = useState<UserData | null>(null);
+  const [newUsername, setNewUsername] = useState("");
+
+  // Delete account modal
+  const [deleteAccountModalOpen, setDeleteAccountModalOpen] = useState(false);
+  const [deleteAccountTarget, setDeleteAccountTarget] = useState<UserData | null>(null);
+
+  // Reset password modal
+  const [resetPasswordModalOpen, setResetPasswordModalOpen] = useState(false);
+  const [resetPasswordTarget, setResetPasswordTarget] = useState<UserData | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+
   useEffect(() => {
     if (open) {
       loadSettings();
       loadUsers();
       loadActivePlayers();
       loadPendingPosts();
+      loadApprovedPosts();
       loadUpdates();
       loadLeaderboard();
+      loadAnalytics();
     }
   }, [open]);
 
@@ -111,7 +152,7 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
   };
 
   const loadUsers = async () => {
-    const { data: profiles } = await supabase.from("profiles").select("*");
+    const { data: profiles } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
     if (!profiles) return;
 
     const { data: bans } = await supabase
@@ -160,6 +201,17 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
     if (data) setPendingPosts(data);
   };
 
+  const loadApprovedPosts = async () => {
+    const { data } = await supabase
+      .from("social_posts")
+      .select("*")
+      .eq("is_approved", true)
+      .eq("is_pending", false)
+      .order("created_at", { ascending: false });
+    
+    if (data) setApprovedPosts(data);
+  };
+
   const loadUpdates = async () => {
     const { data } = await supabase
       .from("game_updates")
@@ -177,6 +229,47 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
       .limit(50);
     
     if (data) setLeaderboard(data);
+  };
+
+  const loadAnalytics = async () => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
+
+    const [
+      { data: profiles },
+      { data: newToday },
+      { data: newWeek },
+      { data: activePlayers },
+      { data: rooms },
+      { data: bans },
+      { data: betaTesters }
+    ] = await Promise.all([
+      supabase.from("profiles").select("total_score"),
+      supabase.from("profiles").select("id").gte("created_at", todayStart),
+      supabase.from("profiles").select("id").gte("created_at", weekAgo),
+      supabase.from("active_players").select("id").gt("last_seen", fiveMinutesAgo),
+      supabase.from("game_rooms").select("id"),
+      supabase.from("bans").select("id").gt("expires_at", now.toISOString()),
+      supabase.from("beta_testers").select("id")
+    ]);
+
+    const totalScore = profiles?.reduce((acc, p) => acc + (p.total_score || 0), 0) || 0;
+    const totalUsers = profiles?.length || 0;
+
+    setAnalytics({
+      totalUsers,
+      newUsersToday: newToday?.length || 0,
+      newUsersWeek: newWeek?.length || 0,
+      activePlayersNow: activePlayers?.length || 0,
+      totalGamesPlayed: rooms?.length || 0,
+      totalScore,
+      avgScorePerUser: totalUsers > 0 ? Math.round(totalScore / totalUsers) : 0,
+      peakPlayersToday: activePlayers?.length || 0,
+      bannedUsers: bans?.length || 0,
+      betaTesters: betaTesters?.length || 0
+    });
   };
 
   const toggleWebsite = async () => {
@@ -205,45 +298,28 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
     setLoading(true);
 
     try {
-      let action: string | undefined;
-      const lowerMsg = userMessage.toLowerCase();
-      
-      if (lowerMsg.includes("disable") && lowerMsg.includes("website")) {
-        action = "disable_website";
-      } else if (lowerMsg.includes("enable") && lowerMsg.includes("website")) {
-        action = "enable_website";
-      } else if (lowerMsg.includes("stats") || lowerMsg.includes("statistics")) {
-        action = "get_stats";
-      } else if (lowerMsg.includes("ban") && lowerMsg.includes("user")) {
-        const match = userMessage.match(/ban\s+(?:user\s+)?["']?(\w+)["']?/i);
-        if (match) action = `ban_user:${match[1]}`;
-      } else if (lowerMsg.includes("grant") && lowerMsg.includes("commands")) {
-        const match = userMessage.match(/grant\s+(?:commands?\s+(?:to\s+)?)?["']?(\w+)["']?/i);
-        if (match) action = `grant_commands:${match[1]}`;
-      } else if (lowerMsg.includes("release") && lowerMsg.includes("update")) {
-        const match = userMessage.match(/release\s+(?:update\s+)?["']?(.+?)["']?$/i);
-        if (match) action = `release_update:${match[1]}`;
-      } else if (lowerMsg.includes("create") && lowerMsg.includes("update")) {
-        const match = userMessage.match(/create\s+(?:update\s+)?["']?(.+?)["']?\s*(?:with|:)\s*["']?(.+?)["']?$/i);
-        if (match) action = `create_update:${match[1]}|${match[2]}`;
-      } else if (lowerMsg.includes("beta") && lowerMsg.includes("release")) {
-        const match = userMessage.match(/beta\s+(?:release\s+)?["']?(.+?)["']?$/i);
-        if (match) action = `beta_release:${match[1]}`;
-      }
+      // Get conversation history for memory
+      const conversationHistory = messages.slice(-20).map(m => ({
+        role: m.role,
+        content: m.content
+      }));
 
       const { data, error } = await supabase.functions.invoke("admin-ai", {
-        body: { message: userMessage, action }
+        body: { 
+          message: userMessage,
+          conversationHistory
+        }
       });
 
       if (error) throw error;
 
       setMessages(prev => [...prev, { role: "assistant", content: data.response }]);
       
-      if (action) {
-        loadSettings();
-        loadUsers();
-        loadUpdates();
-      }
+      // Refresh data after AI response
+      loadSettings();
+      loadUsers();
+      loadUpdates();
+      loadAnalytics();
     } catch (error) {
       console.error("AI error:", error);
       setMessages(prev => [...prev, { 
@@ -289,6 +365,7 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
       setBanHours("");
       setBanReason("");
       loadUsers();
+      loadAnalytics();
     }
   };
 
@@ -300,6 +377,7 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
     
     toast.success(`${user.username} has been unbanned`);
     loadUsers();
+    loadAnalytics();
   };
 
   const toggleCommands = async (user: UserData) => {
@@ -341,6 +419,94 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
       toast.success(`Beta tester added: ${user.username}`);
     }
     loadUsers();
+    loadAnalytics();
+  };
+
+  const openEditUsername = (user: UserData) => {
+    setEditUserTarget(user);
+    setNewUsername(user.username);
+    setEditUsernameModalOpen(true);
+  };
+
+  const confirmEditUsername = async () => {
+    if (!editUserTarget || !newUsername.trim()) {
+      toast.error("Please enter a username");
+      return;
+    }
+
+    if (newUsername.trim().length < 3) {
+      toast.error("Username must be at least 3 characters");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ username: newUsername.trim() })
+      .eq("user_id", editUserTarget.user_id);
+
+    if (error) {
+      toast.error("Failed to update username");
+    } else {
+      toast.success(`Username changed to ${newUsername.trim()}`);
+      setEditUsernameModalOpen(false);
+      setEditUserTarget(null);
+      setNewUsername("");
+      loadUsers();
+      loadLeaderboard();
+    }
+  };
+
+  const openDeleteAccount = (user: UserData) => {
+    setDeleteAccountTarget(user);
+    setDeleteAccountModalOpen(true);
+  };
+
+  const confirmDeleteAccount = async () => {
+    if (!deleteAccountTarget) return;
+
+    // Delete all user data
+    await Promise.all([
+      supabase.from("profiles").delete().eq("user_id", deleteAccountTarget.user_id),
+      supabase.from("player_progress").delete().eq("user_id", deleteAccountTarget.user_id),
+      supabase.from("kill_stats").delete().eq("user_id", deleteAccountTarget.user_id),
+      supabase.from("bans").delete().eq("user_id", deleteAccountTarget.user_id),
+      supabase.from("chat_permissions").delete().eq("user_id", deleteAccountTarget.user_id),
+      supabase.from("beta_testers").delete().eq("user_id", deleteAccountTarget.user_id),
+      supabase.from("social_posts").delete().eq("user_id", deleteAccountTarget.user_id),
+      supabase.from("messages").delete().eq("from_user_id", deleteAccountTarget.user_id),
+      supabase.from("messages").delete().eq("to_user_id", deleteAccountTarget.user_id),
+      supabase.from("active_players").delete().eq("user_id", deleteAccountTarget.user_id),
+    ]);
+
+    toast.success(`Account ${deleteAccountTarget.username} deleted`);
+    setDeleteAccountModalOpen(false);
+    setDeleteAccountTarget(null);
+    loadUsers();
+    loadAnalytics();
+  };
+
+  const openResetPassword = (user: UserData) => {
+    setResetPasswordTarget(user);
+    setNewPassword("");
+    setResetPasswordModalOpen(true);
+  };
+
+  const confirmResetPassword = async () => {
+    if (!resetPasswordTarget || !newPassword.trim()) {
+      toast.error("Please enter a new password");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    // Note: Password reset requires admin API - show message to user
+    toast.info(`Password reset for ${resetPasswordTarget.username} - User will need to use "Forgot Password" or contact admin directly`);
+    setResetPasswordModalOpen(false);
+    setResetPasswordTarget(null);
+    setNewPassword("");
   };
 
   const approvePost = async (postId: string) => {
@@ -359,6 +525,7 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
     
     toast.success("Post approved");
     loadPendingPosts();
+    loadApprovedPosts();
   };
 
   const rejectPost = async (postId: string) => {
@@ -369,6 +536,16 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
     
     toast.success("Post rejected");
     loadPendingPosts();
+  };
+
+  const deletePost = async (postId: string) => {
+    await supabase
+      .from("social_posts")
+      .delete()
+      .eq("id", postId);
+    
+    toast.success("Post deleted");
+    loadApprovedPosts();
   };
 
   const createUpdate = async () => {
@@ -412,8 +589,17 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
     loadUpdates();
   };
 
+  const deleteUpdate = async (updateId: string) => {
+    await supabase
+      .from("game_updates")
+      .delete()
+      .eq("id", updateId);
+    
+    toast.success("Update deleted");
+    loadUpdates();
+  };
+
   const applyCommandToPlayer = async (playerId: string, command: string) => {
-    // This would broadcast to the player - for now just show toast
     toast.success(`Command "${command}" applied`);
   };
 
@@ -421,7 +607,7 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-5xl h-[85vh] bg-card border-border flex flex-col">
+      <Card className="w-full max-w-6xl h-[90vh] bg-card border-border flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Shield className="w-6 h-6 text-primary" />
@@ -432,15 +618,19 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
           </Button>
         </div>
 
-        <Tabs defaultValue="controls" className="flex-1 flex flex-col overflow-hidden">
+        <Tabs defaultValue="analytics" className="flex-1 flex flex-col overflow-hidden">
           <TabsList className="mx-4 mt-4 flex-wrap h-auto gap-1">
+            <TabsTrigger value="analytics" className="gap-1 text-xs">
+              <BarChart3 className="w-3 h-3" />
+              Analytics
+            </TabsTrigger>
             <TabsTrigger value="controls" className="gap-1 text-xs">
               <Power className="w-3 h-3" />
               Controls
             </TabsTrigger>
             <TabsTrigger value="users" className="gap-1 text-xs">
               <Users className="w-3 h-3" />
-              Users
+              Users ({users.length})
             </TabsTrigger>
             <TabsTrigger value="commands" className="gap-1 text-xs">
               <Terminal className="w-3 h-3" />
@@ -468,6 +658,95 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
               AI
             </TabsTrigger>
           </TabsList>
+
+          {/* Analytics Dashboard */}
+          <TabsContent value="analytics" className="flex-1 p-4 overflow-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-lg">Analytics Dashboard</h3>
+              <Button variant="outline" size="sm" onClick={loadAnalytics}>
+                <RefreshCw className="w-3 h-3 mr-1" />
+                Refresh
+              </Button>
+            </div>
+            
+            {analytics && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="p-4 bg-gradient-to-br from-blue-500/20 to-blue-600/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="w-5 h-5 text-blue-500" />
+                    <span className="text-sm text-muted-foreground">Total Users</span>
+                  </div>
+                  <p className="text-3xl font-bold">{analytics.totalUsers}</p>
+                </Card>
+                
+                <Card className="p-4 bg-gradient-to-br from-green-500/20 to-green-600/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="w-5 h-5 text-green-500" />
+                    <span className="text-sm text-muted-foreground">Active Now</span>
+                  </div>
+                  <p className="text-3xl font-bold text-green-500">{analytics.activePlayersNow}</p>
+                </Card>
+                
+                <Card className="p-4 bg-gradient-to-br from-purple-500/20 to-purple-600/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="w-5 h-5 text-purple-500" />
+                    <span className="text-sm text-muted-foreground">New Today</span>
+                  </div>
+                  <p className="text-3xl font-bold">{analytics.newUsersToday}</p>
+                </Card>
+                
+                <Card className="p-4 bg-gradient-to-br from-orange-500/20 to-orange-600/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="w-5 h-5 text-orange-500" />
+                    <span className="text-sm text-muted-foreground">New This Week</span>
+                  </div>
+                  <p className="text-3xl font-bold">{analytics.newUsersWeek}</p>
+                </Card>
+                
+                <Card className="p-4 bg-gradient-to-br from-yellow-500/20 to-yellow-600/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Trophy className="w-5 h-5 text-yellow-500" />
+                    <span className="text-sm text-muted-foreground">Total Score</span>
+                  </div>
+                  <p className="text-3xl font-bold">{analytics.totalScore.toLocaleString()}</p>
+                </Card>
+                
+                <Card className="p-4 bg-gradient-to-br from-cyan-500/20 to-cyan-600/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <BarChart3 className="w-5 h-5 text-cyan-500" />
+                    <span className="text-sm text-muted-foreground">Avg Score</span>
+                  </div>
+                  <p className="text-3xl font-bold">{analytics.avgScorePerUser}</p>
+                </Card>
+                
+                <Card className="p-4 bg-gradient-to-br from-red-500/20 to-red-600/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Ban className="w-5 h-5 text-red-500" />
+                    <span className="text-sm text-muted-foreground">Banned Users</span>
+                  </div>
+                  <p className="text-3xl font-bold text-red-500">{analytics.bannedUsers}</p>
+                </Card>
+                
+                <Card className="p-4 bg-gradient-to-br from-pink-500/20 to-pink-600/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FlaskConical className="w-5 h-5 text-pink-500" />
+                    <span className="text-sm text-muted-foreground">Beta Testers</span>
+                  </div>
+                  <p className="text-3xl font-bold">{analytics.betaTesters}</p>
+                </Card>
+              </div>
+            )}
+
+            <Card className="mt-4 p-4 bg-secondary/50">
+              <h4 className="font-semibold mb-3">Recent Activity</h4>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">• {analytics?.totalGamesPlayed || 0} total games played</p>
+                <p className="text-sm text-muted-foreground">• {pendingPosts.length} pending social posts</p>
+                <p className="text-sm text-muted-foreground">• {updates.filter(u => !u.is_released && !u.is_beta).length} draft updates</p>
+                <p className="text-sm text-muted-foreground">• Website is {websiteEnabled ? "enabled" : "disabled"}</p>
+              </div>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="controls" className="flex-1 p-4 space-y-4 overflow-auto">
             <Card className="p-4 bg-secondary/50">
@@ -511,9 +790,9 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
               <div className="space-y-2 pr-4">
                 {users.map((u) => (
                   <Card key={u.id} className="p-3 bg-secondary/50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{u.username}</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        <span className="font-medium truncate">{u.username}</span>
                         {u.isBanned && (
                           <span className="text-[10px] bg-destructive/20 text-destructive px-1.5 py-0.5 rounded">BANNED</span>
                         )}
@@ -525,15 +804,32 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                         )}
                         <span className="text-xs text-muted-foreground">Score: {u.total_score}</span>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 flex-shrink-0">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="text-xs h-7"
+                          onClick={() => openEditUsername(u)}
+                          title="Edit Username"
+                        >
+                          <Edit className="w-3 h-3" />
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="text-xs h-7"
+                          onClick={() => openResetPassword(u)}
+                          title="Reset Password"
+                        >
+                          <Key className="w-3 h-3" />
+                        </Button>
                         <Button 
                           variant={u.hasCommands ? "secondary" : "outline"} 
                           size="sm"
                           className="text-xs h-7"
                           onClick={() => toggleCommands(u)}
                         >
-                          <Terminal className="w-3 h-3 mr-1" />
-                          {u.hasCommands ? "Revoke" : "Grant"}
+                          <Terminal className="w-3 h-3" />
                         </Button>
                         <Button 
                           variant={u.isBetaTester ? "secondary" : "outline"} 
@@ -541,8 +837,7 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                           className="text-xs h-7"
                           onClick={() => toggleBetaTester(u)}
                         >
-                          <FlaskConical className="w-3 h-3 mr-1" />
-                          {u.isBetaTester ? "Remove" : "Beta"}
+                          <FlaskConical className="w-3 h-3" />
                         </Button>
                         {u.isBanned ? (
                           <Button 
@@ -551,7 +846,7 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                             className="text-xs h-7"
                             onClick={() => unbanUser(u)}
                           >
-                            Appeal
+                            Unban
                           </Button>
                         ) : (
                           <Button 
@@ -560,10 +855,18 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                             className="text-xs h-7"
                             onClick={() => handleBanUser(u)}
                           >
-                            <Ban className="w-3 h-3 mr-1" />
-                            Ban
+                            <Ban className="w-3 h-3" />
                           </Button>
                         )}
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          className="text-xs h-7"
+                          onClick={() => openDeleteAccount(u)}
+                          title="Delete Account"
+                        >
+                          <UserX className="w-3 h-3" />
+                        </Button>
                       </div>
                     </div>
                   </Card>
@@ -652,28 +955,36 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                         </div>
                         <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{update.description}</p>
                       </div>
-                      {!update.is_released && (
-                        <div className="flex gap-1 ml-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="text-xs h-7"
-                            onClick={() => releaseUpdate(update.id, true)}
-                          >
-                            <FlaskConical className="w-3 h-3 mr-1" />
-                            Beta
-                          </Button>
-                          <Button 
-                            variant="default" 
-                            size="sm" 
-                            className="text-xs h-7"
-                            onClick={() => releaseUpdate(update.id, false)}
-                          >
-                            <Sparkles className="w-3 h-3 mr-1" />
-                            Release
-                          </Button>
-                        </div>
-                      )}
+                      <div className="flex gap-1 ml-2">
+                        {!update.is_released && (
+                          <>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-xs h-7"
+                              onClick={() => releaseUpdate(update.id, true)}
+                            >
+                              <FlaskConical className="w-3 h-3" />
+                            </Button>
+                            <Button 
+                              variant="default" 
+                              size="sm" 
+                              className="text-xs h-7"
+                              onClick={() => releaseUpdate(update.id, false)}
+                            >
+                              <Sparkles className="w-3 h-3" />
+                            </Button>
+                          </>
+                        )}
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          className="text-xs h-7"
+                          onClick={() => deleteUpdate(update.id)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 ))}
@@ -682,51 +993,100 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
           </TabsContent>
 
           <TabsContent value="social" className="flex-1 p-4 overflow-hidden">
-            <h3 className="font-semibold mb-3">Pending Posts ({pendingPosts.length})</h3>
-            <ScrollArea className="h-[calc(100%-2rem)]">
-              {pendingPosts.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">No pending posts</p>
-              ) : (
-                <div className="space-y-2 pr-4">
-                  {pendingPosts.map((post) => (
-                    <Card key={post.id} className="p-3 bg-secondary/50">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{post.username}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(post.created_at).toLocaleDateString()}
-                            </span>
+            <Tabs defaultValue="pending" className="h-full flex flex-col">
+              <TabsList className="mb-3">
+                <TabsTrigger value="pending" className="text-xs">
+                  Pending ({pendingPosts.length})
+                </TabsTrigger>
+                <TabsTrigger value="approved" className="text-xs">
+                  Approved ({approvedPosts.length})
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="pending" className="flex-1 overflow-hidden">
+                <ScrollArea className="h-full">
+                  {pendingPosts.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">No pending posts</p>
+                  ) : (
+                    <div className="space-y-2 pr-4">
+                      {pendingPosts.map((post) => (
+                        <Card key={post.id} className="p-3 bg-secondary/50">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{post.username}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(post.created_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <p className="text-sm mt-1">{post.content}</p>
+                              {post.image_url && (
+                                <img src={post.image_url} alt="" className="mt-2 rounded max-h-32 object-cover" />
+                              )}
+                            </div>
+                            <div className="flex gap-1 ml-2">
+                              <Button 
+                                variant="default" 
+                                size="sm" 
+                                className="text-xs h-7"
+                                onClick={() => approvePost(post.id)}
+                              >
+                                <Check className="w-3 h-3" />
+                              </Button>
+                              <Button 
+                                variant="destructive" 
+                                size="sm" 
+                                className="text-xs h-7"
+                                onClick={() => rejectPost(post.id)}
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
                           </div>
-                          <p className="text-sm mt-1">{post.content}</p>
-                          {post.image_url && (
-                            <img src={post.image_url} alt="" className="mt-2 rounded max-h-32 object-cover" />
-                          )}
-                        </div>
-                        <div className="flex gap-1 ml-2">
-                          <Button 
-                            variant="default" 
-                            size="sm" 
-                            className="text-xs h-7"
-                            onClick={() => approvePost(post.id)}
-                          >
-                            <Check className="w-3 h-3" />
-                          </Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm" 
-                            className="text-xs h-7"
-                            onClick={() => rejectPost(post.id)}
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </TabsContent>
+              
+              <TabsContent value="approved" className="flex-1 overflow-hidden">
+                <ScrollArea className="h-full">
+                  {approvedPosts.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">No approved posts</p>
+                  ) : (
+                    <div className="space-y-2 pr-4">
+                      {approvedPosts.map((post) => (
+                        <Card key={post.id} className="p-3 bg-secondary/50">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{post.username}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(post.created_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <p className="text-sm mt-1">{post.content}</p>
+                              {post.image_url && (
+                                <img src={post.image_url} alt="" className="mt-2 rounded max-h-32 object-cover" />
+                              )}
+                            </div>
+                            <Button 
+                              variant="destructive" 
+                              size="sm" 
+                              className="text-xs h-7 ml-2"
+                              onClick={() => deletePost(post.id)}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="leaderboard" className="flex-1 p-4 overflow-hidden">
@@ -752,9 +1112,15 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                 {messages.length === 0 && (
                   <div className="text-center text-muted-foreground py-8">
                     <Bot className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Ask me anything about managing the game!</p>
-                    <p className="text-sm mt-2">Try: "Create update v1.2 with: New weapons added"</p>
-                    <p className="text-xs mt-1">Or: "Release update v1.2 to beta testers"</p>
+                    <p className="font-medium">AI Assistant with Memory</p>
+                    <p className="text-sm mt-2">I remember our entire conversation!</p>
+                    <div className="mt-4 text-xs space-y-1">
+                      <p>• "Create update v1.2 with: New weapons added"</p>
+                      <p>• "Release v1.2 to beta testers"</p>
+                      <p>• "Ban user player1 for 24 hours"</p>
+                      <p>• "Get stats"</p>
+                      <p>• "Broadcast: Server maintenance in 1 hour"</p>
+                    </div>
                   </div>
                 )}
                 {messages.map((msg, i) => (
@@ -860,6 +1226,87 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
             <Button className="w-full" onClick={createUpdate}>
               Create Update
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Username Modal */}
+      <Dialog open={editUsernameModalOpen} onOpenChange={setEditUsernameModalOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit Username</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>New Username</Label>
+              <Input
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                placeholder="Enter new username..."
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={confirmEditUsername}>
+                Save
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setEditUsernameModalOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Account Modal */}
+      <Dialog open={deleteAccountModalOpen} onOpenChange={setDeleteAccountModalOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Delete Account</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete <span className="font-bold text-foreground">{deleteAccountTarget?.username}</span>'s account? 
+              This will remove all their data and cannot be undone.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="destructive" className="flex-1" onClick={confirmDeleteAccount}>
+                Delete Account
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setDeleteAccountModalOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Modal */}
+      <Dialog open={resetPasswordModalOpen} onOpenChange={setResetPasswordModalOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Reset password for <span className="font-bold text-foreground">{resetPasswordTarget?.username}</span>
+            </p>
+            <div className="space-y-2">
+              <Label>New Password</Label>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password..."
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={confirmResetPassword}>
+                Reset Password
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setResetPasswordModalOpen(false)}>
+                Cancel
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

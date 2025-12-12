@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { X, Send, Power, Users, Bot, Shield, Trophy, Sparkles, 
          Terminal, FlaskConical, Globe, Check, Ban, Zap, Edit, Trash2,
-         BarChart3, TrendingUp, Activity, Clock, UserX, Key, RefreshCw } from "lucide-react";
+         BarChart3, TrendingUp, Activity, Clock, UserX, Key, RefreshCw,
+         Megaphone, Gift, Swords } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -119,6 +120,16 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
   const [resetPasswordModalOpen, setResetPasswordModalOpen] = useState(false);
   const [resetPasswordTarget, setResetPasswordTarget] = useState<UserData | null>(null);
   const [newPassword, setNewPassword] = useState("");
+
+  // Broadcast modal
+  const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [broadcastExpiry, setBroadcastExpiry] = useState("60");
+
+  // Admin abuse modal
+  const [abuseModalOpen, setAbuseModalOpen] = useState(false);
+  const [abuseType, setAbuseType] = useState<"godmode" | "all_weapons">("godmode");
+  const [abuseDuration, setAbuseDuration] = useState("5");
 
   useEffect(() => {
     if (open) {
@@ -601,6 +612,54 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
 
   const applyCommandToPlayer = async (playerId: string, command: string) => {
     toast.success(`Command "${command}" applied`);
+  };
+
+  const sendBroadcast = async () => {
+    if (!broadcastMessage.trim()) {
+      toast.error("Please enter a message");
+      return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + parseInt(broadcastExpiry));
+
+    const { error } = await supabase.from("broadcasts").insert({
+      message: broadcastMessage,
+      created_by: user.id,
+      expires_at: expiresAt.toISOString(),
+    });
+
+    if (error) {
+      toast.error("Failed to send broadcast");
+    } else {
+      toast.success("Broadcast sent to all players!");
+      setBroadcastModalOpen(false);
+      setBroadcastMessage("");
+    }
+  };
+
+  const activateAdminAbuse = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + parseInt(abuseDuration));
+
+    const { error } = await supabase.from("admin_abuse_events").insert({
+      event_type: abuseType,
+      created_by: user.id,
+      expires_at: expiresAt.toISOString(),
+    });
+
+    if (error) {
+      toast.error("Failed to activate");
+    } else {
+      toast.success(`${abuseType === "godmode" ? "Godmode" : "All Weapons"} activated for all players for ${abuseDuration} minutes!`);
+      setAbuseModalOpen(false);
+    }
   };
 
   if (!open) return null;

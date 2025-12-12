@@ -44,6 +44,33 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_abuse_events: {
+        Row: {
+          created_at: string
+          created_by: string
+          event_type: string
+          expires_at: string
+          id: string
+          is_active: boolean
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          event_type: string
+          expires_at: string
+          id?: string
+          is_active?: boolean
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          event_type?: string
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+        }
+        Relationships: []
+      }
       ai_conversations: {
         Row: {
           admin_id: string
@@ -119,6 +146,33 @@ export type Database = {
         }
         Relationships: []
       }
+      broadcasts: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          message: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          message: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          message?: string
+        }
+        Relationships: []
+      }
       chat_permissions: {
         Row: {
           can_use_commands: boolean
@@ -140,6 +194,60 @@ export type Database = {
           granted_by?: string | null
           id?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      daily_rewards: {
+        Row: {
+          claimed_at: string
+          id: string
+          reward_type: string
+          reward_value: string
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          id?: string
+          reward_type: string
+          reward_value: string
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string
+          id?: string
+          reward_type?: string
+          reward_value?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      feedback_messages: {
+        Row: {
+          content: string
+          created_at: string
+          feedback_type: string
+          from_user_id: string
+          from_username: string
+          id: string
+          is_processed: boolean
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          feedback_type?: string
+          from_user_id: string
+          from_username: string
+          id?: string
+          is_processed?: boolean
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          feedback_type?: string
+          from_user_id?: string
+          from_username?: string
+          id?: string
+          is_processed?: boolean
         }
         Relationships: []
       }
@@ -205,8 +313,10 @@ export type Database = {
           id: string
           is_beta: boolean
           is_released: boolean
+          is_seasonal: boolean
           name: string
           released_at: string | null
+          season: string | null
           summary: string | null
         }
         Insert: {
@@ -216,8 +326,10 @@ export type Database = {
           id?: string
           is_beta?: boolean
           is_released?: boolean
+          is_seasonal?: boolean
           name: string
           released_at?: string | null
+          season?: string | null
           summary?: string | null
         }
         Update: {
@@ -227,8 +339,10 @@ export type Database = {
           id?: string
           is_beta?: boolean
           is_released?: boolean
+          is_seasonal?: boolean
           name?: string
           released_at?: string | null
+          season?: string | null
           summary?: string | null
         }
         Relationships: []
@@ -310,6 +424,65 @@ export type Database = {
         }
         Relationships: []
       }
+      player_currencies: {
+        Row: {
+          coins: number
+          created_at: string
+          gems: number
+          gold: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coins?: number
+          created_at?: string
+          gems?: number
+          gold?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coins?: number
+          created_at?: string
+          gems?: number
+          gold?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      player_owned_skins: {
+        Row: {
+          id: string
+          purchased_at: string
+          skin_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          purchased_at?: string
+          skin_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          purchased_at?: string
+          skin_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_owned_skins_skin_id_fkey"
+            columns: ["skin_id"]
+            isOneToOne: false
+            referencedRelation: "player_skins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       player_progress: {
         Row: {
           created_at: string
@@ -331,6 +504,42 @@ export type Database = {
           unlocked_weapons?: string[]
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      player_skins: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_seasonal: boolean
+          name: string
+          price_coins: number
+          price_gems: number
+          price_gold: number
+          season: string | null
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          is_seasonal?: boolean
+          name: string
+          price_coins?: number
+          price_gems?: number
+          price_gold?: number
+          season?: string | null
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_seasonal?: boolean
+          name?: string
+          price_coins?: number
+          price_gems?: number
+          price_gold?: number
+          season?: string | null
         }
         Relationships: []
       }

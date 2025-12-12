@@ -240,11 +240,41 @@ export const MessagesPanel = ({ open, onOpenChange }: MessagesPanelProps) => {
             >
               ← Back
             </Button>
-            <Input
-              placeholder="Recipient username..."
-              value={recipient}
-              onChange={(e) => setRecipient(e.target.value)}
-            />
+            <div className="flex gap-2">
+              <Input
+                placeholder="Recipient username..."
+                value={recipient}
+                onChange={(e) => setRecipient(e.target.value)}
+                className="flex-1"
+              />
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={async () => {
+                  // Auto-fill with admin username
+                  const { data } = await supabase
+                    .from("user_roles")
+                    .select("user_id")
+                    .eq("role", "admin")
+                    .limit(1)
+                    .single();
+                  
+                  if (data) {
+                    const { data: profile } = await supabase
+                      .from("profiles")
+                      .select("username")
+                      .eq("user_id", data.user_id)
+                      .single();
+                    
+                    if (profile) {
+                      setRecipient(profile.username);
+                    }
+                  }
+                }}
+              >
+                Send to Admin
+              </Button>
+            </div>
             <Input
               placeholder="Subject..."
               value={subject}

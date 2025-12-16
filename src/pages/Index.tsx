@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { UsernameModal } from "@/components/game/UsernameModal";
 import { GameModeSelector } from "@/components/game/GameModeSelector";
 import { GameCanvas } from "@/components/game/GameCanvas";
+import { BossMode } from "@/components/game/BossMode";
 import { Lobby } from "@/components/game/Lobby";
 import { AdminPanel } from "@/components/game/AdminPanel";
 import { AdminCodeModal } from "@/components/game/AdminCodeModal";
@@ -11,12 +12,16 @@ import { MessagesPanel } from "@/components/game/MessagesPanel";
 import { UpdatesHub } from "@/components/game/UpdatesHub";
 import { SocialFeed } from "@/components/game/SocialFeed";
 import { BetaTesterPanel } from "@/components/game/BetaTesterPanel";
+import { SkinsShop } from "@/components/game/SkinsShop";
+import { PublicLeaderboard } from "@/components/game/PublicLeaderboard";
+import { BanModal } from "@/components/game/BanModal";
 import { useAuth } from "@/hooks/useAuth";
+import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
-import { Shield, LogOut, Mail, Sparkles, Globe, FlaskConical } from "lucide-react";
+import { Shield, LogOut, Mail, Sparkles, Globe, FlaskConical, Palette, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type GameMode = "solo" | "host" | "join" | "offline" | null;
+export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | null;
 
 const Index = () => {
   const { user, loading, isGuest } = useAuth();
@@ -34,15 +39,27 @@ const Index = () => {
   const [showUpdates, setShowUpdates] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
   const [showBetaPanel, setShowBetaPanel] = useState(false);
+  const [showSkinsShop, setShowSkinsShop] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [websiteEnabled, setWebsiteEnabled] = useState(true);
   const [disabledMessage, setDisabledMessage] = useState("");
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
+  // Real-time game status hook
+  const gameStatus = useGameStatus(user?.id || null);
+
   useEffect(() => {
     checkWebsiteStatus();
   }, []);
+
+  // Handle real-time status updates
+  useEffect(() => {
+    if (!gameStatus.websiteEnabled && !isAdmin) {
+      setWebsiteEnabled(false);
+    }
+  }, [gameStatus.websiteEnabled, isAdmin]);
 
   useEffect(() => {
     if (loading) return;
@@ -194,6 +211,17 @@ const Index = () => {
     );
   }
 
+  // Show ban modal if user is banned
+  if (gameStatus.isBanned && gameStatus.banInfo) {
+    return (
+      <BanModal 
+        open={true} 
+        onOpenChange={() => {}} 
+        banInfo={gameStatus.banInfo}
+      />
+    );
+  }
+
   if (!websiteEnabled && !isAdmin) {
     return <WebsiteDisabled message={disabledMessage} />;
   }
@@ -217,6 +245,12 @@ const Index = () => {
             </Button>
             <Button variant="outline" size="sm" onClick={() => setShowSocial(true)} className="gap-1">
               <Globe className="w-4 h-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowSkinsShop(true)} className="gap-1">
+              <Palette className="w-4 h-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowLeaderboard(true)} className="gap-1">
+              <Trophy className="w-4 h-4" />
             </Button>
             {(isBetaTester || isAdmin) && (
               <Button variant="outline" size="sm" onClick={() => setShowBetaPanel(true)} className="gap-1">
@@ -253,8 +287,22 @@ const Index = () => {
         <Lobby mode={gameMode} username={username} roomCode={roomCode} onStartGame={handleStartGame} onBack={handleBackToMenu} />
       )}
 
-      {(isInGame || gameMode === "solo" || gameMode === "offline") && (
-        <GameCanvas mode={gameMode as Exclude<GameMode, null>} username={username} roomCode={roomCode} onBack={handleBackToMenu} />
+      {(isInGame || gameMode === "solo" || gameMode === "offline") && gameMode !== "boss" && (
+        <GameCanvas 
+          mode={gameMode as Exclude<GameMode, null | "boss">} 
+          username={username} 
+          roomCode={roomCode} 
+          onBack={handleBackToMenu}
+          adminAbuseEvents={gameStatus.adminAbuseEvents}
+        />
+      )}
+
+      {gameMode === "boss" && (
+        <BossMode 
+          username={username} 
+          onBack={handleBackToMenu}
+          adminAbuseEvents={gameStatus.adminAbuseEvents}
+        />
       )}
 
       <AdminCodeModal open={showAdminCode} onOpenChange={setShowAdminCode} onSuccess={() => setShowAdminPanel(true)} />
@@ -263,6 +311,8 @@ const Index = () => {
       <UpdatesHub open={showUpdates} onOpenChange={setShowUpdates} />
       <SocialFeed open={showSocial} onOpenChange={setShowSocial} />
       <BetaTesterPanel open={showBetaPanel} onOpenChange={setShowBetaPanel} />
+      <SkinsShop open={showSkinsShop} onOpenChange={setShowSkinsShop} />
+      <PublicLeaderboard open={showLeaderboard} onOpenChange={setShowLeaderboard} />
     </div>
   );
 };

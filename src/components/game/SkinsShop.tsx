@@ -12,8 +12,8 @@ import { toast } from "sonner";
 interface SkinsShopProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSkinSelect: (color: string) => void;
-  currentSkin: string;
+  onSkinSelect?: (color: string) => void;
+  currentSkin?: string;
 }
 
 interface Skin {
@@ -33,7 +33,7 @@ interface Currencies {
   gold: number;
 }
 
-export const SkinsShop = ({ open, onOpenChange, onSkinSelect, currentSkin }: SkinsShopProps) => {
+export const SkinsShop = ({ open, onOpenChange, onSkinSelect, currentSkin = "#FFF3D6" }: SkinsShopProps) => {
   const [skins, setSkins] = useState<Skin[]>([]);
   const [ownedSkinIds, setOwnedSkinIds] = useState<Set<string>>(new Set());
   const [currencies, setCurrencies] = useState<Currencies>({ gems: 0, coins: 0, gold: 0 });
@@ -144,7 +144,9 @@ export const SkinsShop = ({ open, onOpenChange, onSkinSelect, currentSkin }: Ski
       toast.error("You don't own this skin!");
       return;
     }
-    onSkinSelect(skin.color);
+    if (onSkinSelect) {
+      onSkinSelect(skin.color);
+    }
     toast.success(`Equipped ${skin.name}!`);
   };
 

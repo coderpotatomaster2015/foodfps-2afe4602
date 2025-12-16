@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Users, User, Wifi, WifiOff } from "lucide-react";
+import { Users, User, Wifi, WifiOff, Skull } from "lucide-react";
 import type { GameMode } from "@/pages/Index";
 import { openOfflineGame } from "@/utils/offlineGame";
 import { toast } from "sonner";
@@ -66,6 +66,24 @@ export const GameModeSelector = ({ username, onModeSelect }: GameModeSelectorPro
           </div>
         </Card>
       </div>
+
+      {/* Boss Mode - New */}
+      <Card className="p-6 bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30 hover:border-red-500 transition-colors cursor-pointer group"
+        onClick={() => onModeSelect("boss")}
+      >
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              <Skull className="w-6 h-6 text-red-500" />
+              Boss Mode
+            </h3>
+            <p className="text-sm text-muted-foreground">Fight progressively harder bosses and earn currencies!</p>
+          </div>
+          <Button variant="destructive" className="glow-destructive">
+            Challenge Bosses
+          </Button>
+        </div>
+      </Card>
 
       <Card className="p-6 bg-card border-border">
         <div className="space-y-4">

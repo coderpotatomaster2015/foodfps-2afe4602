@@ -11,10 +11,11 @@ import { toast } from "sonner";
 import { useMultiplayer } from "@/hooks/useMultiplayer";
 
 interface GameCanvasProps {
-  mode: Exclude<GameMode, null>;
+  mode: Exclude<GameMode, null | "boss">;
   username: string;
   roomCode: string;
   onBack: () => void;
+  adminAbuseEvents?: { event_type: string; expires_at: string }[];
 }
 
 interface AdminState {
@@ -56,7 +57,7 @@ const WEAPONS: Record<Weapon, WeaponConfig> = {
 
 const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "rifle", "sniper", "smg", "knife", "rpg", "axe", "flamethrower", "minigun", "railgun"];
 
-export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps) => {
+export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents = [] }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [onlinePlayersOpen, setOnlinePlayersOpen] = useState(false);
@@ -90,6 +91,20 @@ export const GameCanvas = ({ mode, username, roomCode, onBack }: GameCanvasProps
   useEffect(() => {
     checkPermissions();
   }, []);
+
+  // Apply admin abuse events
+  useEffect(() => {
+    const now = new Date();
+    for (const event of adminAbuseEvents) {
+      if (new Date(event.expires_at) > now) {
+        if (event.event_type === "godmode") {
+          adminStateRef.current.godMode = true;
+        } else if (event.event_type === "all_weapons") {
+          setUnlockedWeapons([...WEAPON_ORDER]);
+        }
+      }
+    }
+  }, [adminAbuseEvents]);
 
   const checkPermissions = async () => {
     const { data: { user } } = await supabase.auth.getUser();

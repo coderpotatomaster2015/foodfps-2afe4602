@@ -825,6 +825,43 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
               </div>
             </Card>
 
+            {/* Broadcast Section */}
+            <Card className="p-4 bg-secondary/50">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label className="font-semibold flex items-center gap-2">
+                    <Megaphone className="w-4 h-4" />
+                    Broadcast Message
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Send a message to all active players instantly
+                  </p>
+                </div>
+                <Button onClick={() => setBroadcastModalOpen(true)}>
+                  Send Broadcast
+                </Button>
+              </div>
+            </Card>
+
+            {/* Admin Abuse Section */}
+            <Card className="p-4 bg-secondary/50 border-amber-500/30">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label className="font-semibold flex items-center gap-2 text-amber-500">
+                    <Gift className="w-4 h-4" />
+                    Admin Abuse (All Players)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Give temporary powers to ALL players
+                  </p>
+                </div>
+                <Button variant="outline" className="border-amber-500 text-amber-500 hover:bg-amber-500/20" onClick={() => setAbuseModalOpen(true)}>
+                  <Swords className="w-4 h-4 mr-2" />
+                  Activate
+                </Button>
+              </div>
+            </Card>
+
             <Card className="p-4 bg-secondary/50">
               <h3 className="font-semibold mb-3">Quick Stats</h3>
               <div className="grid grid-cols-3 gap-3">
@@ -1363,6 +1400,109 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                 Reset Password
               </Button>
               <Button variant="outline" className="flex-1" onClick={() => setResetPasswordModalOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Broadcast Modal */}
+      <Dialog open={broadcastModalOpen} onOpenChange={setBroadcastModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Megaphone className="w-5 h-5 text-primary" />
+              Send Broadcast
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This message will be shown to all active players instantly.
+            </p>
+            <div className="space-y-2">
+              <Label>Message</Label>
+              <Textarea
+                value={broadcastMessage}
+                onChange={(e) => setBroadcastMessage(e.target.value)}
+                placeholder="Enter broadcast message..."
+                rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Expires in (minutes)</Label>
+              <Input
+                type="number"
+                value={broadcastExpiry}
+                onChange={(e) => setBroadcastExpiry(e.target.value)}
+                placeholder="60"
+                min="1"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={sendBroadcast}>
+                <Megaphone className="w-4 h-4 mr-2" />
+                Send Broadcast
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setBroadcastModalOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Admin Abuse Modal */}
+      <Dialog open={abuseModalOpen} onOpenChange={setAbuseModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-500">
+              <Gift className="w-5 h-5" />
+              Admin Abuse - All Players
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Give temporary powers to ALL active players. Effects expire automatically.
+            </p>
+            <div className="space-y-2">
+              <Label>Effect Type</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant={abuseType === "godmode" ? "default" : "outline"}
+                  onClick={() => setAbuseType("godmode")}
+                  className="h-16 flex-col gap-1"
+                >
+                  <Shield className="w-5 h-5" />
+                  <span className="text-xs">Godmode</span>
+                </Button>
+                <Button
+                  variant={abuseType === "all_weapons" ? "default" : "outline"}
+                  onClick={() => setAbuseType("all_weapons")}
+                  className="h-16 flex-col gap-1"
+                >
+                  <Swords className="w-5 h-5" />
+                  <span className="text-xs">All Weapons</span>
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Duration (minutes)</Label>
+              <Input
+                type="number"
+                value={abuseDuration}
+                onChange={(e) => setAbuseDuration(e.target.value)}
+                placeholder="5"
+                min="1"
+                max="60"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button className="flex-1 bg-amber-500 hover:bg-amber-600" onClick={activateAdminAbuse}>
+                <Zap className="w-4 h-4 mr-2" />
+                Activate for All
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setAbuseModalOpen(false)}>
                 Cancel
               </Button>
             </div>

@@ -66,6 +66,8 @@ interface Update {
   description: string;
   is_released: boolean;
   is_beta: boolean;
+  is_seasonal: boolean;
+  season: string | null;
   created_at: string;
 }
 
@@ -1031,61 +1033,133 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                 Create Update
               </Button>
             </div>
-            <ScrollArea className="h-[calc(100%-3rem)]">
-              <div className="space-y-2 pr-4">
-                {updates.map((update) => (
-                  <Card key={update.id} className="p-3 bg-secondary/50">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{update.name}</span>
-                          {update.is_released && !update.is_beta && (
-                            <span className="text-[10px] bg-green-500/20 text-green-500 px-1.5 py-0.5 rounded">RELEASED</span>
-                          )}
-                          {update.is_beta && (
-                            <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded">BETA</span>
-                          )}
-                          {!update.is_released && !update.is_beta && (
-                            <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded">DRAFT</span>
-                          )}
+            <Tabs defaultValue="all" className="h-full flex flex-col">
+              <TabsList className="mb-2">
+                <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
+                <TabsTrigger value="seasonal" className="text-xs">Monthly/Seasonal</TabsTrigger>
+              </TabsList>
+              <TabsContent value="all" className="flex-1 overflow-hidden">
+                <ScrollArea className="h-[calc(100%-3rem)]">
+                  <div className="space-y-2 pr-4">
+                    {updates.filter(u => !u.is_seasonal).map((update) => (
+                      <Card key={update.id} className="p-3 bg-secondary/50">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{update.name}</span>
+                              {update.is_released && !update.is_beta && (
+                                <span className="text-[10px] bg-green-500/20 text-green-500 px-1.5 py-0.5 rounded">PUBLIC</span>
+                              )}
+                              {update.is_beta && !update.is_released && (
+                                <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded">BETA ONLY</span>
+                              )}
+                              {!update.is_released && !update.is_beta && (
+                                <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded">DRAFT</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{update.description}</p>
+                          </div>
+                          <div className="flex gap-1 ml-2">
+                            {!update.is_released && (
+                              <>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="text-xs h-7"
+                                  onClick={() => releaseUpdate(update.id, true)}
+                                  title="Release to Beta Testers"
+                                >
+                                  <FlaskConical className="w-3 h-3" />
+                                </Button>
+                                <Button 
+                                  variant="default" 
+                                  size="sm" 
+                                  className="text-xs h-7"
+                                  onClick={() => releaseUpdate(update.id, false)}
+                                  title="Release to Public"
+                                >
+                                  <Sparkles className="w-3 h-3" />
+                                </Button>
+                              </>
+                            )}
+                            <Button 
+                              variant="destructive" 
+                              size="sm" 
+                              className="text-xs h-7"
+                              onClick={() => deleteUpdate(update.id)}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{update.description}</p>
-                      </div>
-                      <div className="flex gap-1 ml-2">
-                        {!update.is_released && (
-                          <>
+                      </Card>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+              <TabsContent value="seasonal" className="flex-1 overflow-hidden">
+                <ScrollArea className="h-[calc(100%-3rem)]">
+                  <div className="space-y-2 pr-4">
+                    {updates.filter(u => u.is_seasonal).map((update) => (
+                      <Card key={update.id} className="p-3 bg-secondary/50 border-l-4 border-l-primary">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{update.name}</span>
+                              <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded uppercase">
+                                {update.season || "Seasonal"}
+                              </span>
+                              {update.is_released && !update.is_beta && (
+                                <span className="text-[10px] bg-green-500/20 text-green-500 px-1.5 py-0.5 rounded">PUBLIC</span>
+                              )}
+                              {update.is_beta && !update.is_released && (
+                                <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded">BETA</span>
+                              )}
+                              {!update.is_released && !update.is_beta && (
+                                <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded">READY</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{update.description}</p>
+                          </div>
+                          <div className="flex gap-1 ml-2">
+                            {!update.is_released && (
+                              <>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="text-xs h-7"
+                                  onClick={() => releaseUpdate(update.id, true)}
+                                  title="Release to Beta"
+                                >
+                                  <FlaskConical className="w-3 h-3" />
+                                </Button>
+                                <Button 
+                                  variant="default" 
+                                  size="sm" 
+                                  className="text-xs h-7"
+                                  onClick={() => releaseUpdate(update.id, false)}
+                                  title="Release to Public"
+                                >
+                                  <Sparkles className="w-3 h-3" />
+                                </Button>
+                              </>
+                            )}
                             <Button 
-                              variant="outline" 
+                              variant="destructive" 
                               size="sm" 
                               className="text-xs h-7"
-                              onClick={() => releaseUpdate(update.id, true)}
+                              onClick={() => deleteUpdate(update.id)}
                             >
-                              <FlaskConical className="w-3 h-3" />
+                              <Trash2 className="w-3 h-3" />
                             </Button>
-                            <Button 
-                              variant="default" 
-                              size="sm" 
-                              className="text-xs h-7"
-                              onClick={() => releaseUpdate(update.id, false)}
-                            >
-                              <Sparkles className="w-3 h-3" />
-                            </Button>
-                          </>
-                        )}
-                        <Button 
-                          variant="destructive" 
-                          size="sm" 
-                          className="text-xs h-7"
-                          onClick={() => deleteUpdate(update.id)}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </ScrollArea>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="social" className="flex-1 p-4 overflow-hidden">

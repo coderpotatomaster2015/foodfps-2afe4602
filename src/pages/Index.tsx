@@ -16,10 +16,12 @@ import { SkinsShop } from "@/components/game/SkinsShop";
 import { PublicLeaderboard } from "@/components/game/PublicLeaderboard";
 import { DailyRewards } from "@/components/game/DailyRewards";
 import { BanModal } from "@/components/game/BanModal";
+import { GameSidebar } from "@/components/game/GameSidebar";
+import { SettingsModal } from "@/components/game/SettingsModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
-import { Shield, LogOut, Mail, Sparkles, Globe, FlaskConical, Palette, Trophy, Gift } from "lucide-react";
+import { Shield, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -44,6 +46,8 @@ const Index = () => {
   const [showSkinsShop, setShowSkinsShop] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showDailyRewards, setShowDailyRewards] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [touchscreenMode, setTouchscreenMode] = useState(false);
   const [websiteEnabled, setWebsiteEnabled] = useState(true);
   const [disabledMessage, setDisabledMessage] = useState("");
   const [checkingStatus, setCheckingStatus] = useState(true);
@@ -55,6 +59,9 @@ const Index = () => {
 
   useEffect(() => {
     checkWebsiteStatus();
+    // Load touchscreen mode from localStorage
+    const savedTouchscreen = localStorage.getItem("foodfps_touchscreen");
+    if (savedTouchscreen) setTouchscreenMode(savedTouchscreen === "true");
   }, []);
 
   // Handle real-time status updates
@@ -229,42 +236,32 @@ const Index = () => {
     return <WebsiteDisabled message={disabledMessage} />;
   }
 
+  const handleTouchscreenChange = (enabled: boolean) => {
+    setTouchscreenMode(enabled);
+    localStorage.setItem("foodfps_touchscreen", String(enabled));
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      {/* Top bar */}
-      <div className="fixed top-4 right-4 flex gap-2 z-50 flex-wrap justify-end">
-        {user && (
-          <>
-            <Button variant="outline" size="sm" onClick={() => setShowMessages(true)} className="gap-1 relative">
-              <Mail className="w-4 h-4" />
-              {unreadMessages > 0 && (
-                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs w-4 h-4 rounded-full flex items-center justify-center">
-                  {unreadMessages}
-                </span>
-              )}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowUpdates(true)} className="gap-1">
-              <Sparkles className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowSocial(true)} className="gap-1">
-              <Globe className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowSkinsShop(true)} className="gap-1">
-              <Palette className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowLeaderboard(true)} className="gap-1">
-              <Trophy className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowDailyRewards(true)} className="gap-1">
-              <Gift className="w-4 h-4" />
-            </Button>
-            {(isBetaTester || isAdmin) && (
-              <Button variant="outline" size="sm" onClick={() => setShowBetaPanel(true)} className="gap-1">
-                <FlaskConical className="w-4 h-4" />
-              </Button>
-            )}
-          </>
-        )}
+      {/* Left Sidebar for game tabs */}
+      {user && !gameMode && (
+        <GameSidebar
+          unreadMessages={unreadMessages}
+          isAdmin={isAdmin}
+          isBetaTester={isBetaTester}
+          onShowMessages={() => setShowMessages(true)}
+          onShowUpdates={() => setShowUpdates(true)}
+          onShowSocial={() => setShowSocial(true)}
+          onShowSkinsShop={() => setShowSkinsShop(true)}
+          onShowLeaderboard={() => setShowLeaderboard(true)}
+          onShowDailyRewards={() => setShowDailyRewards(true)}
+          onShowBetaPanel={() => setShowBetaPanel(true)}
+          onShowSettings={() => setShowSettings(true)}
+        />
+      )}
+
+      {/* Top right bar - Admin and Logout only */}
+      <div className="fixed top-4 right-4 flex gap-2 z-50">
         {isAdmin && (
           <Button variant="default" size="sm" onClick={handleAdminClick} className="gap-2">
             <Shield className="w-4 h-4" />
@@ -278,7 +275,7 @@ const Index = () => {
       </div>
 
       {!websiteEnabled && isAdmin && (
-        <div className="fixed top-4 left-4 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm z-50">
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm z-50">
           ⚠️ Website disabled for users
         </div>
       )}
@@ -292,7 +289,7 @@ const Index = () => {
 
       {/* Admin Abuse Active Indicator */}
       {gameStatus.adminAbuseEvents.length > 0 && (
-        <div className="fixed bottom-4 left-4 flex flex-col gap-2 z-50">
+        <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-50">
           {gameStatus.adminAbuseEvents.map(event => (
             <div key={event.id} className="bg-amber-500/90 text-black px-4 py-2 rounded-lg text-sm font-medium">
               {event.event_type === "godmode" ? "🛡️ Godmode Active!" : "🔫 All Weapons Active!"}
@@ -318,6 +315,7 @@ const Index = () => {
           roomCode={roomCode} 
           onBack={handleBackToMenu}
           adminAbuseEvents={gameStatus.adminAbuseEvents}
+          touchscreenMode={touchscreenMode}
         />
       )}
 
@@ -326,6 +324,7 @@ const Index = () => {
           username={username} 
           onBack={handleBackToMenu}
           adminAbuseEvents={gameStatus.adminAbuseEvents}
+          touchscreenMode={touchscreenMode}
         />
       )}
 
@@ -338,6 +337,12 @@ const Index = () => {
       <SkinsShop open={showSkinsShop} onOpenChange={setShowSkinsShop} />
       <PublicLeaderboard open={showLeaderboard} onOpenChange={setShowLeaderboard} />
       <DailyRewards open={showDailyRewards} onOpenChange={setShowDailyRewards} />
+      <SettingsModal 
+        open={showSettings} 
+        onOpenChange={setShowSettings}
+        touchscreenMode={touchscreenMode}
+        onTouchscreenModeChange={handleTouchscreenChange}
+      />
     </div>
   );
 };

@@ -14,12 +14,14 @@ import { SocialFeed } from "@/components/game/SocialFeed";
 import { BetaTesterPanel } from "@/components/game/BetaTesterPanel";
 import { SkinsShop } from "@/components/game/SkinsShop";
 import { PublicLeaderboard } from "@/components/game/PublicLeaderboard";
+import { DailyRewards } from "@/components/game/DailyRewards";
 import { BanModal } from "@/components/game/BanModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
-import { Shield, LogOut, Mail, Sparkles, Globe, FlaskConical, Palette, Trophy } from "lucide-react";
+import { Shield, LogOut, Mail, Sparkles, Globe, FlaskConical, Palette, Trophy, Gift } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | null;
 
@@ -41,6 +43,7 @@ const Index = () => {
   const [showBetaPanel, setShowBetaPanel] = useState(false);
   const [showSkinsShop, setShowSkinsShop] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showDailyRewards, setShowDailyRewards] = useState(false);
   const [websiteEnabled, setWebsiteEnabled] = useState(true);
   const [disabledMessage, setDisabledMessage] = useState("");
   const [checkingStatus, setCheckingStatus] = useState(true);
@@ -252,6 +255,9 @@ const Index = () => {
             <Button variant="outline" size="sm" onClick={() => setShowLeaderboard(true)} className="gap-1">
               <Trophy className="w-4 h-4" />
             </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowDailyRewards(true)} className="gap-1">
+              <Gift className="w-4 h-4" />
+            </Button>
             {(isBetaTester || isAdmin) && (
               <Button variant="outline" size="sm" onClick={() => setShowBetaPanel(true)} className="gap-1">
                 <FlaskConical className="w-4 h-4" />
@@ -274,6 +280,24 @@ const Index = () => {
       {!websiteEnabled && isAdmin && (
         <div className="fixed top-4 left-4 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm z-50">
           ⚠️ Website disabled for users
+        </div>
+      )}
+
+      {/* Broadcast Banner */}
+      {gameStatus.activeBroadcast && (
+        <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground px-6 py-3 rounded-lg shadow-lg z-50 max-w-lg text-center animate-pulse">
+          <span className="font-semibold">📢 {gameStatus.activeBroadcast.message}</span>
+        </div>
+      )}
+
+      {/* Admin Abuse Active Indicator */}
+      {gameStatus.adminAbuseEvents.length > 0 && (
+        <div className="fixed bottom-4 left-4 flex flex-col gap-2 z-50">
+          {gameStatus.adminAbuseEvents.map(event => (
+            <div key={event.id} className="bg-amber-500/90 text-black px-4 py-2 rounded-lg text-sm font-medium">
+              {event.event_type === "godmode" ? "🛡️ Godmode Active!" : "🔫 All Weapons Active!"}
+            </div>
+          ))}
         </div>
       )}
 
@@ -313,6 +337,7 @@ const Index = () => {
       <BetaTesterPanel open={showBetaPanel} onOpenChange={setShowBetaPanel} />
       <SkinsShop open={showSkinsShop} onOpenChange={setShowSkinsShop} />
       <PublicLeaderboard open={showLeaderboard} onOpenChange={setShowLeaderboard} />
+      <DailyRewards open={showDailyRewards} onOpenChange={setShowDailyRewards} />
     </div>
   );
 };

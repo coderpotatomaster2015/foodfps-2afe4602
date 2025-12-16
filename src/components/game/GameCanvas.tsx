@@ -5,6 +5,7 @@ import { AdminChat } from "./AdminChat";
 import { OnlinePlayersModal } from "./OnlinePlayersModal";
 import { BanModal } from "./BanModal";
 import { Scoreboard } from "./Scoreboard";
+import { TouchControls } from "./TouchControls";
 import type { GameMode } from "@/pages/Index";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -76,6 +77,10 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const [kills, setKills] = useState(0);
   const [deaths, setDeaths] = useState(0);
   const [hasPermission, setHasPermission] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const touchMoveRef = useRef({ x: 0, y: 0 });
+  const touchAimRef = useRef({ x: 480, y: 320 });
+  const touchShootingRef = useRef(false);
   
   const adminStateRef = useRef<AdminState>({ active: false, godMode: false, speedMultiplier: 1, infiniteAmmo: false });
   const gameStateRef = useRef<any>({ enemies: [], pickups: [], W: 960, H: 640, mapBoundsMultiplier: 1 });
@@ -90,6 +95,37 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   // Check command permissions
   useEffect(() => {
     checkPermissions();
+  }, []);
+
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Touch control handlers
+  const handleTouchMove = useCallback((dx: number, dy: number) => {
+    touchMoveRef.current = { x: dx, y: dy };
+  }, []);
+
+  const handleTouchAim = useCallback((x: number, y: number) => {
+    touchAimRef.current = { x, y };
+  }, []);
+
+  const handleTouchShoot = useCallback((shooting: boolean) => {
+    touchShootingRef.current = shooting;
+  }, []);
+
+  const handleTouchReload = useCallback(() => {
+    if (playerRef.current) {
+      const weaponConfig = WEAPONS[playerRef.current.weapon as Weapon];
+      playerRef.current.ammo = weaponConfig.maxAmmo;
+      setAmmo(weaponConfig.maxAmmo);
+    }
   }, []);
 
   // Apply admin abuse events
@@ -1099,6 +1135,17 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         open={banModalOpen}
         onOpenChange={setBanModalOpen}
       />
+
+      {isMobile && (
+        <TouchControls
+          onMove={handleTouchMove}
+          onAim={handleTouchAim}
+          onShoot={handleTouchShoot}
+          onReload={handleTouchReload}
+          canvasWidth={960}
+          canvasHeight={640}
+        />
+      )}
 
       {showScoreboard && (
         <Scoreboard

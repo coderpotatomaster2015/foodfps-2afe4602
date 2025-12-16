@@ -17,6 +17,7 @@ interface GameCanvasProps {
   roomCode: string;
   onBack: () => void;
   adminAbuseEvents?: { event_type: string; expires_at: string }[];
+  touchscreenMode?: boolean;
 }
 
 interface AdminState {
@@ -58,7 +59,7 @@ const WEAPONS: Record<Weapon, WeaponConfig> = {
 
 const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "rifle", "sniper", "smg", "knife", "rpg", "axe", "flamethrower", "minigun", "railgun"];
 
-export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents = [] }: GameCanvasProps) => {
+export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents = [], touchscreenMode = false }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [onlinePlayersOpen, setOnlinePlayersOpen] = useState(false);

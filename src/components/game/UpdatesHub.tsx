@@ -35,6 +35,8 @@ export const UpdatesHub = ({ open, onOpenChange }: UpdatesHubProps) => {
   const loadUpdates = async () => {
     setLoading(true);
     try {
+      // Load only PUBLIC releases (is_released=true means public)
+      // Beta-only updates are NOT shown here - they show in BetaTesterPanel
       const { data } = await supabase
         .from("game_updates")
         .select("*")

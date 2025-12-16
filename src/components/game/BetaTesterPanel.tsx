@@ -38,10 +38,13 @@ export const BetaTesterPanel = ({ open, onOpenChange }: BetaTesterPanelProps) =>
   const loadBetaUpdates = async () => {
     setLoading(true);
     try {
+      // Load updates that are beta-only (is_beta=true and is_released=false)
+      // These are updates specifically released to beta testers but not yet public
       const { data } = await supabase
         .from("game_updates")
         .select("*")
         .eq("is_beta", true)
+        .eq("is_released", false)
         .order("created_at", { ascending: false });
 
       if (data) setUpdates(data);

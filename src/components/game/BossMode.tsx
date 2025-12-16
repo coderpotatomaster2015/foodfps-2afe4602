@@ -11,6 +11,7 @@ interface BossModeProps {
   onBack: () => void;
   playerSkin?: string;
   adminAbuseEvents?: { event_type: string; expires_at: string }[];
+  touchscreenMode?: boolean;
 }
 
 type Weapon = "pistol" | "shotgun" | "minigun" | "sniper" | "sword" | "knife" | "axe" | "rifle" | "smg" | "rpg" | "flamethrower" | "railgun";
@@ -45,7 +46,7 @@ const WEAPONS: Record<Weapon, WeaponConfig> = {
 
 const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "rifle", "sniper", "smg", "knife", "rpg", "axe", "flamethrower", "minigun", "railgun"];
 
-export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseEvents = [] }: BossModeProps) => {
+export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseEvents = [], touchscreenMode = false }: BossModeProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [bossLevel, setBossLevel] = useState(1);

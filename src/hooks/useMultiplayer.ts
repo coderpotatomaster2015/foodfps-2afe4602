@@ -12,6 +12,7 @@ interface PlayerData {
   weapon: string;
   is_alive: boolean;
   angle?: number;
+  kills?: number;
 }
 
 interface BulletData {
@@ -27,12 +28,22 @@ interface BulletData {
   timestamp: number;
 }
 
+interface EnemyData {
+  id: string;
+  x: number;
+  y: number;
+  hp: number;
+  speed: number;
+}
+
 interface MultiplayerState {
   roomId: string | null;
   players: PlayerData[];
   isHost: boolean;
   otherPlayersBullets: Map<string, BulletData[]>;
   gameStarted: boolean;
+  sharedEnemies: EnemyData[];
+  coopMode: boolean;
 }
 
 export const useMultiplayer = (mode: string, roomCode: string, username: string) => {
@@ -42,6 +53,8 @@ export const useMultiplayer = (mode: string, roomCode: string, username: string)
     isHost: false,
     otherPlayersBullets: new Map(),
     gameStarted: false,
+    sharedEnemies: [],
+    coopMode: true, // Default to coop mode
   });
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -168,6 +181,28 @@ export const useMultiplayer = (mode: string, roomCode: string, username: string)
       .then(() => {});
   }, [state.roomId, state.isHost]);
 
+  // Broadcast enemy sync (for coop mode)
+  const broadcastEnemyUpdate = useCallback((enemies: EnemyData[]) => {
+    if (!state.roomId || !channelRef.current || !state.isHost) return;
+
+    channelRef.current.send({
+      type: 'broadcast',
+      event: 'enemy_sync',
+      payload: { enemies, timestamp: Date.now() }
+    });
+  }, [state.roomId, state.isHost]);
+
+  // Broadcast enemy killed
+  const broadcastEnemyKilled = useCallback((enemyId: string, killerUsername: string) => {
+    if (!state.roomId || !channelRef.current) return;
+
+    channelRef.current.send({
+      type: 'broadcast',
+      event: 'enemy_killed',
+      payload: { enemyId, killerUsername, timestamp: Date.now() }
+    });
+  }, [state.roomId]);
+
   // Subscribe to room updates
   useEffect(() => {
     if (!state.roomId) return;
@@ -255,6 +290,23 @@ export const useMultiplayer = (mode: string, roomCode: string, username: string)
         setState(prev => ({ ...prev, gameStarted: true }));
         toast.success("Game started!");
       })
+      .on('broadcast', { event: 'enemy_sync' }, ({ payload }) => {
+        // Only non-hosts receive enemy sync
+        if (state.isHost) return;
+        setState(prev => ({ ...prev, sharedEnemies: payload.enemies }));
+      })
+      .on('broadcast', { event: 'enemy_killed' }, ({ payload }) => {
+        // Update kills for the player
+        setState(prev => ({
+          ...prev,
+          players: prev.players.map(p =>
+            p.username === payload.killerUsername
+              ? { ...p, kills: (p.kills || 0) + 1 }
+              : p
+          ),
+          sharedEnemies: prev.sharedEnemies.filter(e => e.id !== payload.enemyId)
+        }));
+      })
       .subscribe();
 
     channelRef.current = channel;
@@ -287,5 +339,7 @@ export const useMultiplayer = (mode: string, roomCode: string, username: string)
     updatePlayerPosition,
     broadcastBullet,
     startGame,
+    broadcastEnemyUpdate,
+    broadcastEnemyKilled,
   };
 };

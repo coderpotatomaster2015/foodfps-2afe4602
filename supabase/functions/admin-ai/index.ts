@@ -588,50 +588,72 @@ MEMORY CONTEXT: You remember our entire conversation history. Reference previous
     }
 
     const data = await response.json();
-    let aiResponse = data.choices?.[0]?.message?.content || "I couldn't process that request.";
+    console.log("AI response data:", JSON.stringify(data).slice(0, 500));
+    
+    let aiResponse = data.choices?.[0]?.message?.content;
+    
+    // Handle empty or missing response
+    if (!aiResponse || aiResponse.trim() === "") {
+      aiResponse = "I'm here to help! What would you like me to do? You can ask about:\n• Game statistics\n• User management (ban, unban, grant commands)\n• Update management (create, release)\n• Website control\n• Broadcasting messages";
+    }
 
     // Check if AI wants to execute a command
-    const executeMatch = aiResponse.match(/EXECUTE:\s*(\S+)/);
+    const executeMatch = aiResponse.match(/EXECUTE:\s*([^\n]+)/);
     if (executeMatch) {
-      const command = executeMatch[1];
+      const command = executeMatch[1].trim();
       console.log("AI executing command:", command);
       
       // Remove the execute command from visible response
-      aiResponse = aiResponse.replace(/EXECUTE:\s*\S+[^\n]*/g, "").trim();
+      aiResponse = aiResponse.replace(/EXECUTE:\s*[^\n]*/g, "").trim();
       
       // Execute the command
       let actionResult = "";
       
-      if (command.startsWith("create_update:") || command.startsWith("ban_user:") || 
-          command.startsWith("unban_user:") || command.startsWith("grant_commands:") ||
-          command.startsWith("revoke_commands:") || command.startsWith("grant_beta:") ||
-          command.startsWith("revoke_beta:") || command.startsWith("beta_release:") ||
-          command.startsWith("release_update:") || command.startsWith("broadcast:") ||
-          command.startsWith("approve_post:") || command.startsWith("reject_post:")) {
-        
-        // Recursively call ourselves with the action
-        const actionReq = new Request(req.url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: command }),
-        });
-        
-        // Process action inline
-        if (command === "get_stats") {
-          const ctx = await getGameContext();
-          actionResult = `📊 Stats: ${ctx.totalUsers} users, ${ctx.activeRooms} rooms, ${ctx.activePlayers.length} playing now`;
-        } else if (command === "disable_website") {
-          await supabase.from("game_settings").update({ website_enabled: false }).eq("id", "00000000-0000-0000-0000-000000000001");
-          actionResult = "✅ Website disabled";
-        } else if (command === "enable_website") {
-          await supabase.from("game_settings").update({ website_enabled: true }).eq("id", "00000000-0000-0000-0000-000000000001");
-          actionResult = "✅ Website enabled";
+      if (command === "get_stats") {
+        const ctx = await getGameContext();
+        actionResult = `📊 Stats: ${ctx.totalUsers} users, ${ctx.activeRooms} rooms, ${ctx.activePlayers.length} playing now`;
+      } else if (command === "disable_website") {
+        await supabase.from("game_settings").update({ website_enabled: false }).eq("id", "00000000-0000-0000-0000-000000000001");
+        actionResult = "✅ Website disabled";
+      } else if (command === "enable_website") {
+        await supabase.from("game_settings").update({ website_enabled: true }).eq("id", "00000000-0000-0000-0000-000000000001");
+        actionResult = "✅ Website enabled";
+      } else if (command.startsWith("create_update:")) {
+        const parts = command.replace("create_update:", "").split("|");
+        const name = parts[0];
+        const description = parts[1] || "New update";
+        const { data: adminRole } = await supabase.from("user_roles").select("user_id").eq("role", "admin").limit(1).single();
+        if (adminRole) {
+          await supabase.from("game_updates").insert({ name, description, created_by: adminRole.user_id });
+          actionResult = `✨ Update "${name}" created`;
+        }
+      } else if (command.startsWith("beta_release:")) {
+        const updateName = command.replace("beta_release:", "").trim();
+        await supabase.from("game_updates").update({ is_beta: true, released_at: new Date().toISOString() }).ilike("name", `%${updateName}%`);
+        actionResult = `🧪 Released to beta testers`;
+      } else if (command.startsWith("release_update:")) {
+        const updateName = command.replace("release_update:", "").trim();
+        await supabase.from("game_updates").update({ is_released: true, is_beta: false, released_at: new Date().toISOString() }).ilike("name", `%${updateName}%`);
+        actionResult = `🚀 Released publicly`;
+      } else if (command.startsWith("broadcast:")) {
+        const msg = command.replace("broadcast:", "").trim();
+        const { data: adminRole } = await supabase.from("user_roles").select("user_id").eq("role", "admin").limit(1).single();
+        if (adminRole) {
+          await supabase.from("broadcasts").insert({ message: msg, created_by: adminRole.user_id, expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() });
+          actionResult = `📢 Broadcast sent`;
         }
       }
       
-      if (actionResult) {
+      if (actionResult && aiResponse) {
         aiResponse = aiResponse + "\n\n" + actionResult;
+      } else if (actionResult) {
+        aiResponse = actionResult;
       }
+    }
+    
+    // Final safety check
+    if (!aiResponse || aiResponse.trim() === "") {
+      aiResponse = "Command processed. Is there anything else you'd like me to help with?";
     }
 
     return new Response(JSON.stringify({ response: aiResponse }), {

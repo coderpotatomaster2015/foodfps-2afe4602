@@ -10,18 +10,9 @@ import { toast } from "sonner";
 interface GameModeSelectorProps {
   username: string;
   onModeSelect: (mode: GameMode, roomCode?: string) => void;
-  soloDisabled?: boolean;
-  multiplayerDisabled?: boolean;
-  bossDisabled?: boolean;
 }
 
-export const GameModeSelector = ({ 
-  username, 
-  onModeSelect, 
-  soloDisabled = false,
-  multiplayerDisabled = false,
-  bossDisabled = false
-}: GameModeSelectorProps) => {
+export const GameModeSelector = ({ username, onModeSelect }: GameModeSelectorProps) => {
   const [joinCode, setJoinCode] = useState("");
 
   const handleJoinGame = () => {
@@ -40,52 +31,45 @@ export const GameModeSelector = ({
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <Card 
-          className={`p-6 bg-card border-border transition-colors ${soloDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary cursor-pointer group'}`}
-          onClick={() => !soloDisabled && onModeSelect("solo")}
+        <Card className="p-6 bg-card border-border hover:border-primary transition-colors cursor-pointer group"
+          onClick={() => onModeSelect("solo")}
         >
           <div className="space-y-4">
-            <div className={`w-12 h-12 rounded-lg bg-secondary flex items-center justify-center transition-all ${!soloDisabled && 'group-hover:bg-primary group-hover:glow-primary'}`}>
+            <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center group-hover:bg-primary group-hover:glow-primary transition-all">
               <User className="w-6 h-6" />
             </div>
             <div>
               <h3 className="text-xl font-bold mb-2">Solo Mode</h3>
-              <p className="text-sm text-muted-foreground">
-                {soloDisabled ? "This mode is currently disabled" : "Play alone and fight endless waves of enemies"}
-              </p>
+              <p className="text-sm text-muted-foreground">Play alone and fight endless waves of enemies</p>
             </div>
-            <Button variant="gaming" className="w-full" disabled={soloDisabled}>
-              {soloDisabled ? "Disabled" : "Play Solo"}
+            <Button variant="gaming" className="w-full">
+              Play Solo
             </Button>
           </div>
         </Card>
 
-        <Card 
-          className={`p-6 bg-card border-border transition-colors ${multiplayerDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary cursor-pointer group'}`}
-          onClick={() => !multiplayerDisabled && onModeSelect("host")}
+        <Card className="p-6 bg-card border-border hover:border-primary transition-colors cursor-pointer group"
+          onClick={() => onModeSelect("host")}
         >
           <div className="space-y-4">
-            <div className={`w-12 h-12 rounded-lg bg-secondary flex items-center justify-center transition-all ${!multiplayerDisabled && 'group-hover:bg-primary group-hover:glow-primary'}`}>
+            <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center group-hover:bg-primary group-hover:glow-primary transition-all">
               <Users className="w-6 h-6" />
             </div>
             <div>
               <h3 className="text-xl font-bold mb-2">Host Game</h3>
-              <p className="text-sm text-muted-foreground">
-                {multiplayerDisabled ? "This mode is currently disabled" : "Create a room and invite friends to join"}
-              </p>
+              <p className="text-sm text-muted-foreground">Create a room and invite friends to join</p>
             </div>
-            <Button variant="gaming" className="w-full" disabled={multiplayerDisabled}>
+            <Button variant="gaming" className="w-full">
               <Wifi className="w-4 h-4 mr-2" />
-              {multiplayerDisabled ? "Disabled" : "Host Online"}
+              Host Online
             </Button>
           </div>
         </Card>
       </div>
 
-      {/* Boss Mode */}
-      <Card 
-        className={`p-6 bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30 transition-colors ${bossDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-red-500 cursor-pointer group'}`}
-        onClick={() => !bossDisabled && onModeSelect("boss")}
+      {/* Boss Mode - New */}
+      <Card className="p-6 bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30 hover:border-red-500 transition-colors cursor-pointer group"
+        onClick={() => onModeSelect("boss")}
       >
         <div className="flex items-center justify-between">
           <div className="space-y-1">
@@ -93,17 +77,15 @@ export const GameModeSelector = ({
               <Skull className="w-6 h-6 text-red-500" />
               Boss Mode
             </h3>
-            <p className="text-sm text-muted-foreground">
-              {bossDisabled ? "This mode is currently disabled" : "Fight progressively harder bosses and earn currencies!"}
-            </p>
+            <p className="text-sm text-muted-foreground">Fight progressively harder bosses and earn currencies!</p>
           </div>
-          <Button variant="destructive" className="glow-destructive" disabled={bossDisabled}>
-            {bossDisabled ? "Disabled" : "Challenge Bosses"}
+          <Button variant="destructive" className="glow-destructive">
+            Challenge Bosses
           </Button>
         </div>
       </Card>
 
-      <Card className={`p-6 bg-card border-border ${multiplayerDisabled ? 'opacity-50' : ''}`}>
+      <Card className="p-6 bg-card border-border">
         <div className="space-y-4">
           <h3 className="text-xl font-bold">Join Game</h3>
           <div className="flex gap-2">
@@ -113,12 +95,11 @@ export const GameModeSelector = ({
               placeholder="Enter 5-digit code"
               className="bg-input border-border text-center text-lg font-mono tracking-widest"
               maxLength={5}
-              disabled={multiplayerDisabled}
             />
             <Button 
               onClick={handleJoinGame} 
               variant="accent"
-              disabled={joinCode.length !== 5 || multiplayerDisabled}
+              disabled={joinCode.length !== 5}
             >
               Join
             </Button>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -158,10 +158,9 @@ export const SkinsShop = ({ open, onOpenChange, onSkinSelect, currentSkin = "#FF
   };
 
   const regularSkins = skins.filter(s => !s.is_seasonal);
-  const seasonalSkins = skins.filter(s => s.is_seasonal);
-  
-  // Get current month for highlighting
-  const currentMonth = new Date().toLocaleString('en-US', { month: 'long' }).toLowerCase();
+  const christmasSkins = skins.filter(s => s.season === "christmas");
+  const halloweenSkins = skins.filter(s => s.season === "halloween");
+  const thanksgivingSkins = skins.filter(s => s.season === "thanksgiving");
 
   const renderSkinCard = (skin: Skin) => {
     const owned = ownedSkinIds.has(skin.id) || skin.name === "Default";
@@ -208,9 +207,6 @@ export const SkinsShop = ({ open, onOpenChange, onSkinSelect, currentSkin = "#FF
             <Palette className="w-5 h-5 text-primary" />
             Skins Shop
           </DialogTitle>
-          <DialogDescription>
-            Purchase and equip skins for your character
-          </DialogDescription>
         </DialogHeader>
 
         {/* Currency display */}
@@ -232,7 +228,9 @@ export const SkinsShop = ({ open, onOpenChange, onSkinSelect, currentSkin = "#FF
         <Tabs defaultValue="regular" className="flex-1 flex flex-col">
           <TabsList className="mx-auto">
             <TabsTrigger value="regular">Regular</TabsTrigger>
-            <TabsTrigger value="seasonal">🗓️ Seasonal</TabsTrigger>
+            <TabsTrigger value="christmas">🎄 Christmas</TabsTrigger>
+            <TabsTrigger value="halloween">🎃 Halloween</TabsTrigger>
+            <TabsTrigger value="thanksgiving">🦃 Thanksgiving</TabsTrigger>
           </TabsList>
 
           <TabsContent value="regular" className="flex-1">
@@ -243,28 +241,27 @@ export const SkinsShop = ({ open, onOpenChange, onSkinSelect, currentSkin = "#FF
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="seasonal" className="flex-1">
+          <TabsContent value="christmas" className="flex-1">
             <ScrollArea className="h-[400px]">
-              {seasonalSkins.length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">
-                  <p>No seasonal skins available</p>
-                </div>
-              ) : (
-                <div className="space-y-4 p-2">
-                  {/* Group by season */}
-                  {[...new Set(seasonalSkins.map(s => s.season))].map(season => (
-                    <div key={season}>
-                      <h3 className="font-bold text-sm mb-2 capitalize flex items-center gap-2">
-                        {season === currentMonth && <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">Current</span>}
-                        {season}
-                      </h3>
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
-                        {seasonalSkins.filter(s => s.season === season).map(renderSkinCard)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 p-2">
+                {christmasSkins.map(renderSkinCard)}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="halloween" className="flex-1">
+            <ScrollArea className="h-[400px]">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 p-2">
+                {halloweenSkins.map(renderSkinCard)}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="thanksgiving" className="flex-1">
+            <ScrollArea className="h-[400px]">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 p-2">
+                {thanksgivingSkins.map(renderSkinCard)}
+              </div>
             </ScrollArea>
           </TabsContent>
         </Tabs>

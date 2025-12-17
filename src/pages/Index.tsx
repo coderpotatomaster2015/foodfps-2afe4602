@@ -18,18 +18,17 @@ import { DailyRewards } from "@/components/game/DailyRewards";
 import { BanModal } from "@/components/game/BanModal";
 import { GameSidebar } from "@/components/game/GameSidebar";
 import { SettingsModal } from "@/components/game/SettingsModal";
-import { TeacherPanel } from "@/components/game/TeacherPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
-import { Shield, LogOut, GraduationCap } from "lucide-react";
+import { Shield, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | null;
 
 const Index = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, isGuest } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState<string>("");
   const [gameMode, setGameMode] = useState<GameMode>(null);
@@ -37,11 +36,9 @@ const Index = () => {
   const [isInGame, setIsInGame] = useState(false);
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isTeacher, setIsTeacher] = useState(false);
   const [isBetaTester, setIsBetaTester] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showAdminCode, setShowAdminCode] = useState(false);
-  const [showTeacherPanel, setShowTeacherPanel] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
   const [showUpdates, setShowUpdates] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
@@ -56,10 +53,6 @@ const Index = () => {
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
-  const [soloDisabled, setSoloDisabled] = useState(false);
-  const [multiplayerDisabled, setMultiplayerDisabled] = useState(false);
-  const [bossDisabled, setBossDisabled] = useState(false);
-  const [currentSkin, setCurrentSkin] = useState("#FFF3D6");
 
   // Real-time game status hook
   const gameStatus = useGameStatus(user?.id || null);
@@ -69,9 +62,6 @@ const Index = () => {
     // Load touchscreen mode from localStorage
     const savedTouchscreen = localStorage.getItem("foodfps_touchscreen");
     if (savedTouchscreen) setTouchscreenMode(savedTouchscreen === "true");
-    // Load skin from localStorage
-    const savedSkin = localStorage.getItem("foodfps_skin");
-    if (savedSkin) setCurrentSkin(savedSkin);
   }, []);
 
   // Handle real-time status updates
@@ -84,17 +74,27 @@ const Index = () => {
   useEffect(() => {
     if (loading) return;
     
-    if (!user) {
+    if (!user && !isGuest) {
       navigate("/auth");
       return;
     }
 
-    checkAdminRole();
-    checkTeacherRole();
-    checkBetaTester();
-    loadUserProfile();
-    loadUnreadMessages();
-  }, [user, loading, navigate]);
+    if (user) {
+      checkAdminRole();
+      checkBetaTester();
+      loadUserProfile();
+      loadUnreadMessages();
+    } else if (isGuest) {
+      const stored = localStorage.getItem("foodfps_username");
+      if (stored) {
+        setUsername(stored);
+        setProfileLoaded(true);
+      } else {
+        setShowUsernameModal(true);
+        setProfileLoaded(true);
+      }
+    }
+  }, [user, loading, isGuest, navigate]);
 
   const checkWebsiteStatus = async () => {
     try {
@@ -107,9 +107,6 @@ const Index = () => {
       if (data) {
         setWebsiteEnabled(data.website_enabled);
         setDisabledMessage(data.disabled_message || "");
-        setSoloDisabled((data as any).solo_disabled || false);
-        setMultiplayerDisabled((data as any).multiplayer_disabled || false);
-        setBossDisabled((data as any).boss_disabled || false);
       }
     } catch (error) {
       console.error("Error checking website status:", error);
@@ -125,22 +122,10 @@ const Index = () => {
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
-      .in("role", ["admin", "owner"]);
-
-    setIsAdmin(data && data.length > 0);
-  };
-
-  const checkTeacherRole = async () => {
-    if (!user) return;
-    
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "teacher")
+      .eq("role", "admin")
       .maybeSingle();
 
-    setIsTeacher(!!data);
+    setIsAdmin(!!data);
   };
 
   const checkBetaTester = async () => {
@@ -275,14 +260,8 @@ const Index = () => {
         />
       )}
 
-      {/* Top right bar - Admin, Teacher and Logout */}
+      {/* Top right bar - Admin and Logout only */}
       <div className="fixed top-4 right-4 flex gap-2 z-50">
-        {isTeacher && !isAdmin && (
-          <Button variant="secondary" size="sm" onClick={() => setShowTeacherPanel(true)} className="gap-2">
-            <GraduationCap className="w-4 h-4" />
-            Teacher
-          </Button>
-        )}
         {isAdmin && (
           <Button variant="default" size="sm" onClick={handleAdminClick} className="gap-2">
             <Shield className="w-4 h-4" />
@@ -291,7 +270,7 @@ const Index = () => {
         )}
         <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
           <LogOut className="w-4 h-4" />
-          Logout
+          {user ? "Logout" : "Exit"}
         </Button>
       </div>
 
@@ -322,13 +301,7 @@ const Index = () => {
       <UsernameModal open={showUsernameModal} onUsernameSet={handleUsernameSet} />
       
       {!gameMode && !showUsernameModal && username && (
-        <GameModeSelector 
-          username={username} 
-          onModeSelect={handleModeSelect}
-          soloDisabled={soloDisabled}
-          multiplayerDisabled={multiplayerDisabled}
-          bossDisabled={bossDisabled}
-        />
+        <GameModeSelector username={username} onModeSelect={handleModeSelect} />
       )}
 
       {gameMode && !isInGame && (gameMode === "host" || gameMode === "join") && (
@@ -343,7 +316,6 @@ const Index = () => {
           onBack={handleBackToMenu}
           adminAbuseEvents={gameStatus.adminAbuseEvents}
           touchscreenMode={touchscreenMode}
-          playerSkin={currentSkin}
         />
       )}
 
@@ -353,7 +325,6 @@ const Index = () => {
           onBack={handleBackToMenu}
           adminAbuseEvents={gameStatus.adminAbuseEvents}
           touchscreenMode={touchscreenMode}
-          playerSkin={currentSkin}
         />
       )}
 
@@ -362,17 +333,8 @@ const Index = () => {
       <MessagesPanel open={showMessages} onOpenChange={setShowMessages} />
       <UpdatesHub open={showUpdates} onOpenChange={setShowUpdates} />
       <SocialFeed open={showSocial} onOpenChange={setShowSocial} />
-      <TeacherPanel open={showTeacherPanel} onClose={() => setShowTeacherPanel(false)} />
       <BetaTesterPanel open={showBetaPanel} onOpenChange={setShowBetaPanel} />
-      <SkinsShop 
-        open={showSkinsShop} 
-        onOpenChange={setShowSkinsShop} 
-        currentSkin={currentSkin}
-        onSkinSelect={(color) => {
-          setCurrentSkin(color);
-          localStorage.setItem("foodfps_skin", color);
-        }}
-      />
+      <SkinsShop open={showSkinsShop} onOpenChange={setShowSkinsShop} />
       <PublicLeaderboard open={showLeaderboard} onOpenChange={setShowLeaderboard} />
       <DailyRewards open={showDailyRewards} onOpenChange={setShowDailyRewards} />
       <SettingsModal 

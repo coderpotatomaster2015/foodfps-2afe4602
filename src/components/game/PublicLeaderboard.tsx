@@ -29,15 +29,15 @@ export const PublicLeaderboard = ({ open, onOpenChange }: PublicLeaderboardProps
   }, [open]);
 
   const checkIfPublic = async () => {
+    // Check if admin has enabled public leaderboard (stored in game_settings)
     const { data } = await supabase
       .from("game_settings")
       .select("*")
       .eq("id", "00000000-0000-0000-0000-000000000001")
       .maybeSingle();
     
-    if (data) {
-      setIsPublic((data as any).leaderboard_public ?? true);
-    }
+    // For now, always show it. Admin can toggle this later.
+    setIsPublic(true);
   };
 
   const loadLeaderboard = async () => {

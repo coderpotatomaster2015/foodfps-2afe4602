@@ -18,7 +18,6 @@ interface GameCanvasProps {
   onBack: () => void;
   adminAbuseEvents?: { event_type: string; expires_at: string }[];
   touchscreenMode?: boolean;
-  playerSkin?: string;
 }
 
 interface AdminState {
@@ -60,7 +59,7 @@ const WEAPONS: Record<Weapon, WeaponConfig> = {
 
 const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "rifle", "sniper", "smg", "knife", "rpg", "axe", "flamethrower", "minigun", "railgun"];
 
-export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents = [], touchscreenMode = false, playerSkin = "#FFF3D6" }: GameCanvasProps) => {
+export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents = [], touchscreenMode = false }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [onlinePlayersOpen, setOnlinePlayersOpen] = useState(false);
@@ -92,7 +91,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const positionUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const gameLoopRef = useRef<number | null>(null);
   
-  const { players, updatePlayerPosition, broadcastBullet, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode } = useMultiplayer(mode, roomCode, username);
+  const { players, updatePlayerPosition, broadcastBullet, otherPlayersBullets } = useMultiplayer(mode, roomCode, username);
 
   // Check command permissions
   useEffect(() => {
@@ -402,8 +401,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       else if (side === 1) { x = rand(-40 * mult, W * mult + 40); y = H * mult + 30; }
       else if (side === 2) { x = -30 * mult; y = rand(-40 * mult, H * mult + 40); }
       else { x = W * mult + 30; y = rand(-40 * mult, H * mult + 40); }
-      const enemyId = `enemy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      enemies.push({ id: enemyId, x, y, r: 16, speed: rand(40, 80), hp: 60, color: "#FF6B6B", stun: 0, lastHit: 0, lastShot: -1 });
+      enemies.push({ x, y, r: 16, speed: rand(40, 80), hp: 60, color: "#FF6B6B", stun: 0, lastHit: 0, lastShot: -1 });
     };
 
     const spawnPickup = () => {
@@ -418,7 +416,6 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
 
     const tryShoot = (t: number) => {
       const weapon = WEAPONS[player.weapon];
-      const isMultiplayerCoopMelee = (mode === "host" || mode === "join") && coopMode;
       
       if (weapon.isMelee) {
         if (mouse.down && t - player.lastMelee >= weapon.fireRate) {
@@ -447,10 +444,6 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
                 });
                 setKills(prev => prev + 1);
                 if (Math.random() < 0.35) pickups.push({ x: e.x, y: e.y, r: 10, amt: 2, ttl: 18 });
-                // Broadcast enemy kill in coop mode
-                if (isMultiplayerCoopMelee && e.id) {
-                  broadcastEnemyKilled(e.id, username);
-                }
                 enemies.splice(i, 1);
               }
             }
@@ -613,8 +606,6 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       tryShoot(time);
 
       // Update bullets
-      const isMultiplayerCoopBullets = (mode === "host" || mode === "join") && coopMode;
-      
       for (let i = bullets.length - 1; i >= 0; i--) {
         const b = bullets[i];
         b.x += b.vx * dt;
@@ -641,52 +632,12 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
               });
               setKills(prev => prev + 1);
               if (Math.random() < 0.35) pickups.push({ x: e.x, y: e.y, r: 10, amt: 2, ttl: 18 });
-              // Broadcast enemy kill in coop mode
-              if (isMultiplayerCoopBullets && e.id) {
-                broadcastEnemyKilled(e.id, username);
-              }
               enemies.splice(j, 1);
             }
             bullets.splice(i, 1);
             break;
           }
         }
-      }
-
-      // Process other players' bullets hitting enemies in coop mode
-      if (isMultiplayerCoopBullets) {
-        const now = Date.now();
-        otherPlayersBullets.forEach((playerBullets, playerId) => {
-          playerBullets.forEach(b => {
-            const age = (now - b.timestamp) / 1000;
-            if (age < b.life) {
-              const bx = b.x + b.vx * age;
-              const by = b.y + b.vy * age;
-              
-              for (let j = enemies.length - 1; j >= 0; j--) {
-                const e = enemies[j];
-                const dx = bx - e.x, dy = by - e.y;
-                if (dx * dx + dy * dy <= (b.r + e.r) * (b.r + e.r)) {
-                  // Only process if we're host (to avoid double damage)
-                  if (isHost) {
-                    e.hp -= b.dmg;
-                    e.stun = 0.6;
-                    spawnParticles(bx, by, "#FFF3D6", 8);
-                    if (e.hp <= 0) {
-                      spawnParticles(e.x, e.y, "#FF6B6B", 16);
-                      if (Math.random() < 0.35) pickups.push({ x: e.x, y: e.y, r: 10, amt: 2, ttl: 18 });
-                      if (e.id) {
-                        broadcastEnemyKilled(e.id, playerId);
-                      }
-                      enemies.splice(j, 1);
-                    }
-                  }
-                  break;
-                }
-              }
-            }
-          });
-        });
       }
 
       // Update enemy bullets - use ref for spawn immunity check
@@ -779,43 +730,11 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         if (p.life <= 0) particles.splice(i, 1);
       }
 
-      // Spawn enemies (only host spawns in coop multiplayer)
-      const isMultiplayerCoop = (mode === "host" || mode === "join") && coopMode;
-      const shouldSpawn = !isMultiplayerCoop || (isMultiplayerCoop && isHost);
-      
-      if (shouldSpawn && time - lastSpawn > enemySpawnInterval) {
+      // Spawn enemies
+      if (time - lastSpawn > enemySpawnInterval) {
         lastSpawn = time;
         spawnEnemy();
         if (enemySpawnInterval > 0.6) enemySpawnInterval *= 0.993;
-      }
-
-      // In coop mode, host broadcasts enemy state, non-hosts sync from shared state
-      if (isMultiplayerCoop) {
-        if (isHost) {
-          // Host broadcasts enemy positions every 100ms
-          if (time % 0.1 < dt) {
-            const enemyData = enemies.map(e => ({ id: e.id, x: e.x, y: e.y, hp: e.hp, speed: e.speed }));
-            broadcastEnemyUpdate(enemyData);
-          }
-        } else if (sharedEnemies.length > 0) {
-          // Non-host syncs enemy positions from host
-          for (const shared of sharedEnemies) {
-            const existing = enemies.find(e => e.id === shared.id);
-            if (existing) {
-              existing.x = shared.x;
-              existing.y = shared.y;
-              existing.hp = shared.hp;
-            } else {
-              enemies.push({ id: shared.id, x: shared.x, y: shared.y, r: 16, speed: shared.speed, hp: shared.hp, color: "#FF6B6B", stun: 0, lastHit: 0, lastShot: -1 });
-            }
-          }
-          // Remove enemies that don't exist in shared state
-          for (let i = enemies.length - 1; i >= 0; i--) {
-            if (!sharedEnemies.find(s => s.id === enemies[i].id)) {
-              enemies.splice(i, 1);
-            }
-          }
-        }
       }
 
       gameStateRef.current.enemies = enemies;
@@ -916,7 +835,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         ctx.stroke();
       }
       
-      ctx.fillStyle = playerSkin;
+      ctx.fillStyle = "#FFF3D6";
       ctx.beginPath();
       ctx.arc(0, 0, player.r, 0, Math.PI * 2);
       ctx.fill();
@@ -1055,11 +974,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       gameLoopRef.current = requestAnimationFrame(loop);
     };
 
-    // Only spawn initial enemies if not joining coop (host or solo spawn)
-    const shouldSpawnInitial = mode === "solo" || mode === "host" || !coopMode;
-    if (shouldSpawnInitial) {
-      for (let i = 0; i < 3; i++) spawnEnemy();
-    }
+    for (let i = 0; i < 3; i++) spawnEnemy();
     for (let i = 0; i < 2; i++) spawnPickup();
 
     gameLoopRef.current = requestAnimationFrame(loop);
@@ -1072,7 +987,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       canvas.removeEventListener("mouseup", handleMouseUp);
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
-  }, [unlockedWeapons, mode, broadcastBullet, players, username, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode, playerSkin]);
+  }, [unlockedWeapons, mode, broadcastBullet, players, username, otherPlayersBullets]);
 
   const handleBackWithScoreboard = () => {
     if (mode === "host" || mode === "join") {

@@ -283,35 +283,23 @@ export type Database = {
       }
       game_settings: {
         Row: {
-          boss_disabled: boolean
           created_at: string
           disabled_message: string | null
           id: string
-          leaderboard_public: boolean
-          multiplayer_disabled: boolean
-          solo_disabled: boolean
           updated_at: string
           website_enabled: boolean
         }
         Insert: {
-          boss_disabled?: boolean
           created_at?: string
           disabled_message?: string | null
           id?: string
-          leaderboard_public?: boolean
-          multiplayer_disabled?: boolean
-          solo_disabled?: boolean
           updated_at?: string
           website_enabled?: boolean
         }
         Update: {
-          boss_disabled?: boolean
           created_at?: string
           disabled_message?: string | null
           id?: string
-          leaderboard_public?: boolean
-          multiplayer_disabled?: boolean
-          solo_disabled?: boolean
           updated_at?: string
           website_enabled?: boolean
         }
@@ -705,13 +693,6 @@ export type Database = {
           reason: string
         }[]
       }
-      has_any_role: {
-        Args: {
-          _roles: Database["public"]["Enums"]["app_role"][]
-          _user_id: string
-        }
-        Returns: boolean
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -722,7 +703,7 @@ export type Database = {
       is_user_banned: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user" | "teacher" | "owner"
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -850,7 +831,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user", "teacher", "owner"],
+      app_role: ["admin", "moderator", "user"],
     },
   },
 } as const

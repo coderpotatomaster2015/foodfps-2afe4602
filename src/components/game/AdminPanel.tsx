@@ -606,14 +606,22 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
   };
 
   const releaseUpdate = async (updateId: string, toBeta: boolean = false) => {
+    const updateData = toBeta 
+      ? { 
+          is_beta: true, 
+          is_released: false,
+          released_at: new Date().toISOString()
+        }
+      : { 
+          is_released: true, 
+          is_beta: false,
+          released_at: new Date().toISOString(),
+          summary: "New features and improvements!"
+        };
+
     await supabase
       .from("game_updates")
-      .update({ 
-        is_released: !toBeta, 
-        is_beta: toBeta,
-        released_at: new Date().toISOString(),
-        summary: toBeta ? undefined : "New features and improvements!"
-      })
+      .update(updateData)
       .eq("id", updateId);
     
     toast.success(toBeta ? "Released to beta testers" : "Update released publicly");

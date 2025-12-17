@@ -116,19 +116,6 @@ export const Auth = () => {
               : "Already have an account? Login"}
           </button>
         </div>
-
-        <div className="mt-4 text-center">
-          <button
-            onClick={() => {
-              localStorage.setItem("play_as_guest", "true");
-              navigate("/");
-            }}
-            className="text-sm text-muted-foreground hover:text-foreground"
-            disabled={loading}
-          >
-            Play as guest (no account needed)
-          </button>
-        </div>
       </Card>
     </div>
   );

@@ -34,6 +34,7 @@ interface UserData {
   isBanned?: boolean;
   hasCommands?: boolean;
   isBetaTester?: boolean;
+  role?: "user" | "beta_tester" | "teacher" | "admin" | "owner";
 }
 
 interface ActivePlayer {
@@ -182,15 +183,21 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
       .from("beta_testers")
       .select("user_id");
 
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("user_id, role");
+
     const bannedIds = new Set(bans?.map(b => b.user_id) || []);
     const commandIds = new Set(permissions?.map(p => p.user_id) || []);
     const betaIds = new Set(betaTesters?.map(b => b.user_id) || []);
+    const roleMap = new Map(roles?.map(r => [r.user_id, r.role]) || []);
 
     setUsers(profiles.map(p => ({
       ...p,
       isBanned: bannedIds.has(p.user_id),
       hasCommands: commandIds.has(p.user_id),
       isBetaTester: betaIds.has(p.user_id),
+      role: roleMap.get(p.user_id) as any || "user",
     })));
   };
 
@@ -435,6 +442,17 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
     loadAnalytics();
   };
 
+  const changeUserRole = async (user: UserData, newRole: string) => {
+    if (newRole === "user") {
+      await supabase.from("user_roles").delete().eq("user_id", user.user_id);
+    } else {
+      await supabase.from("user_roles").delete().eq("user_id", user.user_id);
+      await supabase.from("user_roles").insert({ user_id: user.user_id, role: newRole as any });
+    }
+    toast.success(`${user.username} role changed to ${newRole}`);
+    loadUsers();
+  };
+
   const openEditUsername = (user: UserData) => {
     setEditUserTarget(user);
     setNewUsername(user.username);
@@ -588,14 +606,22 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
   };
 
   const releaseUpdate = async (updateId: string, toBeta: boolean = false) => {
+    const updateData = toBeta 
+      ? { 
+          is_beta: true, 
+          is_released: false,
+          released_at: new Date().toISOString()
+        }
+      : { 
+          is_released: true, 
+          is_beta: false,
+          released_at: new Date().toISOString(),
+          summary: "New features and improvements!"
+        };
+
     await supabase
       .from("game_updates")
-      .update({ 
-        is_released: !toBeta, 
-        is_beta: toBeta,
-        released_at: new Date().toISOString(),
-        summary: toBeta ? undefined : "New features and improvements!"
-      })
+      .update(updateData)
       .eq("id", updateId);
     
     toast.success(toBeta ? "Released to beta testers" : "Update released publicly");
@@ -897,12 +923,31 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                         {u.hasCommands && (
                           <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded">COMMANDS</span>
                         )}
-                        {u.isBetaTester && (
-                          <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded">BETA</span>
+                        {u.role && u.role !== "user" && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                            u.role === "owner" ? "bg-purple-500/20 text-purple-500" :
+                            u.role === "admin" ? "bg-red-500/20 text-red-500" :
+                            u.role === "teacher" ? "bg-blue-500/20 text-blue-500" :
+                            "bg-yellow-500/20 text-yellow-500"
+                          }`}>{u.role.toUpperCase()}</span>
+                        )}
+                        {u.isBanned && (
+                          <span className="text-[10px] bg-destructive/20 text-destructive px-1.5 py-0.5 rounded">BANNED</span>
                         )}
                         <span className="text-xs text-muted-foreground">Score: {u.total_score}</span>
                       </div>
-                      <div className="flex gap-1 flex-shrink-0">
+                      <div className="flex gap-1 flex-shrink-0 items-center">
+                        <select 
+                          className="text-xs h-7 px-2 bg-secondary border border-border rounded"
+                          value={u.role || "user"}
+                          onChange={(e) => changeUserRole(u, e.target.value as any)}
+                        >
+                          <option value="user">User</option>
+                          <option value="beta_tester">Beta Tester</option>
+                          <option value="teacher">Teacher</option>
+                          <option value="admin">Admin</option>
+                          <option value="owner">Owner</option>
+                        </select>
                         <Button 
                           variant="outline" 
                           size="sm"

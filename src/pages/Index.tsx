@@ -59,6 +59,7 @@ const Index = () => {
   const [soloDisabled, setSoloDisabled] = useState(false);
   const [multiplayerDisabled, setMultiplayerDisabled] = useState(false);
   const [bossDisabled, setBossDisabled] = useState(false);
+  const [currentSkin, setCurrentSkin] = useState("#FFF3D6");
 
   // Real-time game status hook
   const gameStatus = useGameStatus(user?.id || null);
@@ -68,6 +69,9 @@ const Index = () => {
     // Load touchscreen mode from localStorage
     const savedTouchscreen = localStorage.getItem("foodfps_touchscreen");
     if (savedTouchscreen) setTouchscreenMode(savedTouchscreen === "true");
+    // Load skin from localStorage
+    const savedSkin = localStorage.getItem("foodfps_skin");
+    if (savedSkin) setCurrentSkin(savedSkin);
   }, []);
 
   // Handle real-time status updates
@@ -339,6 +343,7 @@ const Index = () => {
           onBack={handleBackToMenu}
           adminAbuseEvents={gameStatus.adminAbuseEvents}
           touchscreenMode={touchscreenMode}
+          playerSkin={currentSkin}
         />
       )}
 
@@ -348,6 +353,7 @@ const Index = () => {
           onBack={handleBackToMenu}
           adminAbuseEvents={gameStatus.adminAbuseEvents}
           touchscreenMode={touchscreenMode}
+          playerSkin={currentSkin}
         />
       )}
 
@@ -358,7 +364,15 @@ const Index = () => {
       <SocialFeed open={showSocial} onOpenChange={setShowSocial} />
       <TeacherPanel open={showTeacherPanel} onClose={() => setShowTeacherPanel(false)} />
       <BetaTesterPanel open={showBetaPanel} onOpenChange={setShowBetaPanel} />
-      <SkinsShop open={showSkinsShop} onOpenChange={setShowSkinsShop} />
+      <SkinsShop 
+        open={showSkinsShop} 
+        onOpenChange={setShowSkinsShop} 
+        currentSkin={currentSkin}
+        onSkinSelect={(color) => {
+          setCurrentSkin(color);
+          localStorage.setItem("foodfps_skin", color);
+        }}
+      />
       <PublicLeaderboard open={showLeaderboard} onOpenChange={setShowLeaderboard} />
       <DailyRewards open={showDailyRewards} onOpenChange={setShowDailyRewards} />
       <SettingsModal 

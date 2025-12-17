@@ -18,6 +18,7 @@ interface GameCanvasProps {
   onBack: () => void;
   adminAbuseEvents?: { event_type: string; expires_at: string }[];
   touchscreenMode?: boolean;
+  playerSkin?: string;
 }
 
 interface AdminState {
@@ -59,7 +60,7 @@ const WEAPONS: Record<Weapon, WeaponConfig> = {
 
 const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "rifle", "sniper", "smg", "knife", "rpg", "axe", "flamethrower", "minigun", "railgun"];
 
-export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents = [], touchscreenMode = false }: GameCanvasProps) => {
+export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents = [], touchscreenMode = false, playerSkin = "#FFF3D6" }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [onlinePlayersOpen, setOnlinePlayersOpen] = useState(false);
@@ -915,7 +916,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         ctx.stroke();
       }
       
-      ctx.fillStyle = "#FFF3D6";
+      ctx.fillStyle = playerSkin;
       ctx.beginPath();
       ctx.arc(0, 0, player.r, 0, Math.PI * 2);
       ctx.fill();
@@ -1071,7 +1072,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       canvas.removeEventListener("mouseup", handleMouseUp);
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
-  }, [unlockedWeapons, mode, broadcastBullet, players, username, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode]);
+  }, [unlockedWeapons, mode, broadcastBullet, players, username, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode, playerSkin]);
 
   const handleBackWithScoreboard = () => {
     if (mode === "host" || mode === "join") {

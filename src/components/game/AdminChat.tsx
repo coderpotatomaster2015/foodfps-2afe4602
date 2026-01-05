@@ -22,12 +22,17 @@ interface ChatMessage {
 
 const COMMANDS = [
   { cmd: "/godmode", desc: "Toggle invincibility & max ammo" },
-  { cmd: "/speed [number]", desc: "Set player speed" },
+  { cmd: "/speed [number]", desc: "Set player speed multiplier" },
   { cmd: "/nuke", desc: "Kill all enemies" },
   { cmd: "/rain ammo", desc: "Spawn ammo pickups" },
   { cmd: "/infiniteammo", desc: "Toggle infinite ammo" },
   { cmd: "/revive", desc: "Revive player (restore full health)" },
   { cmd: "/give", desc: "Unlock all weapons" },
+  { cmd: "/heal [amount]", desc: "Heal player by amount (default: full)" },
+  { cmd: "/spawn [count]", desc: "Spawn enemies (default: 5)" },
+  { cmd: "/clear", desc: "Clear all pickups and bullets" },
+  { cmd: "/tp [x] [y]", desc: "Teleport to coordinates" },
+  { cmd: "/score [amount]", desc: "Add score points" },
   { cmd: "/ban", desc: "Open ban management (admin only)" },
   { cmd: "/join [code]", desc: "Join a multiplayer room" },
   { cmd: "/?", desc: "Show all commands" },
@@ -123,6 +128,11 @@ export const AdminChat = ({ open, onOpenChange, onCommand, onShowOnlinePlayers }
       "/infiniteammo": "✓ Infinite ammo toggled!",
       "/revive": "✓ Player revived!",
       "/give": "✓ All weapons unlocked!",
+      "/heal": "✓ Player healed!",
+      "/spawn": "✓ Enemies spawned!",
+      "/clear": "✓ Cleared!",
+      "/tp": "✓ Teleported!",
+      "/score": "✓ Score added!",
     };
 
     const matchedCmd = Object.keys(commandMap).find(c => cmd.startsWith(c));

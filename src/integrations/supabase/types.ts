@@ -557,6 +557,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          boss_level: number
           created_at: string
           id: string
           total_score: number
@@ -565,6 +566,7 @@ export type Database = {
           username: string
         }
         Insert: {
+          boss_level?: number
           created_at?: string
           id?: string
           total_score?: number
@@ -573,6 +575,7 @@ export type Database = {
           username: string
         }
         Update: {
+          boss_level?: number
           created_at?: string
           id?: string
           total_score?: number

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, MessageSquare, Shield, Gem, Coins, Star } from "lucide-react";
 import { AdminChat } from "./AdminChat";
+import { TouchControls } from "./TouchControls";
 import type { GameMode } from "@/pages/Index";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -49,9 +50,14 @@ const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "rifle", "sniper",
 export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseEvents = [], touchscreenMode = false }: BossModeProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
-  const [bossLevel, setBossLevel] = useState(1);
-  const [bossHealth, setBossHealth] = useState(500);
-  const [bossMaxHealth, setBossMaxHealth] = useState(500);
+  
+  // Load highest level from localStorage
+  const savedLevel = parseInt(localStorage.getItem("foodfps_boss_level") || "1", 10);
+  const [bossLevel, setBossLevel] = useState(savedLevel);
+  const [highestLevel, setHighestLevel] = useState(savedLevel);
+  
+  const [bossHealth, setBossHealth] = useState(500 * savedLevel);
+  const [bossMaxHealth, setBossMaxHealth] = useState(500 * savedLevel);
   const [score, setScore] = useState(0);
   const [health, setHealth] = useState(100);
   const [ammo, setAmmo] = useState(10);
@@ -64,6 +70,11 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
   const [earnedRewards, setEarnedRewards] = useState({ gems: 0, coins: 0, gold: 0 });
 
   const adminStateRef = useRef({ active: false, godMode: false, speedMultiplier: 1, infiniteAmmo: false });
+  
+  // Touch controls refs
+  const touchMoveRef = useRef({ dx: 0, dy: 0 });
+  const touchAimRef = useRef({ x: 480, y: 320 });
+  const touchShootingRef = useRef(false);
   const playerRef = useRef<any>(null);
   const gameLoopRef = useRef<number | null>(null);
 
@@ -283,7 +294,8 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
         ctx.fillText("GAME OVER", W / 2, H / 2 - 40);
         ctx.font = "24px sans-serif";
         ctx.fillText(`Boss Level ${bossLevel} - Score: ${score}`, W / 2, H / 2 + 10);
-        ctx.fillText(`Rewards: 💎${earnedRewards.gems} 🪙${earnedRewards.coins} ⭐${earnedRewards.gold}`, W / 2, H / 2 + 50);
+        ctx.fillText(`Highest Level Reached: ${highestLevel}`, W / 2, H / 2 + 40);
+        ctx.fillText(`Rewards: 💎${earnedRewards.gems} 🪙${earnedRewards.coins} ⭐${earnedRewards.gold}`, W / 2, H / 2 + 80);
         ctx.restore();
         gameLoopRef.current = requestAnimationFrame(loop);
         return;
@@ -291,6 +303,7 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
 
       if (boss.hp <= 0) {
         // Boss defeated - award rewards and spawn next boss
+        const newLevel = bossLevel + 1;
         const gemsEarned = bossLevel * 5;
         const coinsEarned = bossLevel * 20;
         const goldEarned = bossLevel >= 5 ? bossLevel : 0;
@@ -298,13 +311,19 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
         awardCurrencies(gemsEarned, coinsEarned, goldEarned);
         toast.success(`Boss ${bossLevel} defeated! +${gemsEarned}💎 +${coinsEarned}🪙 ${goldEarned > 0 ? `+${goldEarned}⭐` : ""}`);
         
-        setBossLevel(prev => prev + 1);
+        // Save highest level to localStorage
+        if (newLevel > highestLevel) {
+          setHighestLevel(newLevel);
+          localStorage.setItem("foodfps_boss_level", String(newLevel));
+        }
+        
+        setBossLevel(newLevel);
         boss = {
           x: W / 2,
           y: 100,
           r: 60 + bossLevel * 5,
-          hp: 500 * (bossLevel + 1),
-          maxHp: 500 * (bossLevel + 1),
+          hp: 500 * newLevel,
+          maxHp: 500 * newLevel,
           lastShot: time,
           phase: 0,
           color: `hsl(${(bossLevel * 30) % 360}, 70%, 50%)`,
@@ -314,13 +333,23 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
         setScore(prev => prev + 100 * bossLevel);
       }
 
-      // Player movement
-      player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+      // Player movement - handle touch controls
       let dx = 0, dy = 0;
-      if (keys["w"] || keys["arrowup"]) dy -= 1;
-      if (keys["s"] || keys["arrowdown"]) dy += 1;
-      if (keys["a"] || keys["arrowleft"]) dx -= 1;
-      if (keys["d"] || keys["arrowright"]) dx += 1;
+      
+      if (touchscreenMode) {
+        dx = touchMoveRef.current.dx;
+        dy = touchMoveRef.current.dy;
+        mouse.x = touchAimRef.current.x;
+        mouse.y = touchAimRef.current.y;
+        mouse.down = touchShootingRef.current;
+      } else {
+        if (keys["w"] || keys["arrowup"]) dy -= 1;
+        if (keys["s"] || keys["arrowdown"]) dy += 1;
+        if (keys["a"] || keys["arrowleft"]) dx -= 1;
+        if (keys["d"] || keys["arrowright"]) dx += 1;
+      }
+      
+      player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
 
       if (dx !== 0 || dy !== 0) {
         const len = Math.hypot(dx, dy);
@@ -559,7 +588,27 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
       canvas.removeEventListener("mouseup", handleMouseUp);
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
-  }, [bossLevel, unlockedWeapons, playerSkin]);
+  }, [bossLevel, unlockedWeapons, playerSkin, touchscreenMode, highestLevel]);
+
+  // Touch control handlers
+  const handleTouchMove = useCallback((dx: number, dy: number) => {
+    touchMoveRef.current = { dx, dy };
+  }, []);
+
+  const handleTouchAim = useCallback((x: number, y: number) => {
+    touchAimRef.current = { x, y };
+  }, []);
+
+  const handleTouchShoot = useCallback((shooting: boolean) => {
+    touchShootingRef.current = shooting;
+  }, []);
+
+  const handleTouchReload = useCallback(() => {
+    if (playerRef.current) {
+      playerRef.current.ammo = playerRef.current.maxAmmo;
+      setAmmo(playerRef.current.maxAmmo);
+    }
+  }, []);
 
   return (
     <div className="relative">
@@ -567,6 +616,7 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
       <div className="fixed left-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4 space-y-2">
         <div className="font-bold text-lg text-red-500">BOSS MODE</div>
         <div className="text-sm">Level: {bossLevel}</div>
+        <div className="text-sm">Highest: {highestLevel}</div>
         <div className="text-sm">Score: {score}</div>
         <div className="flex gap-2 text-sm">
           <span className="flex items-center gap-1"><Gem className="w-4 h-4 text-purple-400" />{earnedRewards.gems}</span>
@@ -667,6 +717,18 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
         onCommand={handleCommand}
         onShowOnlinePlayers={() => {}}
       />
+
+      {/* Touch Controls */}
+      {touchscreenMode && (
+        <TouchControls
+          onMove={handleTouchMove}
+          onAim={handleTouchAim}
+          onShoot={handleTouchShoot}
+          onReload={handleTouchReload}
+          canvasWidth={960}
+          canvasHeight={640}
+        />
+      )}
     </div>
   );
 };

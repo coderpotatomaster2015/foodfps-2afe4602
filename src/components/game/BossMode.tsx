@@ -51,13 +51,12 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
   
-  // Load highest level from localStorage
-  const savedLevel = parseInt(localStorage.getItem("foodfps_boss_level") || "1", 10);
-  const [bossLevel, setBossLevel] = useState(savedLevel);
-  const [highestLevel, setHighestLevel] = useState(savedLevel);
+  const [bossLevel, setBossLevel] = useState(1);
+  const [highestLevel, setHighestLevel] = useState(1);
+  const [isLoadingLevel, setIsLoadingLevel] = useState(true);
   
-  const [bossHealth, setBossHealth] = useState(500 * savedLevel);
-  const [bossMaxHealth, setBossMaxHealth] = useState(500 * savedLevel);
+  const [bossHealth, setBossHealth] = useState(500);
+  const [bossMaxHealth, setBossMaxHealth] = useState(500);
   const [score, setScore] = useState(0);
   const [health, setHealth] = useState(100);
   const [ammo, setAmmo] = useState(10);
@@ -77,6 +76,7 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
   const touchShootingRef = useRef(false);
   const playerRef = useRef<any>(null);
   const gameLoopRef = useRef<number | null>(null);
+  const bossLevelRef = useRef(1);
 
   // Apply admin abuse events
   useEffect(() => {
@@ -95,7 +95,49 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
   useEffect(() => {
     checkPermissions();
     loadWeapons();
+    loadBossLevel();
   }, []);
+
+  const loadBossLevel = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoadingLevel(false);
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("boss_level")
+        .eq("user_id", user.id)
+        .single();
+
+      const level = profile?.boss_level || 1;
+      setBossLevel(level);
+      setHighestLevel(level);
+      bossLevelRef.current = level;
+      setBossHealth(500 * level);
+      setBossMaxHealth(500 * level);
+    } catch (error) {
+      console.error("Error loading boss level:", error);
+    } finally {
+      setIsLoadingLevel(false);
+    }
+  };
+
+  const saveBossLevel = async (newLevel: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      await supabase
+        .from("profiles")
+        .update({ boss_level: newLevel })
+        .eq("user_id", user.id);
+    } catch (error) {
+      console.error("Error saving boss level:", error);
+    }
+  };
 
   const checkPermissions = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -303,34 +345,36 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
 
       if (boss.hp <= 0) {
         // Boss defeated - award rewards and spawn next boss
-        const newLevel = bossLevel + 1;
-        const gemsEarned = bossLevel * 5;
-        const coinsEarned = bossLevel * 20;
-        const goldEarned = bossLevel >= 5 ? bossLevel : 0;
+        const currentLevel = bossLevelRef.current;
+        const newLevel = currentLevel + 1;
+        const gemsEarned = currentLevel * 5;
+        const coinsEarned = currentLevel * 20;
+        const goldEarned = currentLevel >= 5 ? currentLevel : 0;
         
         awardCurrencies(gemsEarned, coinsEarned, goldEarned);
-        toast.success(`Boss ${bossLevel} defeated! +${gemsEarned}💎 +${coinsEarned}🪙 ${goldEarned > 0 ? `+${goldEarned}⭐` : ""}`);
+        toast.success(`Boss ${currentLevel} defeated! +${gemsEarned}💎 +${coinsEarned}🪙 ${goldEarned > 0 ? `+${goldEarned}⭐` : ""}`);
         
-        // Save highest level to localStorage
+        // Save highest level to cloud
         if (newLevel > highestLevel) {
           setHighestLevel(newLevel);
-          localStorage.setItem("foodfps_boss_level", String(newLevel));
+          saveBossLevel(newLevel);
         }
         
+        bossLevelRef.current = newLevel;
         setBossLevel(newLevel);
         boss = {
           x: W / 2,
           y: 100,
-          r: 60 + bossLevel * 5,
+          r: 60 + currentLevel * 5,
           hp: 500 * newLevel,
           maxHp: 500 * newLevel,
           lastShot: time,
           phase: 0,
-          color: `hsl(${(bossLevel * 30) % 360}, 70%, 50%)`,
+          color: `hsl(${(currentLevel * 30) % 360}, 70%, 50%)`,
         };
         setBossHealth(boss.hp);
         setBossMaxHealth(boss.maxHp);
-        setScore(prev => prev + 100 * bossLevel);
+        setScore(prev => prev + 100 * currentLevel);
       }
 
       // Player movement - handle touch controls

@@ -313,6 +313,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       const match = cmd.match(/\/speed\s+(\d+(?:\.\d+)?)/);
       if (match) {
         adminStateRef.current.speedMultiplier = parseFloat(match[1]);
+        toast.success(`Speed set to ${match[1]}x`);
       }
     } else if (cmd.startsWith("/nuke")) {
       gameStateRef.current.enemies.length = 0;
@@ -330,6 +331,48 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       const allWeapons = [...WEAPON_ORDER];
       setUnlockedWeapons(allWeapons);
       toast.success("All weapons unlocked!");
+    } else if (cmd.startsWith("/heal")) {
+      const match = cmd.match(/\/heal\s+(\d+)/);
+      const amount = match ? parseInt(match[1]) : 100;
+      if (playerRef.current) {
+        playerRef.current.hp = Math.min(100, playerRef.current.hp + amount);
+        setHealth(playerRef.current.hp);
+        toast.success(`Healed ${amount} HP`);
+      }
+    } else if (cmd.startsWith("/spawn")) {
+      const match = cmd.match(/\/spawn\s+(\d+)/);
+      const count = match ? Math.min(50, parseInt(match[1])) : 5;
+      const { W, H, enemies } = gameStateRef.current;
+      const rand = (min: number, max: number) => Math.random() * (max - min) + min;
+      for (let i = 0; i < count; i++) {
+        const side = Math.floor(rand(0, 4));
+        let x, y;
+        if (side === 0) { x = rand(50, W - 50); y = -30; }
+        else if (side === 1) { x = rand(50, W - 50); y = H + 30; }
+        else if (side === 2) { x = -30; y = rand(50, H - 50); }
+        else { x = W + 30; y = rand(50, H - 50); }
+        const enemyId = `enemy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        enemies.push({ id: enemyId, x, y, r: 16, speed: rand(40, 80), hp: 60, color: "#FF6B6B", stun: 0, lastHit: 0, lastShot: -1 });
+      }
+      toast.success(`Spawned ${count} enemies`);
+    } else if (cmd.startsWith("/clear")) {
+      gameStateRef.current.pickups.length = 0;
+      toast.success("Cleared pickups");
+    } else if (cmd.startsWith("/tp")) {
+      const match = cmd.match(/\/tp\s+(\d+)\s+(\d+)/);
+      if (match && playerRef.current) {
+        playerRef.current.x = parseInt(match[1]);
+        playerRef.current.y = parseInt(match[2]);
+        toast.success(`Teleported to (${match[1]}, ${match[2]})`);
+      }
+    } else if (cmd.startsWith("/score")) {
+      const match = cmd.match(/\/score\s+(\d+)/);
+      if (match) {
+        const amount = parseInt(match[1]);
+        setScore(prev => prev + amount);
+        if (playerRef.current) playerRef.current.score += amount;
+        toast.success(`Added ${amount} score`);
+      }
     } else if (cmd.startsWith("/join")) {
       setOnlinePlayersOpen(true);
     }
@@ -585,13 +628,23 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         return;
       }
 
-      player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
-
+      // Handle touch controls for movement and aiming
       let dx = 0, dy = 0;
-      if (keys["w"] || keys["arrowup"]) dy -= 1;
-      if (keys["s"] || keys["arrowdown"]) dy += 1;
-      if (keys["a"] || keys["arrowleft"]) dx -= 1;
-      if (keys["d"] || keys["arrowright"]) dx += 1;
+      
+      if (touchscreenMode) {
+        dx = touchMoveRef.current.x;
+        dy = touchMoveRef.current.y;
+        mouse.x = touchAimRef.current.x;
+        mouse.y = touchAimRef.current.y;
+        mouse.down = touchShootingRef.current;
+      } else {
+        if (keys["w"] || keys["arrowup"]) dy -= 1;
+        if (keys["s"] || keys["arrowdown"]) dy += 1;
+        if (keys["a"] || keys["arrowleft"]) dx -= 1;
+        if (keys["d"] || keys["arrowright"]) dx += 1;
+      }
+      
+      player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
 
       if (dx !== 0 || dy !== 0) {
         const len = Math.hypot(dx, dy);
@@ -1075,6 +1128,11 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   }, [unlockedWeapons, mode, broadcastBullet, players, username, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode, playerSkin]);
 
   const handleBackWithScoreboard = () => {
+    // Save progress when leaving the game
+    if (score > 0) {
+      saveProgress(score);
+    }
+    
     if (mode === "host" || mode === "join") {
       setShowScoreboard(true);
     } else {
@@ -1222,7 +1280,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         onOpenChange={setBanModalOpen}
       />
 
-      {isMobile && (
+      {touchscreenMode && (
         <TouchControls
           onMove={handleTouchMove}
           onAim={handleTouchAim}

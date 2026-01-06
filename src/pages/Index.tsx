@@ -19,10 +19,13 @@ import { BanModal } from "@/components/game/BanModal";
 import { GameSidebar } from "@/components/game/GameSidebar";
 import { SettingsModal } from "@/components/game/SettingsModal";
 import { TeacherPanel } from "@/components/game/TeacherPanel";
+import { OwnerPanel } from "@/components/game/OwnerPanel";
+import { AdBanner } from "@/components/game/AdBanner";
+import { AdSignupModal } from "@/components/game/AdSignupModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
-import { Shield, LogOut, GraduationCap } from "lucide-react";
+import { Shield, LogOut, GraduationCap, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -37,11 +40,14 @@ const Index = () => {
   const [isInGame, setIsInGame] = useState(false);
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const [isTeacher, setIsTeacher] = useState(false);
   const [isBetaTester, setIsBetaTester] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [showOwnerPanel, setShowOwnerPanel] = useState(false);
   const [showAdminCode, setShowAdminCode] = useState(false);
   const [showTeacherPanel, setShowTeacherPanel] = useState(false);
+  const [showAdSignup, setShowAdSignup] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
   const [showUpdates, setShowUpdates] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
@@ -128,6 +134,7 @@ const Index = () => {
       .in("role", ["admin", "owner"]);
 
     setIsAdmin(data && data.length > 0);
+    setIsOwner(data?.some(r => r.role === "owner") || false);
   };
 
   const checkTeacherRole = async () => {
@@ -275,12 +282,18 @@ const Index = () => {
         />
       )}
 
-      {/* Top right bar - Admin, Teacher and Logout */}
+      {/* Top right bar - Admin, Owner, Teacher and Logout */}
       <div className="fixed top-4 right-4 flex gap-2 z-50">
         {isTeacher && !isAdmin && (
           <Button variant="secondary" size="sm" onClick={() => setShowTeacherPanel(true)} className="gap-2">
             <GraduationCap className="w-4 h-4" />
             Teacher
+          </Button>
+        )}
+        {isOwner && (
+          <Button size="sm" onClick={() => setShowOwnerPanel(true)} className="gap-2 bg-amber-600 hover:bg-amber-700">
+            <Crown className="w-4 h-4" />
+            Owner
           </Button>
         )}
         {isAdmin && (
@@ -359,6 +372,7 @@ const Index = () => {
 
       <AdminCodeModal open={showAdminCode} onOpenChange={setShowAdminCode} onSuccess={() => setShowAdminPanel(true)} />
       <AdminPanel open={showAdminPanel} onClose={() => setShowAdminPanel(false)} />
+      <OwnerPanel open={showOwnerPanel} onClose={() => setShowOwnerPanel(false)} />
       <MessagesPanel open={showMessages} onOpenChange={setShowMessages} />
       <UpdatesHub open={showUpdates} onOpenChange={setShowUpdates} />
       <SocialFeed open={showSocial} onOpenChange={setShowSocial} />
@@ -381,6 +395,12 @@ const Index = () => {
         touchscreenMode={touchscreenMode}
         onTouchscreenModeChange={handleTouchscreenChange}
       />
+      <AdSignupModal open={showAdSignup} onOpenChange={setShowAdSignup} />
+      
+      {/* Ad Banner - shows for non-exempt users when not in game */}
+      {user && !gameMode && !isAdmin && (
+        <AdBanner userId={user.id} onSignupClick={() => setShowAdSignup(true)} />
+      )}
     </div>
   );
 };

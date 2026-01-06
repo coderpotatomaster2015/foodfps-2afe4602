@@ -44,6 +44,68 @@ export type Database = {
         }
         Relationships: []
       }
+      ad_exemptions: {
+        Row: {
+          granted_at: string
+          granted_by: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          granted_by: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ad_signups: {
+        Row: {
+          ad_id: string | null
+          created_at: string
+          id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          ad_id?: string | null
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          ad_id?: string | null
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_signups_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "ads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_abuse_events: {
         Row: {
           created_at: string
@@ -68,6 +130,42 @@ export type Database = {
           expires_at?: string
           id?: string
           is_active?: boolean
+        }
+        Relationships: []
+      }
+      ads: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string
+          expires_at: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          target_url: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description: string
+          expires_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          target_url: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string
+          expires_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          target_url?: string
+          title?: string
         }
         Relationships: []
       }
@@ -708,6 +806,7 @@ export type Database = {
           reason: string
         }[]
       }
+      has_ad_exemption: { Args: { _user_id: string }; Returns: boolean }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]

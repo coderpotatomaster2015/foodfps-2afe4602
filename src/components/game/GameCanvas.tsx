@@ -246,15 +246,30 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const saveProgress = async (newScore: number) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || newScore <= 0) return;
 
-      const newTotal = totalScore + newScore;
-      await supabase
+      // Fetch current score from database to avoid stale state issues
+      const { data: currentProfile } = await supabase
+        .from("profiles")
+        .select("total_score")
+        .eq("user_id", user.id)
+        .single();
+
+      const currentTotal = currentProfile?.total_score || 0;
+      const newTotal = currentTotal + newScore;
+      
+      const { error } = await supabase
         .from("profiles")
         .update({ total_score: newTotal })
         .eq("user_id", user.id);
 
+      if (error) {
+        console.error("Error updating score:", error);
+        return;
+      }
+
       setTotalScore(newTotal);
+      console.log(`Score saved: ${currentTotal} + ${newScore} = ${newTotal}`);
 
       const newlyUnlocked: Weapon[] = [];
       for (const weapon of WEAPON_ORDER) {

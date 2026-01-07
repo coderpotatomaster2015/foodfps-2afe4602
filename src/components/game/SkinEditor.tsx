@@ -1,0 +1,262 @@
+import { useState, useRef, useEffect } from "react";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Paintbrush, Eraser, Save, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+interface SkinEditorProps {
+  onSave?: () => void;
+}
+
+export const SkinEditor = ({ onSave }: SkinEditorProps) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [brushColor, setBrushColor] = useState("#FF5722");
+  const [brushSize, setBrushSize] = useState([8]);
+  const [tool, setTool] = useState<"brush" | "eraser">("brush");
+  const [skinName, setSkinName] = useState("");
+  const [priceCoins, setPriceCoins] = useState("100");
+  const [priceGems, setPriceGems] = useState("0");
+  const [priceGold, setPriceGold] = useState("0");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Initialize with a circle representing the player
+    ctx.fillStyle = "#333";
+    ctx.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = "#666";
+    ctx.beginPath();
+    ctx.arc(64, 64, 50, 0, Math.PI * 2);
+    ctx.fill();
+  }, []);
+
+  const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  };
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    setIsDrawing(true);
+    draw(e);
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (ctx) ctx.beginPath();
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!ctx) return;
+
+    const { x, y } = getCanvasCoords(e);
+
+    ctx.lineWidth = brushSize[0];
+    ctx.lineCap = "round";
+    ctx.strokeStyle = tool === "eraser" ? "#333" : brushColor;
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!ctx) return;
+
+    ctx.fillStyle = "#333";
+    ctx.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = "#666";
+    ctx.beginPath();
+    ctx.arc(64, 64, 50, 0, Math.PI * 2);
+    ctx.fill();
+  };
+
+  const saveSkin = async () => {
+    if (!skinName.trim()) {
+      toast.error("Please enter a skin name");
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    setSaving(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const imageData = canvas.toDataURL("image/png");
+
+      const { error } = await supabase.from("custom_skins").insert({
+        name: skinName,
+        image_data: imageData,
+        price_coins: parseInt(priceCoins) || 0,
+        price_gems: parseInt(priceGems) || 0,
+        price_gold: parseInt(priceGold) || 0,
+        created_by: user.id,
+      });
+
+      if (error) throw error;
+
+      toast.success("Skin created and added to shop!");
+      setSkinName("");
+      clearCanvas();
+      onSave?.();
+    } catch (error) {
+      console.error("Error saving skin:", error);
+      toast.error("Failed to save skin");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="p-4 space-y-4">
+      <h3 className="font-semibold flex items-center gap-2">
+        <Paintbrush className="w-4 h-4 text-primary" />
+        Skin Editor
+      </h3>
+
+      <div className="flex gap-4">
+        <div className="space-y-3">
+          <canvas
+            ref={canvasRef}
+            width={128}
+            height={128}
+            className="border rounded-lg cursor-crosshair bg-gray-900"
+            style={{ width: 192, height: 192 }}
+            onMouseDown={startDrawing}
+            onMouseUp={stopDrawing}
+            onMouseMove={draw}
+            onMouseLeave={stopDrawing}
+          />
+          
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant={tool === "brush" ? "default" : "outline"}
+              onClick={() => setTool("brush")}
+            >
+              <Paintbrush className="w-4 h-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant={tool === "eraser" ? "default" : "outline"}
+              onClick={() => setTool("eraser")}
+            >
+              <Eraser className="w-4 h-4" />
+            </Button>
+            <Button size="sm" variant="destructive" onClick={clearCanvas}>
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex-1 space-y-3">
+          <div>
+            <Label>Brush Color</Label>
+            <Input
+              type="color"
+              value={brushColor}
+              onChange={(e) => setBrushColor(e.target.value)}
+              className="h-10 w-full"
+            />
+          </div>
+
+          <div>
+            <Label>Brush Size: {brushSize[0]}px</Label>
+            <Slider
+              value={brushSize}
+              onValueChange={setBrushSize}
+              min={1}
+              max={20}
+              step={1}
+            />
+          </div>
+
+          <div>
+            <Label>Skin Name</Label>
+            <Input
+              value={skinName}
+              onChange={(e) => setSkinName(e.target.value)}
+              placeholder="e.g., Galaxy Warrior"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <Label className="text-xs">Coins</Label>
+              <Input
+                type="number"
+                value={priceCoins}
+                onChange={(e) => setPriceCoins(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Gems</Label>
+              <Input
+                type="number"
+                value={priceGems}
+                onChange={(e) => setPriceGems(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Gold</Label>
+              <Input
+                type="number"
+                value={priceGold}
+                onChange={(e) => setPriceGold(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <Button
+            onClick={saveSkin}
+            disabled={saving || !skinName.trim()}
+            className="w-full gap-2"
+          >
+            {saving ? (
+              <>
+                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Save to Shop
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+};

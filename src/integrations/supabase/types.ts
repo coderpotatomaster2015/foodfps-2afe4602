@@ -295,6 +295,69 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_warnings: {
+        Row: {
+          created_at: string
+          id: string
+          is_chat_banned: boolean
+          last_warning_at: string | null
+          user_id: string
+          warning_count: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_chat_banned?: boolean
+          last_warning_at?: string | null
+          user_id: string
+          warning_count?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_chat_banned?: boolean
+          last_warning_at?: string | null
+          user_id?: string
+          warning_count?: number
+        }
+        Relationships: []
+      }
+      custom_skins: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          image_data: string
+          is_active: boolean
+          name: string
+          price_coins: number
+          price_gems: number
+          price_gold: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          image_data: string
+          is_active?: boolean
+          name: string
+          price_coins?: number
+          price_gems?: number
+          price_gold?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          image_data?: string
+          is_active?: boolean
+          name?: string
+          price_coins?: number
+          price_gems?: number
+          price_gold?: number
+        }
+        Relationships: []
+      }
       daily_rewards: {
         Row: {
           claimed_at: string
@@ -457,6 +520,57 @@ export type Database = {
         }
         Relationships: []
       }
+      global_chat: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      ip_bans: {
+        Row: {
+          banned_at: string
+          banned_by: string
+          expires_at: string | null
+          id: string
+          ip_address: string
+          reason: string | null
+        }
+        Insert: {
+          banned_at?: string
+          banned_by: string
+          expires_at?: string | null
+          id?: string
+          ip_address: string
+          reason?: string | null
+        }
+        Update: {
+          banned_at?: string
+          banned_by?: string
+          expires_at?: string | null
+          id?: string
+          ip_address?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       kill_stats: {
         Row: {
           created_at: string
@@ -563,6 +677,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      player_custom_skins: {
+        Row: {
+          id: string
+          purchased_at: string
+          skin_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          purchased_at?: string
+          skin_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          purchased_at?: string
+          skin_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_custom_skins_skin_id_fkey"
+            columns: ["skin_id"]
+            isOneToOne: false
+            referencedRelation: "custom_skins"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       player_owned_skins: {
         Row: {
@@ -821,6 +964,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_owner: { Args: { _user_id: string }; Returns: boolean }
       is_user_banned: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {

@@ -22,12 +22,14 @@ import { TeacherPanel } from "@/components/game/TeacherPanel";
 import { OwnerPanel } from "@/components/game/OwnerPanel";
 import { AdBanner } from "@/components/game/AdBanner";
 import { AdSignupModal } from "@/components/game/AdSignupModal";
+import { GlobalChat } from "@/components/game/GlobalChat";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
 import { Shield, LogOut, GraduationCap, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { applyRainbowToDocument, removeRainbowFromDocument } from "@/utils/rainbowEffect";
 
 export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | null;
 
@@ -86,6 +88,17 @@ const Index = () => {
       setWebsiteEnabled(false);
     }
   }, [gameStatus.websiteEnabled, isAdmin]);
+
+  // Handle ultimate rainbow mode
+  useEffect(() => {
+    const hasUltimate = gameStatus.adminAbuseEvents.some(e => e.event_type === "ultimate");
+    if (hasUltimate) {
+      applyRainbowToDocument();
+    } else {
+      removeRainbowFromDocument();
+    }
+    return () => removeRainbowFromDocument();
+  }, [gameStatus.adminAbuseEvents]);
 
   useEffect(() => {
     if (loading) return;
@@ -400,6 +413,13 @@ const Index = () => {
       {/* Ad Banner - shows for non-exempt users when not in game */}
       {user && !gameMode && !isAdmin && (
         <AdBanner userId={user.id} onSignupClick={() => setShowAdSignup(true)} />
+      )}
+
+      {/* Global Chat - shows when not in game */}
+      {user && !gameMode && username && (
+        <div className="fixed bottom-4 left-20 w-80 z-40">
+          <GlobalChat userId={user.id} username={username} />
+        </div>
       )}
     </div>
   );

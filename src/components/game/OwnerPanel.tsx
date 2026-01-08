@@ -49,6 +49,7 @@ interface ChatBannedUser {
   user_id: string;
   warning_count: number;
   is_chat_banned: boolean;
+  username?: string;
 }
 
 interface UserProfile {
@@ -123,12 +124,30 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
   };
 
   const loadChatBannedUsers = async () => {
-    const { data } = await supabase
+    const { data: warnings } = await supabase
       .from("chat_warnings")
       .select("*")
       .eq("is_chat_banned", true);
     
-    if (data) setChatBannedUsers(data);
+    if (warnings && warnings.length > 0) {
+      // Fetch usernames for banned users
+      const userIds = warnings.map(w => w.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, username")
+        .in("user_id", userIds);
+      
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p.username]) || []);
+      
+      const enrichedWarnings = warnings.map(w => ({
+        ...w,
+        username: profileMap.get(w.user_id) || "Unknown User"
+      }));
+      
+      setChatBannedUsers(enrichedWarnings);
+    } else {
+      setChatBannedUsers([]);
+    }
   };
 
   const loadUsers = async () => {
@@ -334,12 +353,6 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
       return;
     }
 
-    const user = users.find(u => u.username.toLowerCase() === giftUsername.toLowerCase());
-    if (!user) {
-      toast.error("User not found");
-      return;
-    }
-
     const coins = parseInt(giftCoins) || 0;
     const gems = parseInt(giftGems) || 0;
     const gold = parseInt(giftGold) || 0;
@@ -349,48 +362,37 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
       return;
     }
 
-    // Get existing currency
-    const { data: existing } = await supabase
-      .from("player_currencies")
-      .select("*")
-      .eq("user_id", user.user_id)
-      .maybeSingle();
-
-    if (existing) {
-      const { error } = await supabase
-        .from("player_currencies")
-        .update({
-          coins: existing.coins + coins,
-          gems: existing.gems + gems,
-          gold: existing.gold + gold,
-        })
-        .eq("user_id", user.user_id);
+    setLoading(true);
+    try {
+      const { data: success, error } = await supabase.rpc("gift_currency", {
+        _target_username: giftUsername.trim(),
+        _coins: coins,
+        _gems: gems,
+        _gold: gold,
+      });
 
       if (error) {
+        console.error("Gift currency error:", error);
         toast.error("Failed to gift currency");
         return;
       }
-    } else {
-      const { error } = await supabase
-        .from("player_currencies")
-        .insert({
-          user_id: user.user_id,
-          coins,
-          gems,
-          gold,
-        });
 
-      if (error) {
-        toast.error("Failed to gift currency");
+      if (!success) {
+        toast.error("User not found or permission denied");
         return;
       }
+
+      toast.success(`Gifted ${coins} coins, ${gems} gems, ${gold} gold to ${giftUsername}`);
+      setGiftUsername("");
+      setGiftCoins("");
+      setGiftGems("");
+      setGiftGold("");
+    } catch (error) {
+      console.error("Gift currency error:", error);
+      toast.error("Failed to gift currency");
+    } finally {
+      setLoading(false);
     }
-
-    toast.success(`Gifted ${coins} coins, ${gems} gems, ${gold} gold to ${giftUsername}`);
-    setGiftUsername("");
-    setGiftCoins("");
-    setGiftGems("");
-    setGiftGold("");
   };
 
   const activateUltimateAbuse = async () => {
@@ -658,7 +660,7 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
                 chatBannedUsers.map((user) => (
                   <Card key={user.id} className="p-3 flex items-center justify-between">
                     <div>
-                      <p className="font-medium">User ID: {user.user_id.slice(0, 8)}...</p>
+                      <p className="font-medium">{user.username || "Unknown User"}</p>
                       <p className="text-xs text-muted-foreground">Warnings: {user.warning_count}</p>
                     </div>
                     <Button size="sm" onClick={() => unbanFromChat(user.user_id)}>

@@ -941,6 +941,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_player_currency: {
+        Args: {
+          _coins?: number
+          _gems?: number
+          _gold?: number
+          _user_id: string
+        }
+        Returns: boolean
+      }
       get_ban_info: {
         Args: { _user_id: string }
         Returns: {
@@ -948,6 +957,15 @@ export type Database = {
           hours_remaining: number
           reason: string
         }[]
+      }
+      gift_currency: {
+        Args: {
+          _coins?: number
+          _gems?: number
+          _gold?: number
+          _target_username: string
+        }
+        Returns: boolean
       }
       grant_owner_with_password: {
         Args: { _password: string; _user_id: string }

@@ -40,6 +40,7 @@ const Index = () => {
   const [username, setUsername] = useState<string>("");
   const [gameMode, setGameMode] = useState<GameMode>(null);
   const [roomCode, setRoomCode] = useState<string>("");
+  const [timedMinutes, setTimedMinutes] = useState<number>(0);
   const [isInGame, setIsInGame] = useState(false);
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -223,9 +224,10 @@ const Index = () => {
     setShowUsernameModal(false);
   };
 
-  const handleModeSelect = (mode: GameMode, code?: string) => {
+  const handleModeSelect = (mode: GameMode, code?: string, timed?: number) => {
     setGameMode(mode);
     if (code) setRoomCode(code);
+    if (timed) setTimedMinutes(timed);
   };
 
   const handleStartGame = () => setIsInGame(true);
@@ -233,6 +235,7 @@ const Index = () => {
   const handleBackToMenu = () => {
     setGameMode(null);
     setRoomCode("");
+    setTimedMinutes(0);
     setIsInGame(false);
   };
 

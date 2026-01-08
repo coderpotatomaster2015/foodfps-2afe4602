@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Mail, Sparkles, Globe, Palette, Trophy, Gift, FlaskConical, 
-  Settings, ChevronLeft, ChevronRight 
+  Settings, ChevronLeft, ChevronRight, MessageCircle 
 } from "lucide-react";
 
 interface GameSidebarProps {
@@ -17,6 +17,7 @@ interface GameSidebarProps {
   onShowDailyRewards: () => void;
   onShowBetaPanel: () => void;
   onShowSettings: () => void;
+  onShowGlobalChat: () => void;
 }
 
 export const GameSidebar = ({
@@ -31,11 +32,13 @@ export const GameSidebar = ({
   onShowDailyRewards,
   onShowBetaPanel,
   onShowSettings,
+  onShowGlobalChat,
 }: GameSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
 
   const menuItems = [
     { icon: Mail, label: "Messages", onClick: onShowMessages, badge: unreadMessages > 0 ? unreadMessages : null },
+    { icon: MessageCircle, label: "Global Chat", onClick: onShowGlobalChat },
     { icon: Sparkles, label: "Updates", onClick: onShowUpdates },
     { icon: Globe, label: "Social", onClick: onShowSocial },
     { icon: Palette, label: "Shop", onClick: onShowSkinsShop },

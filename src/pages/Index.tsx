@@ -22,7 +22,8 @@ import { TeacherPanel } from "@/components/game/TeacherPanel";
 import { OwnerPanel } from "@/components/game/OwnerPanel";
 import { AdBanner } from "@/components/game/AdBanner";
 import { AdSignupModal } from "@/components/game/AdSignupModal";
-import { GlobalChat } from "@/components/game/GlobalChat";
+import { GlobalChatModal } from "@/components/game/GlobalChatModal";
+import { PopupAd } from "@/components/game/PopupAd";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,7 @@ const Index = () => {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showDailyRewards, setShowDailyRewards] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showGlobalChat, setShowGlobalChat] = useState(false);
   const [touchscreenMode, setTouchscreenMode] = useState(false);
   const [websiteEnabled, setWebsiteEnabled] = useState(true);
   const [disabledMessage, setDisabledMessage] = useState("");
@@ -292,6 +294,7 @@ const Index = () => {
           onShowDailyRewards={() => setShowDailyRewards(true)}
           onShowBetaPanel={() => setShowBetaPanel(true)}
           onShowSettings={() => setShowSettings(true)}
+          onShowGlobalChat={() => setShowGlobalChat(true)}
         />
       )}
 
@@ -410,16 +413,24 @@ const Index = () => {
       />
       <AdSignupModal open={showAdSignup} onOpenChange={setShowAdSignup} />
       
+      {/* Global Chat Modal */}
+      {user && username && (
+        <GlobalChatModal
+          open={showGlobalChat}
+          onOpenChange={setShowGlobalChat}
+          userId={user.id}
+          username={username}
+        />
+      )}
+      
       {/* Ad Banner - shows for non-exempt users when not in game */}
       {user && !gameMode && !isAdmin && (
         <AdBanner userId={user.id} onSignupClick={() => setShowAdSignup(true)} />
       )}
 
-      {/* Global Chat - shows when not in game */}
-      {user && !gameMode && username && (
-        <div className="fixed bottom-4 left-20 w-80 z-40">
-          <GlobalChat userId={user.id} username={username} />
-        </div>
+      {/* Popup Ads - shows for non-exempt users when not in game */}
+      {user && !gameMode && !isAdmin && (
+        <PopupAd userId={user.id} onSignupClick={() => setShowAdSignup(true)} />
       )}
     </div>
   );

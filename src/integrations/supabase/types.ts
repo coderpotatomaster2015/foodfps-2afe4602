@@ -949,6 +949,10 @@ export type Database = {
           reason: string
         }[]
       }
+      grant_owner_with_password: {
+        Args: { _password: string; _user_id: string }
+        Returns: boolean
+      }
       has_ad_exemption: { Args: { _user_id: string }; Returns: boolean }
       has_any_role: {
         Args: {

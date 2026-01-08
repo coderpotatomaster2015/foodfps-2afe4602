@@ -39,58 +39,21 @@ const OwnerPage = () => {
     setIsVerifying(true);
 
     try {
-      // Check if user already has owner role
-      const { data: existingRole } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "owner")
-        .maybeSingle();
+      // Use the secure database function to grant owner role
+      const { data, error } = await supabase.rpc("grant_owner_with_password", {
+        _user_id: user.id,
+        _password: password,
+      });
 
-      if (existingRole) {
-        toast.info("You are already an owner!");
-        setIsGranted(true);
-        setTimeout(() => navigate("/"), 2000);
-        return;
+      if (error) {
+        console.error("RPC error:", error);
+        throw new Error("Failed to grant owner role");
       }
 
-      // Remove any existing roles and add owner role
-      await supabase
-        .from("user_roles")
-        .delete()
-        .eq("user_id", user.id);
-
-      const { error } = await supabase
-        .from("user_roles")
-        .insert({ user_id: user.id, role: "owner" });
-
-      if (error) throw error;
-
-      // Give owner infinite currency
-      const { data: existingCurrency } = await supabase
-        .from("player_currencies")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (existingCurrency) {
-        await supabase
-          .from("player_currencies")
-          .update({
-            coins: 999999999,
-            gems: 999999999,
-            gold: 999999999,
-          })
-          .eq("user_id", user.id);
-      } else {
-        await supabase
-          .from("player_currencies")
-          .insert({
-            user_id: user.id,
-            coins: 999999999,
-            gems: 999999999,
-            gold: 999999999,
-          });
+      if (!data) {
+        toast.error("Incorrect password");
+        setIsVerifying(false);
+        return;
       }
 
       toast.success("🎉 You are now an Owner! You have both Admin and Owner panels.");
@@ -98,7 +61,7 @@ const OwnerPage = () => {
       setTimeout(() => navigate("/"), 2000);
     } catch (error) {
       console.error("Error granting owner role:", error);
-      toast.error("Failed to grant owner role");
+      toast.error("Failed to grant owner role. Please try again.");
     } finally {
       setIsVerifying(false);
     }

@@ -5,6 +5,8 @@ import { GameModeSelector } from "@/components/game/GameModeSelector";
 import { GameCanvas } from "@/components/game/GameCanvas";
 import { BossMode } from "@/components/game/BossMode";
 import { Lobby } from "@/components/game/Lobby";
+import { TimedLobby } from "@/components/game/TimedLobby";
+import { TimedGameCanvas } from "@/components/game/TimedGameCanvas";
 import { AdminPanel } from "@/components/game/AdminPanel";
 import { AdminCodeModal } from "@/components/game/AdminCodeModal";
 import { WebsiteDisabled } from "@/components/game/WebsiteDisabled";
@@ -24,6 +26,7 @@ import { AdBanner } from "@/components/game/AdBanner";
 import { AdSignupModal } from "@/components/game/AdSignupModal";
 import { GlobalChatModal } from "@/components/game/GlobalChatModal";
 import { PopupAd } from "@/components/game/PopupAd";
+import { TutorialModal } from "@/components/game/TutorialModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
@@ -32,7 +35,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { applyRainbowToDocument, removeRainbowFromDocument } from "@/utils/rainbowEffect";
 
-export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | null;
+export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | null;
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -71,6 +74,8 @@ const Index = () => {
   const [multiplayerDisabled, setMultiplayerDisabled] = useState(false);
   const [bossDisabled, setBossDisabled] = useState(false);
   const [currentSkin, setCurrentSkin] = useState("#FFF3D6");
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialChecked, setTutorialChecked] = useState(false);
 
   // Real-time game status hook
   const gameStatus = useGameStatus(user?.id || null);
@@ -181,21 +186,31 @@ const Index = () => {
   const loadUserProfile = async () => {
     if (!user) {
       setProfileLoaded(true);
+      setTutorialChecked(true);
       return;
     }
     
     try {
       const { data } = await supabase
         .from("profiles")
-        .select("username")
+        .select("username, tutorial_completed")
         .eq("user_id", user.id)
         .maybeSingle();
       
       if (data) {
         setUsername(data.username);
+        // Check if tutorial needs to be shown
+        const tutorialCompletedLocal = localStorage.getItem("foodfps_tutorial_completed") === "true";
+        const tutorialCompleted = data.tutorial_completed || tutorialCompletedLocal;
+        
+        if (!tutorialCompleted) {
+          setShowTutorial(true);
+        }
       } else {
         const emailUsername = user.email?.split("@")[0] || `user_${user.id.slice(0, 8)}`;
         setUsername(emailUsername);
+        // New user, show tutorial
+        setShowTutorial(true);
       }
     } catch (error) {
       console.error("Error loading profile:", error);
@@ -203,6 +218,16 @@ const Index = () => {
       setUsername(emailUsername);
     } finally {
       setProfileLoaded(true);
+      setTutorialChecked(true);
+    }
+  };
+
+  const handleTutorialComplete = (isMobile: boolean) => {
+    setShowTutorial(false);
+    if (isMobile) {
+      setTouchscreenMode(true);
+      localStorage.setItem("foodfps_touchscreen", "true");
+      toast.success("Touch controls enabled! Rotate your device to landscape for best experience.");
     }
   };
 
@@ -225,12 +250,22 @@ const Index = () => {
   };
 
   const handleModeSelect = (mode: GameMode, code?: string, timed?: number) => {
-    setGameMode(mode);
+    // If timed is set, this is a timed match (host mode with timed minutes)
+    if (timed && timed > 0) {
+      setGameMode("timed-host");
+      setTimedMinutes(timed);
+    } else {
+      setGameMode(mode);
+    }
     if (code) setRoomCode(code);
-    if (timed) setTimedMinutes(timed);
   };
 
   const handleStartGame = () => setIsInGame(true);
+  
+  const handleTimedStartGame = (minutes: number) => {
+    setTimedMinutes(minutes);
+    setIsInGame(true);
+  };
 
   const handleBackToMenu = () => {
     setGameMode(null);
@@ -250,7 +285,7 @@ const Index = () => {
     setShowAdminCode(true);
   };
 
-  if (loading || checkingStatus || !profileLoaded) {
+  if (loading || checkingStatus || !profileLoaded || !tutorialChecked) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -352,6 +387,7 @@ const Index = () => {
       )}
 
       <UsernameModal open={showUsernameModal} onUsernameSet={handleUsernameSet} />
+      <TutorialModal open={showTutorial} onComplete={handleTutorialComplete} />
       
       {!gameMode && !showUsernameModal && username && (
         <GameModeSelector 
@@ -363,17 +399,43 @@ const Index = () => {
         />
       )}
 
+      {/* Standard Lobby for non-timed matches */}
       {gameMode && !isInGame && (gameMode === "host" || gameMode === "join") && (
         <Lobby mode={gameMode} username={username} roomCode={roomCode} onStartGame={handleStartGame} onBack={handleBackToMenu} />
       )}
 
-      {(isInGame || gameMode === "solo" || gameMode === "offline") && gameMode !== "boss" && (
+      {/* Timed Match Lobby */}
+      {gameMode === "timed-host" && !isInGame && (
+        <TimedLobby 
+          mode="host"
+          username={username}
+          roomCode={roomCode}
+          timedMinutes={timedMinutes}
+          onStartGame={handleTimedStartGame}
+          onBack={handleBackToMenu}
+        />
+      )}
+
+      {/* Standard Game - Solo, Offline, or standard multiplayer */}
+      {(isInGame || gameMode === "solo" || gameMode === "offline") && gameMode !== "boss" && gameMode !== "timed-host" && (
         <GameCanvas 
-          mode={gameMode as Exclude<GameMode, null | "boss">} 
+          mode={gameMode as Exclude<GameMode, null | "boss" | "timed-host" | "timed-join">} 
           username={username} 
           roomCode={roomCode} 
           onBack={handleBackToMenu}
           adminAbuseEvents={gameStatus.adminAbuseEvents}
+          touchscreenMode={touchscreenMode}
+          playerSkin={currentSkin}
+        />
+      )}
+
+      {/* Timed Match Game */}
+      {gameMode === "timed-host" && isInGame && (
+        <TimedGameCanvas
+          username={username}
+          roomCode={roomCode}
+          timedMinutes={timedMinutes}
+          onBack={handleBackToMenu}
           touchscreenMode={touchscreenMode}
           playerSkin={currentSkin}
         />

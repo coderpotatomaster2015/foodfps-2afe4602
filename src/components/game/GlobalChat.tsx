@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageCircle, AlertTriangle } from "lucide-react";
+import { Send, MessageCircle, AlertTriangle, Shield, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -39,6 +39,14 @@ const BANNED_WORDS = [
   "wanker"
 ];
 
+// Admin/Owner commands
+const ADMIN_COMMANDS = [
+  { cmd: "/clear", desc: "Clear chat history (admin only)" },
+  { cmd: "/announce <msg>", desc: "Send announcement (admin only)" },
+  { cmd: "/mute <username>", desc: "Mute a user (admin only)" },
+  { cmd: "/unmute <username>", desc: "Unmute a user (admin only)" },
+];
+
 const containsProfanity = (text: string): boolean => {
   const lowerText = text.toLowerCase();
   return BANNED_WORDS.some(word => {
@@ -61,11 +69,14 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
   const [input, setInput] = useState("");
   const [isChatBanned, setIsChatBanned] = useState(false);
   const [warningCount, setWarningCount] = useState(0);
+  const [isAdminOrOwner, setIsAdminOrOwner] = useState(false);
+  const [showCommands, setShowCommands] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadMessages();
     checkChatBan();
+    checkAdminStatus();
     
     // Subscribe to new messages
     const channel = supabase
@@ -84,6 +95,16 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
       supabase.removeChannel(channel);
     };
   }, [userId]);
+
+  const checkAdminStatus = async () => {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .in("role", ["admin", "owner"]);
+    
+    setIsAdminOrOwner(data && data.length > 0);
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -119,6 +140,12 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
 
     const messageText = input.trim();
     setInput("");
+
+    // Check for admin commands
+    if (messageText.startsWith("/") && isAdminOrOwner) {
+      await handleCommand(messageText);
+      return;
+    }
 
     // Check for profanity
     if (containsProfanity(messageText)) {
@@ -183,6 +210,95 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
     }
   };
 
+  const handleCommand = async (cmd: string) => {
+    const parts = cmd.split(" ");
+    const command = parts[0].toLowerCase();
+    const args = parts.slice(1).join(" ");
+
+    switch (command) {
+      case "/clear":
+        // Clear all chat messages (admin only)
+        const { error: clearError } = await supabase
+          .from("global_chat")
+          .delete()
+          .neq("id", "00000000-0000-0000-0000-000000000000"); // Delete all
+        
+        if (!clearError) {
+          setMessages([]);
+          toast.success("Chat cleared");
+          // Send system message
+          await supabase.from("global_chat").insert({
+            user_id: userId,
+            username: "SYSTEM",
+            message: `🛡️ Chat was cleared by ${username}`,
+          });
+        }
+        break;
+
+      case "/announce":
+        if (args) {
+          await supabase.from("global_chat").insert({
+            user_id: userId,
+            username: "📢 ANNOUNCEMENT",
+            message: args,
+          });
+          toast.success("Announcement sent");
+        } else {
+          toast.error("Usage: /announce <message>");
+        }
+        break;
+
+      case "/mute":
+        if (args) {
+          // Find user and mute them
+          const { data: targetProfile } = await supabase
+            .from("profiles")
+            .select("user_id")
+            .ilike("username", args)
+            .maybeSingle();
+
+          if (targetProfile) {
+            await supabase.from("chat_warnings").upsert({
+              user_id: targetProfile.user_id,
+              is_chat_banned: true,
+              warning_count: 2,
+            });
+            toast.success(`${args} has been muted`);
+          } else {
+            toast.error("User not found");
+          }
+        } else {
+          toast.error("Usage: /mute <username>");
+        }
+        break;
+
+      case "/unmute":
+        if (args) {
+          const { data: targetProfile } = await supabase
+            .from("profiles")
+            .select("user_id")
+            .ilike("username", args)
+            .maybeSingle();
+
+          if (targetProfile) {
+            await supabase
+              .from("chat_warnings")
+              .update({ is_chat_banned: false, warning_count: 0 })
+              .eq("user_id", targetProfile.user_id);
+            toast.success(`${args} has been unmuted`);
+          } else {
+            toast.error("User not found");
+          }
+        } else {
+          toast.error("Usage: /unmute <username>");
+        }
+        break;
+
+      default:
+        toast.error("Unknown command. Available: /clear, /announce, /mute, /unmute");
+    }
+  };
+
   if (isChatBanned) {
     return (
       <Card className="p-4 bg-destructive/10 border-destructive/30">
@@ -202,12 +318,33 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
       <div className="p-3 border-b flex items-center gap-2">
         <MessageCircle className="w-4 h-4 text-primary" />
         <span className="font-medium text-sm">Global Chat</span>
-        {warningCount > 0 && (
+        {isAdminOrOwner && (
+          <button 
+            onClick={() => setShowCommands(!showCommands)}
+            className="ml-auto text-xs text-primary hover:underline flex items-center gap-1"
+          >
+            <Shield className="w-3 h-3" />
+            Commands
+          </button>
+        )}
+        {warningCount > 0 && !isAdminOrOwner && (
           <span className="text-xs text-amber-500 ml-auto">
             Warnings: {warningCount}/2
           </span>
         )}
       </div>
+      
+      {/* Admin Commands Help */}
+      {showCommands && isAdminOrOwner && (
+        <div className="p-2 bg-primary/10 border-b text-xs space-y-1">
+          <p className="font-medium text-primary">Admin Commands:</p>
+          {ADMIN_COMMANDS.map((c, i) => (
+            <p key={i} className="text-muted-foreground">
+              <code className="bg-secondary px-1 rounded">{c.cmd}</code> - {c.desc}
+            </p>
+          ))}
+        </div>
+      )}
       
       <ScrollArea className="flex-1 p-3" ref={scrollRef}>
         <div className="space-y-2">

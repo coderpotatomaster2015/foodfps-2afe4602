@@ -4,13 +4,22 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Paintbrush, Eraser, Save, Trash2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Paintbrush, Eraser, Save, Trash2, Zap, Eye, Gauge, Shield, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface SkinEditorProps {
   onSave?: () => void;
 }
+
+const SPECIAL_POWERS = [
+  { value: "none", label: "No Power", icon: null, description: "Regular skin with no special abilities" },
+  { value: "invisibility", label: "Invisibility", icon: Eye, description: "Become semi-transparent (50% opacity)" },
+  { value: "speed", label: "Speed Boost", icon: Gauge, description: "+30% movement speed" },
+  { value: "shield", label: "Shield", icon: Shield, description: "Start with 25 extra HP" },
+  { value: "rainbow", label: "Rainbow Aura", icon: Sparkles, description: "Skin cycles through rainbow colors" },
+];
 
 export const SkinEditor = ({ onSave }: SkinEditorProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -22,6 +31,7 @@ export const SkinEditor = ({ onSave }: SkinEditorProps) => {
   const [priceCoins, setPriceCoins] = useState("100");
   const [priceGems, setPriceGems] = useState("0");
   const [priceGold, setPriceGold] = useState("0");
+  const [specialPower, setSpecialPower] = useState("none");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -111,7 +121,24 @@ export const SkinEditor = ({ onSave }: SkinEditorProps) => {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) {
+        toast.error("Not authenticated");
+        setSaving(false);
+        return;
+      }
+
+      // Check if user is admin or owner
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .in("role", ["admin", "owner"]);
+
+      if (!roleData || roleData.length === 0) {
+        toast.error("Only admins and owners can create skins");
+        setSaving(false);
+        return;
+      }
 
       const imageData = canvas.toDataURL("image/png");
 
@@ -122,12 +149,19 @@ export const SkinEditor = ({ onSave }: SkinEditorProps) => {
         price_gems: parseInt(priceGems) || 0,
         price_gold: parseInt(priceGold) || 0,
         created_by: user.id,
+        special_power: specialPower === "none" ? null : specialPower,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error saving skin:", error);
+        toast.error("Failed to save skin: " + error.message);
+        setSaving(false);
+        return;
+      }
 
       toast.success("Skin created and added to shop!");
       setSkinName("");
+      setSpecialPower("none");
       clearCanvas();
       onSave?.();
     } catch (error) {
@@ -137,6 +171,8 @@ export const SkinEditor = ({ onSave }: SkinEditorProps) => {
       setSaving(false);
     }
   };
+
+  const selectedPowerInfo = SPECIAL_POWERS.find(p => p.value === specialPower);
 
   return (
     <Card className="p-4 space-y-4">
@@ -236,6 +272,34 @@ export const SkinEditor = ({ onSave }: SkinEditorProps) => {
                 onChange={(e) => setPriceGold(e.target.value)}
               />
             </div>
+          </div>
+
+          {/* Special Power Selection */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-yellow-500" />
+              Special Power
+            </Label>
+            <Select value={specialPower} onValueChange={setSpecialPower}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a power" />
+              </SelectTrigger>
+              <SelectContent>
+                {SPECIAL_POWERS.map((power) => (
+                  <SelectItem key={power.value} value={power.value}>
+                    <div className="flex items-center gap-2">
+                      {power.icon && <power.icon className="w-4 h-4" />}
+                      {power.label}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedPowerInfo && (
+              <p className="text-xs text-muted-foreground">
+                {selectedPowerInfo.description}
+              </p>
+            )}
           </div>
 
           <Button

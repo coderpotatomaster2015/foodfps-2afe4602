@@ -333,6 +333,7 @@ export type Database = {
           price_coins: number
           price_gems: number
           price_gold: number
+          special_power: string | null
         }
         Insert: {
           created_at?: string
@@ -344,6 +345,7 @@ export type Database = {
           price_coins?: number
           price_gems?: number
           price_gold?: number
+          special_power?: string | null
         }
         Update: {
           created_at?: string
@@ -355,6 +357,7 @@ export type Database = {
           price_coins?: number
           price_gems?: number
           price_gold?: number
+          special_power?: string | null
         }
         Relationships: []
       }
@@ -802,6 +805,7 @@ export type Database = {
           created_at: string
           id: string
           total_score: number
+          tutorial_completed: boolean
           updated_at: string
           user_id: string
           username: string
@@ -811,6 +815,7 @@ export type Database = {
           created_at?: string
           id?: string
           total_score?: number
+          tutorial_completed?: boolean
           updated_at?: string
           user_id: string
           username: string
@@ -820,6 +825,7 @@ export type Database = {
           created_at?: string
           id?: string
           total_score?: number
+          tutorial_completed?: boolean
           updated_at?: string
           user_id?: string
           username?: string

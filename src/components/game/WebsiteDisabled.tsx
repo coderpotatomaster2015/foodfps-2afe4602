@@ -1,11 +1,23 @@
 import { Card } from "@/components/ui/card";
-import { AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface WebsiteDisabledProps {
   message?: string;
 }
 
 export const WebsiteDisabled = ({ message }: WebsiteDisabledProps) => {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    localStorage.removeItem("play_as_guest");
+    localStorage.removeItem("foodfps_username");
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="max-w-md w-full p-8 text-center space-y-6 bg-card border-border">
@@ -20,10 +32,14 @@ export const WebsiteDisabled = ({ message }: WebsiteDisabledProps) => {
           </p>
         </div>
 
-        <div className="pt-4 border-t border-border">
+        <div className="pt-4 border-t border-border space-y-4">
           <p className="text-sm text-muted-foreground">
-            If you are an admin, please log in to access the admin panel and enable the website.
+            If you are an admin, please log out and log back in to access the admin panel and enable the website.
           </p>
+          <Button onClick={handleLogout} variant="outline" className="gap-2">
+            <LogOut className="w-4 h-4" />
+            Logout to Re-authenticate
+          </Button>
         </div>
       </Card>
     </div>

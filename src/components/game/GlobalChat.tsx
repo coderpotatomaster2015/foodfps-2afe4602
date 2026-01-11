@@ -41,10 +41,14 @@ const BANNED_WORDS = [
 
 // Admin/Owner commands
 const ADMIN_COMMANDS = [
-  { cmd: "/clear", desc: "Clear chat history (admin only)" },
-  { cmd: "/announce <msg>", desc: "Send announcement (admin only)" },
-  { cmd: "/mute <username>", desc: "Mute a user (admin only)" },
-  { cmd: "/unmute <username>", desc: "Unmute a user (admin only)" },
+  { cmd: "/clear", desc: "Clear chat history" },
+  { cmd: "/announce <msg>", desc: "Send announcement" },
+  { cmd: "/mute <username>", desc: "Mute a user" },
+  { cmd: "/unmute <username>", desc: "Unmute a user" },
+  { cmd: "/broadcast <msg>", desc: "Create a broadcast for all players" },
+  { cmd: "/kick <username>", desc: "Kick player from chat" },
+  { cmd: "/warn <username>", desc: "Add a warning to user" },
+  { cmd: "/stats", desc: "Show chat statistics" },
 ];
 
 const containsProfanity = (text: string): boolean => {
@@ -55,13 +59,9 @@ const containsProfanity = (text: string): boolean => {
   });
 };
 
-const censorMessage = (text: string): string => {
-  let censored = text;
-  BANNED_WORDS.forEach(word => {
-    const regex = new RegExp(`\\b${word}\\b`, 'gi');
-    censored = censored.replace(regex, '#'.repeat(word.length));
-  });
-  return censored;
+// Censor the ENTIRE message if it contains any bad words
+const censorEntireMessage = (): string => {
+  return "[Message censored for inappropriate language]";
 };
 
 export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
@@ -147,7 +147,7 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
       return;
     }
 
-    // Check for profanity
+    // Check for profanity - censor ENTIRE message
     if (containsProfanity(messageText)) {
       // Increment warning
       const { data: existingWarning } = await supabase
@@ -189,8 +189,8 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
         toast.warning(`Warning ${newWarningCount}/2: Inappropriate language detected. One more warning and you'll be banned from chat.`);
       }
 
-      // Send censored message
-      const censoredMessage = censorMessage(messageText);
+      // Send ENTIRELY censored message
+      const censoredMessage = censorEntireMessage();
       await supabase.from("global_chat").insert({
         user_id: userId,
         username,
@@ -248,6 +248,25 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
         }
         break;
 
+      case "/broadcast":
+        if (args) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const expiresAt = new Date();
+            expiresAt.setMinutes(expiresAt.getMinutes() + 30);
+            
+            await supabase.from("broadcasts").insert({
+              message: args,
+              created_by: user.id,
+              expires_at: expiresAt.toISOString(),
+            });
+            toast.success("Broadcast created for 30 minutes");
+          }
+        } else {
+          toast.error("Usage: /broadcast <message>");
+        }
+        break;
+
       case "/mute":
         if (args) {
           // Find user and mute them
@@ -294,8 +313,64 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
         }
         break;
 
+      case "/kick":
+        if (args) {
+          await supabase.from("global_chat").insert({
+            user_id: userId,
+            username: "SYSTEM",
+            message: `⚠️ ${args} was kicked from chat by ${username}`,
+          });
+          toast.success(`${args} kicked from chat`);
+        } else {
+          toast.error("Usage: /kick <username>");
+        }
+        break;
+
+      case "/warn":
+        if (args) {
+          const { data: targetProfile } = await supabase
+            .from("profiles")
+            .select("user_id")
+            .ilike("username", args)
+            .maybeSingle();
+
+          if (targetProfile) {
+            const { data: existing } = await supabase
+              .from("chat_warnings")
+              .select("*")
+              .eq("user_id", targetProfile.user_id)
+              .maybeSingle();
+
+            const newCount = (existing?.warning_count || 0) + 1;
+            await supabase.from("chat_warnings").upsert({
+              user_id: targetProfile.user_id,
+              warning_count: newCount,
+              is_chat_banned: newCount >= 2,
+              last_warning_at: new Date().toISOString(),
+            });
+            toast.success(`Warning added to ${args} (${newCount}/2)`);
+          } else {
+            toast.error("User not found");
+          }
+        } else {
+          toast.error("Usage: /warn <username>");
+        }
+        break;
+
+      case "/stats":
+        const { count: msgCount } = await supabase
+          .from("global_chat")
+          .select("*", { count: "exact", head: true });
+        
+        const { count: warnCount } = await supabase
+          .from("chat_warnings")
+          .select("*", { count: "exact", head: true });
+        
+        toast.info(`📊 Chat Stats: ${msgCount || 0} messages, ${warnCount || 0} warnings issued`);
+        break;
+
       default:
-        toast.error("Unknown command. Available: /clear, /announce, /mute, /unmute");
+        toast.error("Unknown command. Use /clear, /announce, /mute, /unmute, /broadcast, /kick, /warn, /stats");
     }
   };
 
@@ -336,7 +411,7 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
       
       {/* Admin Commands Help */}
       {showCommands && isAdminOrOwner && (
-        <div className="p-2 bg-primary/10 border-b text-xs space-y-1">
+        <div className="p-2 bg-primary/10 border-b text-xs space-y-1 max-h-32 overflow-auto">
           <p className="font-medium text-primary">Admin Commands:</p>
           {ADMIN_COMMANDS.map((c, i) => (
             <p key={i} className="text-muted-foreground">

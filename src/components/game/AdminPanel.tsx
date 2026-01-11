@@ -131,7 +131,7 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
 
   // Admin abuse modal
   const [abuseModalOpen, setAbuseModalOpen] = useState(false);
-  const [abuseType, setAbuseType] = useState<"godmode" | "all_weapons">("godmode");
+  const [abuseType, setAbuseType] = useState<"godmode" | "all_weapons" | "ultimate">("godmode");
   const [abuseDuration, setAbuseDuration] = useState("5");
 
   useEffect(() => {
@@ -670,23 +670,45 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
   };
 
   const activateAdminAbuse = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Not authenticated");
+        return;
+      }
 
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + parseInt(abuseDuration));
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + parseInt(abuseDuration));
 
-    const { error } = await supabase.from("admin_abuse_events").insert({
-      event_type: abuseType,
-      created_by: user.id,
-      expires_at: expiresAt.toISOString(),
-    });
+      // First check if user has admin role
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .in("role", ["admin", "owner"]);
 
-    if (error) {
+      if (!roleData || roleData.length === 0) {
+        toast.error("You need admin permissions");
+        return;
+      }
+
+      const { error } = await supabase.from("admin_abuse_events").insert({
+        event_type: abuseType,
+        created_by: user.id,
+        expires_at: expiresAt.toISOString(),
+        is_active: true,
+      });
+
+      if (error) {
+        console.error("Admin abuse error:", error);
+        toast.error("Failed to activate: " + error.message);
+      } else {
+        toast.success(`${abuseType === "godmode" ? "Godmode" : abuseType === "all_weapons" ? "All Weapons" : "Ultimate Rainbow"} activated for all players for ${abuseDuration} minutes!`);
+        setAbuseModalOpen(false);
+      }
+    } catch (error) {
+      console.error("Error activating admin abuse:", error);
       toast.error("Failed to activate");
-    } else {
-      toast.success(`${abuseType === "godmode" ? "Godmode" : "All Weapons"} activated for all players for ${abuseDuration} minutes!`);
-      setAbuseModalOpen(false);
     }
   };
 
@@ -1315,6 +1337,44 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                     </span>
                     <span className="flex-1 font-medium">{user.username}</span>
                     <span className="text-primary font-bold">{user.total_score}</span>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-6 px-2"
+                        onClick={async () => {
+                          const amount = prompt("Enter score amount to add:");
+                          if (amount && !isNaN(parseInt(amount))) {
+                            await supabase.from("profiles").update({ total_score: user.total_score + parseInt(amount) }).eq("user_id", user.user_id);
+                            toast.success(`Added ${amount} score to ${user.username}`);
+                            loadLeaderboard();
+                          }
+                        }}
+                      >+</Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-6 px-2"
+                        onClick={async () => {
+                          const newScore = prompt("Set exact score:", String(user.total_score));
+                          if (newScore && !isNaN(parseInt(newScore))) {
+                            await supabase.from("profiles").update({ total_score: parseInt(newScore) }).eq("user_id", user.user_id);
+                            toast.success(`Set ${user.username}'s score to ${newScore}`);
+                            loadLeaderboard();
+                          }
+                        }}
+                      >=</Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="text-xs h-6 px-2"
+                        onClick={async () => {
+                          await supabase.from("profiles").update({ total_score: 0 }).eq("user_id", user.user_id);
+                          toast.success(`Reset ${user.username}'s score to 0`);
+                          loadLeaderboard();
+                        }}
+                      >0</Button>
+                    </div>
                   </Card>
                 ))}
               </div>
@@ -1602,6 +1662,14 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                 >
                   <Swords className="w-5 h-5" />
                   <span className="text-xs">All Weapons</span>
+                </Button>
+                <Button
+                  variant={abuseType === "ultimate" ? "default" : "outline"}
+                  onClick={() => setAbuseType("ultimate")}
+                  className="h-16 flex-col gap-1 col-span-2"
+                >
+                  <Sparkles className="w-5 h-5" />
+                  <span className="text-xs">Ultimate Rainbow</span>
                 </Button>
               </div>
             </div>

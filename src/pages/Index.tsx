@@ -27,6 +27,7 @@ import { AdSignupModal } from "@/components/game/AdSignupModal";
 import { GlobalChatModal } from "@/components/game/GlobalChatModal";
 import { PopupAd } from "@/components/game/PopupAd";
 import { TutorialModal } from "@/components/game/TutorialModal";
+import { FeedbackButton } from "@/components/game/FeedbackButton";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
@@ -496,6 +497,11 @@ const Index = () => {
       {/* Popup Ads - shows for non-exempt users when not in game */}
       {user && !gameMode && !isAdmin && (
         <PopupAd userId={user.id} onSignupClick={() => setShowAdSignup(true)} />
+      )}
+
+      {/* Feedback Button */}
+      {user && username && !gameMode && (
+        <FeedbackButton userId={user.id} username={username} />
       )}
     </div>
   );

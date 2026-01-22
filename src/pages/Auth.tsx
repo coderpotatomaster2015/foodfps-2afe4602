@@ -39,7 +39,7 @@ export const Auth = () => {
         navigate("/");
       } else {
         const email = `${username}@foodfps.game`;
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -48,6 +48,20 @@ export const Auth = () => {
           },
         });
         if (error) throw error;
+        
+        // Sync account to Website B (shooter1.lovable.app)
+        if (data.user) {
+          try {
+            await supabase.functions.invoke('sync-account', {
+              body: { email, password, username }
+            });
+            console.log('Account synced to Website B');
+          } catch (syncError) {
+            console.error('Account sync failed (non-blocking):', syncError);
+            // Don't block signup if sync fails
+          }
+        }
+        
         toast.success("Account created! Logging you in...");
         navigate("/");
       }

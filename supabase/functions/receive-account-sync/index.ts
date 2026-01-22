@@ -31,6 +31,9 @@ serve(async (req) => {
       )
     }
 
+    // Normalize email to use this project's domain
+    const normalizedEmail = `${username}@foodfps.game`
+
     console.log('Receiving account sync for:', username)
 
     // Use service role to create user
@@ -54,9 +57,9 @@ serve(async (req) => {
       )
     }
 
-    // Create user with Admin API
+    // Create user with Admin API using normalized email
     const { data, error } = await supabase.auth.admin.createUser({
-      email,
+      email: normalizedEmail,
       password,
       email_confirm: true,
       user_metadata: { username }

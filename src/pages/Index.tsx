@@ -28,7 +28,7 @@ import { GlobalChatModal } from "@/components/game/GlobalChatModal";
 import { PopupAd } from "@/components/game/PopupAd";
 import { TutorialModal } from "@/components/game/TutorialModal";
 import { FeedbackButton } from "@/components/game/FeedbackButton";
-import { RedeemCodeInput } from "@/components/game/RedeemCodeInput";
+import { RedeemCodeModal } from "@/components/game/RedeemCodeModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
@@ -66,6 +66,7 @@ const Index = () => {
   const [showDailyRewards, setShowDailyRewards] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showGlobalChat, setShowGlobalChat] = useState(false);
+  const [showRedeemCodes, setShowRedeemCodes] = useState(false);
   const [touchscreenMode, setTouchscreenMode] = useState(false);
   const [websiteEnabled, setWebsiteEnabled] = useState(true);
   const [disabledMessage, setDisabledMessage] = useState("");
@@ -335,6 +336,7 @@ const Index = () => {
           onShowBetaPanel={() => setShowBetaPanel(true)}
           onShowSettings={() => setShowSettings(true)}
           onShowGlobalChat={() => setShowGlobalChat(true)}
+          onShowRedeemCodes={() => setShowRedeemCodes(true)}
         />
       )}
 
@@ -394,18 +396,13 @@ const Index = () => {
       <TutorialModal open={showTutorial} onComplete={handleTutorialComplete} />
       
       {!gameMode && !showUsernameModal && username && (
-        <>
-          <GameModeSelector 
-            username={username} 
-            onModeSelect={handleModeSelect}
-            soloDisabled={soloDisabled}
-            multiplayerDisabled={multiplayerDisabled}
-            bossDisabled={bossDisabled}
-          />
-          <div className="max-w-md mx-auto mt-4 px-4">
-            <RedeemCodeInput />
-          </div>
-        </>
+        <GameModeSelector 
+          username={username} 
+          onModeSelect={handleModeSelect}
+          soloDisabled={soloDisabled}
+          multiplayerDisabled={multiplayerDisabled}
+          bossDisabled={bossDisabled}
+        />
       )}
 
       {/* Standard Lobby for non-timed matches */}
@@ -486,7 +483,7 @@ const Index = () => {
         onTouchscreenModeChange={handleTouchscreenChange}
       />
       <AdSignupModal open={showAdSignup} onOpenChange={setShowAdSignup} />
-      
+      <RedeemCodeModal open={showRedeemCodes} onOpenChange={setShowRedeemCodes} />
       {/* Global Chat Modal */}
       {user && username && (
         <GlobalChatModal

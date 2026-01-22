@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Mail, Sparkles, Globe, Palette, Trophy, Gift, FlaskConical, 
-  Settings, ChevronLeft, ChevronRight, MessageCircle 
+  Settings, ChevronLeft, ChevronRight, MessageCircle, Ticket 
 } from "lucide-react";
 
 interface GameSidebarProps {
@@ -18,6 +18,7 @@ interface GameSidebarProps {
   onShowBetaPanel: () => void;
   onShowSettings: () => void;
   onShowGlobalChat: () => void;
+  onShowRedeemCodes: () => void;
 }
 
 export const GameSidebar = ({
@@ -33,6 +34,7 @@ export const GameSidebar = ({
   onShowBetaPanel,
   onShowSettings,
   onShowGlobalChat,
+  onShowRedeemCodes,
 }: GameSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -44,6 +46,7 @@ export const GameSidebar = ({
     { icon: Palette, label: "Shop", onClick: onShowSkinsShop },
     { icon: Trophy, label: "Leaderboard", onClick: onShowLeaderboard },
     { icon: Gift, label: "Daily Rewards", onClick: onShowDailyRewards },
+    { icon: Ticket, label: "Redeem Code", onClick: onShowRedeemCodes },
     ...(isBetaTester || isAdmin ? [{ icon: FlaskConical, label: "Beta", onClick: onShowBetaPanel }] : []),
     { icon: Settings, label: "Settings", onClick: onShowSettings },
   ];

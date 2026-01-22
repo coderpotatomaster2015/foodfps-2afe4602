@@ -88,14 +88,14 @@ export const AdminChat = ({ open, onOpenChange, onCommand, onShowOnlinePlayers }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // Check for admin or owner role
     const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
-      .eq("role", "admin")
-      .single();
+      .in("role", ["admin", "owner"]);
 
-    if (roleData) {
+    if (roleData && roleData.length > 0) {
       setIsAdmin(true);
       setHasPermission(true);
       return;

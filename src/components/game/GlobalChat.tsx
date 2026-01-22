@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageCircle, AlertTriangle, Shield, Crown } from "lucide-react";
+import { Send, MessageCircle, AlertTriangle, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -49,6 +49,16 @@ const ADMIN_COMMANDS = [
   { cmd: "/kick <username>", desc: "Kick player from chat" },
   { cmd: "/warn <username>", desc: "Add a warning to user" },
   { cmd: "/stats", desc: "Show chat statistics" },
+  { cmd: "/gift <user> <coins> <gems> <gold>", desc: "Gift currency to user" },
+  { cmd: "/ban <username> <hours>", desc: "Ban a user" },
+  { cmd: "/unban <username>", desc: "Unban a user" },
+  { cmd: "/godmode <mins>", desc: "Enable godmode for all players" },
+  { cmd: "/allweapons <mins>", desc: "Give all weapons to all players" },
+  { cmd: "/rainbow <mins>", desc: "Enable rainbow mode for everyone" },
+  { cmd: "/online", desc: "Show online players count" },
+  { cmd: "/dm <username> <msg>", desc: "Direct message a user" },
+  { cmd: "/serverinfo", desc: "Show server information" },
+  { cmd: "/reset <username>", desc: "Reset user's warnings" },
 ];
 
 const containsProfanity = (text: string): boolean => {
@@ -369,8 +379,218 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
         toast.info(`📊 Chat Stats: ${msgCount || 0} messages, ${warnCount || 0} warnings issued`);
         break;
 
+      case "/gift":
+        const giftParts = args.split(" ");
+        if (giftParts.length >= 2) {
+          const targetUsername = giftParts[0];
+          const coins = parseInt(giftParts[1]) || 0;
+          const gems = parseInt(giftParts[2]) || 0;
+          const gold = parseInt(giftParts[3]) || 0;
+          
+          const { data: success } = await supabase.rpc("gift_currency", {
+            _target_username: targetUsername,
+            _coins: coins,
+            _gems: gems,
+            _gold: gold
+          });
+          
+          if (success) {
+            toast.success(`Gifted ${coins} coins, ${gems} gems, ${gold} gold to ${targetUsername}`);
+            await supabase.from("global_chat").insert({
+              user_id: userId,
+              username: "SYSTEM",
+              message: `🎁 ${username} gifted currency to ${targetUsername}!`,
+            });
+          } else {
+            toast.error("Failed to gift currency. User not found or insufficient permissions.");
+          }
+        } else {
+          toast.error("Usage: /gift <username> <coins> [gems] [gold]");
+        }
+        break;
+
+      case "/ban":
+        const banParts = args.split(" ");
+        if (banParts.length >= 2) {
+          const banUsername = banParts[0];
+          const banHours = parseInt(banParts[1]) || 24;
+          
+          const { data: banProfile } = await supabase
+            .from("profiles")
+            .select("user_id")
+            .ilike("username", banUsername)
+            .maybeSingle();
+
+          if (banProfile) {
+            const { data: { user } } = await supabase.auth.getUser();
+            const expiresAt = new Date();
+            expiresAt.setHours(expiresAt.getHours() + banHours);
+            
+            await supabase.from("bans").insert({
+              user_id: banProfile.user_id,
+              banned_by: user?.id || userId,
+              hours: banHours,
+              reason: `Banned via chat by ${username}`,
+              expires_at: expiresAt.toISOString(),
+            });
+            toast.success(`${banUsername} banned for ${banHours} hours`);
+          } else {
+            toast.error("User not found");
+          }
+        } else {
+          toast.error("Usage: /ban <username> <hours>");
+        }
+        break;
+
+      case "/unban":
+        if (args) {
+          const { data: unbanProfile } = await supabase
+            .from("profiles")
+            .select("user_id")
+            .ilike("username", args)
+            .maybeSingle();
+
+          if (unbanProfile) {
+            await supabase.from("bans").delete().eq("user_id", unbanProfile.user_id);
+            toast.success(`${args} has been unbanned`);
+          } else {
+            toast.error("User not found");
+          }
+        } else {
+          toast.error("Usage: /unban <username>");
+        }
+        break;
+
+      case "/godmode":
+        const godMins = parseInt(args) || 5;
+        const { data: { user: godUser } } = await supabase.auth.getUser();
+        if (godUser) {
+          const godExpires = new Date();
+          godExpires.setMinutes(godExpires.getMinutes() + godMins);
+          
+          await supabase.from("admin_abuse_events").insert({
+            event_type: "godmode",
+            created_by: godUser.id,
+            expires_at: godExpires.toISOString(),
+            is_active: true,
+          });
+          toast.success(`🛡️ Godmode activated for all players for ${godMins} minutes!`);
+        }
+        break;
+
+      case "/allweapons":
+        const weaponMins = parseInt(args) || 5;
+        const { data: { user: weaponUser } } = await supabase.auth.getUser();
+        if (weaponUser) {
+          const weaponExpires = new Date();
+          weaponExpires.setMinutes(weaponExpires.getMinutes() + weaponMins);
+          
+          await supabase.from("admin_abuse_events").insert({
+            event_type: "all_weapons",
+            created_by: weaponUser.id,
+            expires_at: weaponExpires.toISOString(),
+            is_active: true,
+          });
+          toast.success(`🔫 All weapons activated for all players for ${weaponMins} minutes!`);
+        }
+        break;
+
+      case "/rainbow":
+        const rainbowMins = parseInt(args) || 5;
+        const { data: { user: rainbowUser } } = await supabase.auth.getUser();
+        if (rainbowUser) {
+          const rainbowExpires = new Date();
+          rainbowExpires.setMinutes(rainbowExpires.getMinutes() + rainbowMins);
+          
+          await supabase.from("admin_abuse_events").insert({
+            event_type: "ultimate",
+            created_by: rainbowUser.id,
+            expires_at: rainbowExpires.toISOString(),
+            is_active: true,
+          });
+          toast.success(`🌈 Rainbow mode activated for ${rainbowMins} minutes!`);
+        }
+        break;
+
+      case "/online":
+        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const { count: onlineCount } = await supabase
+          .from("active_players")
+          .select("*", { count: "exact", head: true })
+          .gt("last_seen", fiveMinAgo);
+        
+        toast.info(`🟢 ${onlineCount || 0} players online right now`);
+        break;
+
+      case "/dm":
+        const dmParts = args.split(" ");
+        if (dmParts.length >= 2) {
+          const dmTarget = dmParts[0];
+          const dmMessage = dmParts.slice(1).join(" ");
+          
+          const { data: dmProfile } = await supabase
+            .from("profiles")
+            .select("user_id, username")
+            .ilike("username", dmTarget)
+            .maybeSingle();
+
+          if (dmProfile) {
+            await supabase.from("messages").insert({
+              from_user_id: userId,
+              from_username: username,
+              to_user_id: dmProfile.user_id,
+              to_username: dmProfile.username,
+              subject: "Direct Message",
+              content: dmMessage,
+            });
+            toast.success(`DM sent to ${dmProfile.username}`);
+          } else {
+            toast.error("User not found");
+          }
+        } else {
+          toast.error("Usage: /dm <username> <message>");
+        }
+        break;
+
+      case "/serverinfo":
+        const { count: totalUsers } = await supabase
+          .from("profiles")
+          .select("*", { count: "exact", head: true });
+        
+        const { data: serverSettings } = await supabase
+          .from("game_settings")
+          .select("website_enabled")
+          .eq("id", "00000000-0000-0000-0000-000000000001")
+          .single();
+        
+        const now = new Date();
+        toast.info(`🖥️ Server Info:\n• ${totalUsers} total users\n• Website: ${serverSettings?.website_enabled ? 'Enabled' : 'Disabled'}\n• Time: ${now.toLocaleTimeString()}`);
+        break;
+
+      case "/reset":
+        if (args) {
+          const { data: resetProfile } = await supabase
+            .from("profiles")
+            .select("user_id")
+            .ilike("username", args)
+            .maybeSingle();
+
+          if (resetProfile) {
+            await supabase
+              .from("chat_warnings")
+              .update({ warning_count: 0, is_chat_banned: false })
+              .eq("user_id", resetProfile.user_id);
+            toast.success(`Reset warnings for ${args}`);
+          } else {
+            toast.error("User not found");
+          }
+        } else {
+          toast.error("Usage: /reset <username>");
+        }
+        break;
+
       default:
-        toast.error("Unknown command. Use /clear, /announce, /mute, /unmute, /broadcast, /kick, /warn, /stats");
+        toast.error("Unknown command. Click 'Commands' to see available commands.");
     }
   };
 

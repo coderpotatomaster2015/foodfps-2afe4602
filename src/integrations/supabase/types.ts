@@ -832,6 +832,85 @@ export type Database = {
         }
         Relationships: []
       }
+      redeem_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string
+          current_uses: number
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          reward_type: string
+          reward_value: number
+          skin_id: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by: string
+          current_uses?: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          reward_type: string
+          reward_value?: number
+          skin_id?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string
+          current_uses?: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          reward_type?: string
+          reward_value?: number
+          skin_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "redeem_codes_skin_id_fkey"
+            columns: ["skin_id"]
+            isOneToOne: false
+            referencedRelation: "custom_skins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      redeemed_codes: {
+        Row: {
+          code_id: string
+          id: string
+          redeemed_at: string
+          user_id: string
+        }
+        Insert: {
+          code_id: string
+          id?: string
+          redeemed_at?: string
+          user_id: string
+        }
+        Update: {
+          code_id?: string
+          id?: string
+          redeemed_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "redeemed_codes_code_id_fkey"
+            columns: ["code_id"]
+            isOneToOne: false
+            referencedRelation: "redeem_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_players: {
         Row: {
           health: number | null

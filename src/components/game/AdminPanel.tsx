@@ -11,9 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { X, Send, Power, Users, Bot, Shield, Trophy, Sparkles, 
          Terminal, FlaskConical, Globe, Check, Ban, Zap, Edit, Trash2,
          BarChart3, TrendingUp, Activity, Clock, UserX, Key, RefreshCw,
-         Megaphone, Gift, Swords } from "lucide-react";
+         Megaphone, Gift, Swords, Ticket } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { RedeemCodesPanel } from "./RedeemCodesPanel";
 
 interface AdminPanelProps {
   open: boolean;
@@ -766,6 +767,10 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
               <Bot className="w-3 h-3" />
               AI
             </TabsTrigger>
+            <TabsTrigger value="codes" className="gap-1 text-xs">
+              <Ticket className="w-3 h-3" />
+              Codes
+            </TabsTrigger>
           </TabsList>
 
           {/* Analytics Dashboard */}
@@ -1433,6 +1438,11 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                 <Send className="w-4 h-4" />
               </Button>
             </form>
+          </TabsContent>
+
+          {/* Redeem Codes Tab */}
+          <TabsContent value="codes" className="flex-1 p-4 overflow-auto">
+            <RedeemCodesPanel />
           </TabsContent>
         </Tabs>
       </Card>

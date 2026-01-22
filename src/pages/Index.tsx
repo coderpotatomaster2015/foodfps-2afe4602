@@ -28,6 +28,7 @@ import { GlobalChatModal } from "@/components/game/GlobalChatModal";
 import { PopupAd } from "@/components/game/PopupAd";
 import { TutorialModal } from "@/components/game/TutorialModal";
 import { FeedbackButton } from "@/components/game/FeedbackButton";
+import { RedeemCodeInput } from "@/components/game/RedeemCodeInput";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
@@ -393,13 +394,18 @@ const Index = () => {
       <TutorialModal open={showTutorial} onComplete={handleTutorialComplete} />
       
       {!gameMode && !showUsernameModal && username && (
-        <GameModeSelector 
-          username={username} 
-          onModeSelect={handleModeSelect}
-          soloDisabled={soloDisabled}
-          multiplayerDisabled={multiplayerDisabled}
-          bossDisabled={bossDisabled}
-        />
+        <>
+          <GameModeSelector 
+            username={username} 
+            onModeSelect={handleModeSelect}
+            soloDisabled={soloDisabled}
+            multiplayerDisabled={multiplayerDisabled}
+            bossDisabled={bossDisabled}
+          />
+          <div className="max-w-md mx-auto mt-4 px-4">
+            <RedeemCodeInput />
+          </div>
+        </>
       )}
 
       {/* Standard Lobby for non-timed matches */}

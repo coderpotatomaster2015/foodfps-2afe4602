@@ -415,6 +415,19 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
     }
   };
 
+  const disableUltimateAbuse = async () => {
+    const { error } = await supabase
+      .from("admin_abuse_events")
+      .update({ is_active: false })
+      .eq("is_active", true);
+
+    if (error) {
+      toast.error("Failed to disable abuse events");
+    } else {
+      toast.success("All abuse events disabled!");
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
@@ -780,6 +793,25 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
                     Activate Ultimate Mode
                   </Button>
                 </div>
+              </Card>
+
+              {/* Disable Rainbow Mode */}
+              <Card className="p-4 space-y-4 border-destructive/30">
+                <h3 className="font-semibold flex items-center gap-2 text-destructive">
+                  <Shield className="w-5 h-5" />
+                  Disable Rainbow Mode
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Immediately deactivate all active rainbow/abuse events.
+                </p>
+                <Button
+                  onClick={disableUltimateAbuse}
+                  variant="destructive"
+                  className="w-full gap-2"
+                >
+                  <Zap className="w-4 h-4" />
+                  Disable All Abuse Events
+                </Button>
               </Card>
 
               <Card className="p-4 bg-secondary/50">

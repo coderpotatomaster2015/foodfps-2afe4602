@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Paintbrush, Eraser, Save, Trash2, Zap, Eye, Gauge, Shield, Sparkles } from "lucide-react";
+import { Paintbrush, Eraser, Save, Trash2, Zap, Eye, Gauge, Shield, Sparkles, Zap as TeleportIcon, Sword, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -19,6 +19,9 @@ const SPECIAL_POWERS = [
   { value: "speed", label: "Speed Boost", icon: Gauge, description: "+30% movement speed" },
   { value: "shield", label: "Shield", icon: Shield, description: "Start with 25 extra HP" },
   { value: "rainbow", label: "Rainbow Aura", icon: Sparkles, description: "Skin cycles through rainbow colors" },
+  { value: "teleport", label: "Teleport", icon: TeleportIcon, description: "Press SHIFT to teleport forward" },
+  { value: "double_damage", label: "Double Damage", icon: Sword, description: "Deal 2x damage with all weapons" },
+  { value: "slow_motion", label: "Slow Motion", icon: Clock, description: "Enemies move 50% slower around you" },
 ];
 
 export const SkinEditor = ({ onSave }: SkinEditorProps) => {

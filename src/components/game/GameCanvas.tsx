@@ -91,8 +91,30 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const spawnImmunityRef = useRef(true);
   const positionUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const gameLoopRef = useRef<number | null>(null);
+  const specialPowerRef = useRef<string | null>(null);
+  const teleportCooldownRef = useRef(0);
   
   const { players, updatePlayerPosition, broadcastBullet, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode } = useMultiplayer(mode, roomCode, username);
+
+  // Load special power from localStorage
+  useEffect(() => {
+    try {
+      const customSkinData = localStorage.getItem("selectedCustomSkin");
+      if (customSkinData) {
+        const parsed = JSON.parse(customSkinData);
+        specialPowerRef.current = parsed.specialPower || null;
+        
+        // Apply shield power - start with extra HP
+        if (parsed.specialPower === "shield" && playerRef.current) {
+          playerRef.current.hp = 125;
+          playerRef.current.maxHp = 125;
+          setHealth(125);
+        }
+      }
+    } catch (e) {
+      console.error("Error loading special power:", e);
+    }
+  }, []);
 
   // Check command permissions
   useEffect(() => {
@@ -577,7 +599,9 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
             const angleDiff = Math.abs(angleToEnemy - player.angle);
             
             if (dist <= meleeRange && angleDiff < 0.5) {
-              e.hp -= weapon.damage;
+              // Apply double damage power
+              const damageMultiplier = specialPowerRef.current === "double_damage" ? 2 : 1;
+              e.hp -= weapon.damage * damageMultiplier;
               e.stun = 0.6;
               spawnParticles(e.x, e.y, weapon.color, 12);
               if (e.hp <= 0) {
@@ -616,6 +640,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           const spread = weapon.spread * (Math.PI / 180);
           const finalAngle = ang + rand(-spread, spread);
           const speed = weapon.bulletSpeed;
+          // Apply double damage power to bullets
+          const damageMultiplier = specialPowerRef.current === "double_damage" ? 2 : 1;
           const newBullet = {
             x: player.x + Math.cos(ang) * player.r * 1.6,
             y: player.y + Math.sin(ang) * player.r * 1.6,
@@ -623,7 +649,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
             vy: Math.sin(finalAngle) * speed,
             r: player.weapon === "sniper" ? 6 : 8,
             life: 2.5,
-            dmg: weapon.damage,
+            dmg: weapon.damage * damageMultiplier,
             color: weapon.color,
             createdAt: t,
           };
@@ -651,6 +677,25 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       if (e.key.toLowerCase() === "r" && player.ammo < player.maxAmmo && !WEAPONS[player.weapon].isMelee) {
         player.ammo = player.maxAmmo;
         setAmmo(player.ammo);
+      }
+      
+      // Handle teleport power with SHIFT key
+      if (e.key.toLowerCase() === "shift" && specialPowerRef.current === "teleport") {
+        const now = performance.now();
+        if (now - teleportCooldownRef.current >= 3000) { // 3 second cooldown
+          teleportCooldownRef.current = now;
+          const teleportDist = 150;
+          const newX = player.x + Math.cos(player.angle) * teleportDist;
+          const newY = player.y + Math.sin(player.angle) * teleportDist;
+          const mult = gameStateRef.current.mapBoundsMultiplier;
+          player.x = Math.max(20, Math.min(W * mult - 20, newX));
+          player.y = Math.max(20, Math.min(H * mult - 20, newY));
+          spawnParticles(player.x, player.y, "#00FFFF", 20);
+          toast.info("Teleported!");
+        } else {
+          const remaining = Math.ceil((3000 - (now - teleportCooldownRef.current)) / 1000);
+          toast.error(`Teleport on cooldown: ${remaining}s`);
+        }
       }
       
       const keyNum = parseInt(e.key);
@@ -749,7 +794,13 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         const len = Math.hypot(dx, dy);
         dx /= len;
         dy /= len;
-        const speedMultiplier = adminStateRef.current.speedMultiplier;
+        let speedMultiplier = adminStateRef.current.speedMultiplier;
+        
+        // Apply speed boost power (+30%)
+        if (specialPowerRef.current === "speed") {
+          speedMultiplier *= 1.3;
+        }
+        
         const newX = player.x + dx * player.speed * speedMultiplier * dt;
         const newY = player.y + dy * player.speed * speedMultiplier * dt;
         

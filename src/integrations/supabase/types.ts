@@ -133,6 +133,42 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_abuse_schedule: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          duration_minutes: number
+          event_type: string
+          id: string
+          is_activated: boolean
+          scheduled_date: string
+          scheduled_time: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          duration_minutes?: number
+          event_type: string
+          id?: string
+          is_activated?: boolean
+          scheduled_date: string
+          scheduled_time: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          duration_minutes?: number
+          event_type?: string
+          id?: string
+          is_activated?: boolean
+          scheduled_date?: string
+          scheduled_time?: string
+        }
+        Relationships: []
+      }
       ads: {
         Row: {
           created_at: string

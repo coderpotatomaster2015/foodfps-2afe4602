@@ -11,10 +11,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { X, Send, Power, Users, Bot, Shield, Trophy, Sparkles, 
          Terminal, FlaskConical, Globe, Check, Ban, Zap, Edit, Trash2,
          BarChart3, TrendingUp, Activity, Clock, UserX, Key, RefreshCw,
-         Megaphone, Gift, Swords, Ticket } from "lucide-react";
+         Megaphone, Gift, Swords, Ticket, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { RedeemCodesPanel } from "./RedeemCodesPanel";
+import { AbuseSchedulePanel } from "./AbuseSchedulePanel";
 
 interface AdminPanelProps {
   open: boolean;
@@ -134,6 +135,7 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
   const [abuseModalOpen, setAbuseModalOpen] = useState(false);
   const [abuseType, setAbuseType] = useState<"godmode" | "all_weapons" | "ultimate">("godmode");
   const [abuseDuration, setAbuseDuration] = useState("5");
+  const [currentUserId, setCurrentUserId] = useState<string>("");
 
   useEffect(() => {
     if (open) {
@@ -145,8 +147,16 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
       loadUpdates();
       loadLeaderboard();
       loadAnalytics();
+      loadCurrentUser();
     }
   }, [open]);
+
+  const loadCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setCurrentUserId(user.id);
+    }
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -770,6 +780,10 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
             <TabsTrigger value="codes" className="gap-1 text-xs">
               <Ticket className="w-3 h-3" />
               Codes
+            </TabsTrigger>
+            <TabsTrigger value="schedule" className="gap-1 text-xs">
+              <Calendar className="w-3 h-3" />
+              Schedule
             </TabsTrigger>
           </TabsList>
 
@@ -1443,6 +1457,11 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
           {/* Redeem Codes Tab */}
           <TabsContent value="codes" className="flex-1 p-4 overflow-auto">
             <RedeemCodesPanel />
+          </TabsContent>
+
+          {/* Schedule Tab */}
+          <TabsContent value="schedule" className="flex-1 p-4 overflow-auto">
+            <AbuseSchedulePanel userId={currentUserId} />
           </TabsContent>
         </Tabs>
       </Card>

@@ -29,6 +29,7 @@ import { PopupAd } from "@/components/game/PopupAd";
 import { TutorialModal } from "@/components/game/TutorialModal";
 import { FeedbackButton } from "@/components/game/FeedbackButton";
 import { RedeemCodeModal } from "@/components/game/RedeemCodeModal";
+import { PublicScheduleModal } from "@/components/game/PublicScheduleModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ const Index = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showGlobalChat, setShowGlobalChat] = useState(false);
   const [showRedeemCodes, setShowRedeemCodes] = useState(false);
+  const [showEventSchedule, setShowEventSchedule] = useState(false);
   const [touchscreenMode, setTouchscreenMode] = useState(false);
   const [websiteEnabled, setWebsiteEnabled] = useState(true);
   const [disabledMessage, setDisabledMessage] = useState("");
@@ -337,6 +339,7 @@ const Index = () => {
           onShowSettings={() => setShowSettings(true)}
           onShowGlobalChat={() => setShowGlobalChat(true)}
           onShowRedeemCodes={() => setShowRedeemCodes(true)}
+          onShowEventSchedule={() => setShowEventSchedule(true)}
         />
       )}
 
@@ -508,6 +511,9 @@ const Index = () => {
       {user && username && !gameMode && (
         <FeedbackButton userId={user.id} username={username} />
       )}
+
+      {/* Event Schedule Modal */}
+      <PublicScheduleModal open={showEventSchedule} onOpenChange={setShowEventSchedule} />
     </div>
   );
 };

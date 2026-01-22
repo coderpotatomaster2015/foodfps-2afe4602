@@ -390,8 +390,92 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       }
     } else if (cmd.startsWith("/join")) {
       setOnlinePlayersOpen(true);
+    } else if (cmd.startsWith("/shield")) {
+      // Add temporary invincibility for 10 seconds
+      if (playerRef.current) {
+        const originalGodMode = adminStateRef.current.godMode;
+        adminStateRef.current.godMode = true;
+        toast.success("Shield activated for 10 seconds!");
+        setTimeout(() => {
+          adminStateRef.current.godMode = originalGodMode;
+          toast.info("Shield expired");
+        }, 10000);
+      }
+    } else if (cmd.startsWith("/freeze")) {
+      // Freeze all enemies for 5 seconds by setting their speed to 0
+      gameStateRef.current.enemies.forEach((e: any) => {
+        e.originalSpeed = e.speed;
+        e.speed = 0;
+      });
+      toast.success("Enemies frozen for 5 seconds!");
+      setTimeout(() => {
+        gameStateRef.current.enemies.forEach((e: any) => {
+          if (e.originalSpeed) e.speed = e.originalSpeed;
+        });
+        toast.info("Enemies unfrozen");
+      }, 5000);
+    } else if (cmd.startsWith("/size")) {
+      if (playerRef.current) {
+        const match = cmd.match(/\/size\s+(small|big)/i);
+        if (match) {
+          const size = match[1].toLowerCase();
+          playerRef.current.r = size === "small" ? 8 : size === "big" ? 24 : 14;
+          toast.success(`Size set to ${size}`);
+        } else {
+          toast.error("Usage: /size [small/big]");
+        }
+      }
+    } else if (cmd.startsWith("/explode")) {
+      // Create explosion effect
+      if (playerRef.current) {
+        const { x, y } = playerRef.current;
+        // Kill nearby enemies
+        gameStateRef.current.enemies = gameStateRef.current.enemies.filter((e: any) => {
+          const dist = Math.hypot(e.x - x, e.y - y);
+          if (dist < 150) {
+            setScore(prev => prev + 10);
+            return false;
+          }
+          return true;
+        });
+        toast.success("BOOM! Explosion created!");
+      }
+    } else if (cmd.startsWith("/coins")) {
+      const match = cmd.match(/\/coins\s+(\d+)/);
+      if (match) {
+        const amount = parseInt(match[1]);
+        addCurrency(amount, 0, 0);
+        toast.success(`Added ${amount} coins!`);
+      }
+    } else if (cmd.startsWith("/gems")) {
+      const match = cmd.match(/\/gems\s+(\d+)/);
+      if (match) {
+        const amount = parseInt(match[1]);
+        addCurrency(0, amount, 0);
+        toast.success(`Added ${amount} gems!`);
+      }
+    } else if (cmd.startsWith("/gold")) {
+      const match = cmd.match(/\/gold\s+(\d+)/);
+      if (match) {
+        const amount = parseInt(match[1]);
+        addCurrency(0, 0, amount);
+        toast.success(`Added ${amount} gold!`);
+      }
     }
   }, [hasPermission, revivePlayer]);
+
+  // Helper to add currency
+  const addCurrency = async (coins: number, gems: number, gold: number) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.rpc("add_player_currency", {
+        _user_id: user.id,
+        _coins: coins,
+        _gems: gems,
+        _gold: gold
+      });
+    }
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;

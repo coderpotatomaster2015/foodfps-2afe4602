@@ -380,8 +380,10 @@ const Index = () => {
       {gameStatus.adminAbuseEvents.length > 0 && (
         <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-50">
           {gameStatus.adminAbuseEvents.map(event => (
-            <div key={event.id} className="bg-amber-500/90 text-black px-4 py-2 rounded-lg text-sm font-medium">
-              {event.event_type === "godmode" ? "🛡️ Godmode Active!" : "🔫 All Weapons Active!"}
+            <div key={event.id} className="bg-amber-500/90 text-black px-4 py-2 rounded-lg text-sm font-medium animate-pulse">
+              {event.event_type === "godmode" && "🛡️ Godmode Active!"}
+              {event.event_type === "all_weapons" && "🔫 All Weapons Active!"}
+              {event.event_type === "ultimate" && "🌈 Ultimate Rainbow Mode!"}
             </div>
           ))}
         </div>

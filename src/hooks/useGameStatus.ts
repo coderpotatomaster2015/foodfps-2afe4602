@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -33,7 +33,8 @@ export const useGameStatus = (userId: string | null) => {
     activeBroadcast: null,
     adminAbuseEvents: [],
   });
-  const [lastBroadcastId, setLastBroadcastId] = useState<string | null>(null);
+  const lastBroadcastIdRef = useRef<string | null>(null);
+  const shownBroadcastsRef = useRef<Set<string>>(new Set());
 
   const checkStatus = useCallback(async () => {
     try {
@@ -55,29 +56,31 @@ export const useGameStatus = (userId: string | null) => {
         }
       }
 
-      // Check active broadcasts
+      // Check active broadcasts - get all active ones
+      const now = new Date().toISOString();
       const { data: broadcasts } = await supabase
         .from("broadcasts")
         .select("*")
         .eq("is_active", true)
-        .or("expires_at.is.null,expires_at.gt." + new Date().toISOString())
+        .gt("expires_at", now)
         .order("created_at", { ascending: false })
         .limit(1);
 
       const activeBroadcast = broadcasts && broadcasts.length > 0 ? broadcasts[0] : null;
       
-      // Show toast for new broadcasts
-      if (activeBroadcast && activeBroadcast.id !== lastBroadcastId) {
-        setLastBroadcastId(activeBroadcast.id);
+      // Show toast for new broadcasts (only once per broadcast)
+      if (activeBroadcast && !shownBroadcastsRef.current.has(activeBroadcast.id)) {
+        shownBroadcastsRef.current.add(activeBroadcast.id);
+        lastBroadcastIdRef.current = activeBroadcast.id;
         toast.info(`📢 ${activeBroadcast.message}`, { duration: 10000 });
       }
 
-      // Check admin abuse events
+      // Check admin abuse events - filter expired ones
       const { data: abuseEvents } = await supabase
         .from("admin_abuse_events")
         .select("*")
         .eq("is_active", true)
-        .gt("expires_at", new Date().toISOString());
+        .gt("expires_at", now);
 
       setStatus({
         websiteEnabled: settings?.website_enabled ?? true,
@@ -89,39 +92,56 @@ export const useGameStatus = (userId: string | null) => {
     } catch (error) {
       console.error("Error checking game status:", error);
     }
-  }, [userId, lastBroadcastId]);
+  }, [userId]);
 
   useEffect(() => {
     checkStatus();
     
-    // Check every 500ms as requested
-    const interval = setInterval(checkStatus, 500);
+    // Check every 2 seconds (less aggressive, still responsive)
+    const interval = setInterval(checkStatus, 2000);
 
     // Also subscribe to realtime updates for instant notifications
     const broadcastChannel = supabase
-      .channel("broadcasts-changes")
+      .channel("broadcasts-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "broadcasts" },
-        () => checkStatus()
+        () => {
+          checkStatus();
+        }
       )
       .subscribe();
 
     const abuseChannel = supabase
-      .channel("abuse-changes")
+      .channel("abuse-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "admin_abuse_events" },
-        () => checkStatus()
+        () => {
+          checkStatus();
+        }
       )
       .subscribe();
 
     const banChannel = supabase
-      .channel("ban-changes")
+      .channel("ban-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "bans" },
-        () => checkStatus()
+        () => {
+          checkStatus();
+        }
+      )
+      .subscribe();
+
+    const settingsChannel = supabase
+      .channel("settings-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "game_settings" },
+        () => {
+          checkStatus();
+        }
       )
       .subscribe();
 
@@ -130,6 +150,7 @@ export const useGameStatus = (userId: string | null) => {
       supabase.removeChannel(broadcastChannel);
       supabase.removeChannel(abuseChannel);
       supabase.removeChannel(banChannel);
+      supabase.removeChannel(settingsChannel);
     };
   }, [checkStatus]);
 

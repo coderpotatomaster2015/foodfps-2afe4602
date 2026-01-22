@@ -22,7 +22,7 @@ interface ChatMessage {
 
 const COMMANDS = [
   { cmd: "/godmode", desc: "Toggle invincibility & max ammo" },
-  { cmd: "/speed [number]", desc: "Set player speed multiplier" },
+  { cmd: "/speed [number]", desc: "Set player speed multiplier (1-5)" },
   { cmd: "/nuke", desc: "Kill all enemies" },
   { cmd: "/rain ammo", desc: "Spawn ammo pickups" },
   { cmd: "/infiniteammo", desc: "Toggle infinite ammo" },
@@ -35,6 +35,13 @@ const COMMANDS = [
   { cmd: "/score [amount]", desc: "Add score points" },
   { cmd: "/ban", desc: "Open ban management (admin only)" },
   { cmd: "/join [code]", desc: "Join a multiplayer room" },
+  { cmd: "/shield", desc: "Add temporary shield" },
+  { cmd: "/freeze", desc: "Freeze all enemies for 5 seconds" },
+  { cmd: "/size [small/big]", desc: "Change player size" },
+  { cmd: "/explode", desc: "Create explosion at player position" },
+  { cmd: "/coins [amount]", desc: "Add coins to balance" },
+  { cmd: "/gems [amount]", desc: "Add gems to balance" },
+  { cmd: "/gold [amount]", desc: "Add gold to balance" },
   { cmd: "/?", desc: "Show all commands" },
 ];
 
@@ -133,6 +140,13 @@ export const AdminChat = ({ open, onOpenChange, onCommand, onShowOnlinePlayers }
       "/clear": "✓ Cleared!",
       "/tp": "✓ Teleported!",
       "/score": "✓ Score added!",
+      "/shield": "✓ Shield activated!",
+      "/freeze": "✓ Enemies frozen for 5 seconds!",
+      "/size": "✓ Size changed!",
+      "/explode": "✓ Explosion created!",
+      "/coins": "✓ Coins added!",
+      "/gems": "✓ Gems added!",
+      "/gold": "✓ Gold added!",
     };
 
     const matchedCmd = Object.keys(commandMap).find(c => cmd.startsWith(c));

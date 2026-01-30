@@ -4,6 +4,7 @@ import { UsernameModal } from "@/components/game/UsernameModal";
 import { GameModeSelector } from "@/components/game/GameModeSelector";
 import { GameCanvas } from "@/components/game/GameCanvas";
 import { BossMode } from "@/components/game/BossMode";
+import { RankedMode } from "@/components/game/RankedMode";
 import { Lobby } from "@/components/game/Lobby";
 import { TimedLobby } from "@/components/game/TimedLobby";
 import { TimedGameCanvas } from "@/components/game/TimedGameCanvas";
@@ -30,6 +31,8 @@ import { TutorialModal } from "@/components/game/TutorialModal";
 import { FeedbackButton } from "@/components/game/FeedbackButton";
 import { RedeemCodeModal } from "@/components/game/RedeemCodeModal";
 import { PublicScheduleModal } from "@/components/game/PublicScheduleModal";
+import { FoodPassModal } from "@/components/game/FoodPassModal";
+import { PlayerProfileModal } from "@/components/game/PlayerProfileModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
@@ -38,7 +41,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { applyRainbowToDocument, removeRainbowFromDocument } from "@/utils/rainbowEffect";
 
-export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | null;
+export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | null;
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -69,6 +72,8 @@ const Index = () => {
   const [showGlobalChat, setShowGlobalChat] = useState(false);
   const [showRedeemCodes, setShowRedeemCodes] = useState(false);
   const [showEventSchedule, setShowEventSchedule] = useState(false);
+  const [showFoodPass, setShowFoodPass] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [touchscreenMode, setTouchscreenMode] = useState(false);
   const [websiteEnabled, setWebsiteEnabled] = useState(true);
   const [disabledMessage, setDisabledMessage] = useState("");
@@ -340,6 +345,9 @@ const Index = () => {
           onShowGlobalChat={() => setShowGlobalChat(true)}
           onShowRedeemCodes={() => setShowRedeemCodes(true)}
           onShowEventSchedule={() => setShowEventSchedule(true)}
+          onShowFoodPass={() => setShowFoodPass(true)}
+          onShowProfile={() => setShowProfile(true)}
+          onShowRanked={() => setGameMode("ranked")}
         />
       )}
 
@@ -460,6 +468,15 @@ const Index = () => {
         />
       )}
 
+      {gameMode === "ranked" && (
+        <RankedMode
+          username={username}
+          onBack={handleBackToMenu}
+          touchscreenMode={touchscreenMode}
+          playerSkin={currentSkin}
+        />
+      )}
+
       <AdminCodeModal open={showAdminCode} onOpenChange={setShowAdminCode} onSuccess={() => setShowAdminPanel(true)} />
       <AdminPanel open={showAdminPanel} onClose={() => setShowAdminPanel(false)} />
       <OwnerPanel open={showOwnerPanel} onClose={() => setShowOwnerPanel(false)} />
@@ -487,6 +504,9 @@ const Index = () => {
       />
       <AdSignupModal open={showAdSignup} onOpenChange={setShowAdSignup} />
       <RedeemCodeModal open={showRedeemCodes} onOpenChange={setShowRedeemCodes} />
+      <FoodPassModal open={showFoodPass} onOpenChange={setShowFoodPass} />
+      <PlayerProfileModal open={showProfile} onOpenChange={setShowProfile} />
+      
       {/* Global Chat Modal */}
       {user && username && (
         <GlobalChatModal

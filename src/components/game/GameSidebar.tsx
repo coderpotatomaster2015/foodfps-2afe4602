@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Mail, Sparkles, Globe, Palette, Trophy, Gift, FlaskConical, 
-  Settings, ChevronLeft, ChevronRight, MessageCircle, Ticket, CalendarDays 
+  Settings, ChevronLeft, ChevronRight, MessageCircle, Ticket, CalendarDays,
+  Utensils, User, Swords
 } from "lucide-react";
 
 interface GameSidebarProps {
@@ -20,6 +21,9 @@ interface GameSidebarProps {
   onShowGlobalChat: () => void;
   onShowRedeemCodes: () => void;
   onShowEventSchedule: () => void;
+  onShowFoodPass: () => void;
+  onShowProfile: () => void;
+  onShowRanked: () => void;
 }
 
 export const GameSidebar = ({
@@ -37,6 +41,9 @@ export const GameSidebar = ({
   onShowGlobalChat,
   onShowRedeemCodes,
   onShowEventSchedule,
+  onShowFoodPass,
+  onShowProfile,
+  onShowRanked,
 }: GameSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -50,6 +57,9 @@ export const GameSidebar = ({
     { icon: Gift, label: "Daily Rewards", onClick: onShowDailyRewards },
     { icon: Ticket, label: "Redeem Code", onClick: onShowRedeemCodes },
     { icon: CalendarDays, label: "Event Schedule", onClick: onShowEventSchedule },
+    { icon: Utensils, label: "Food Pass", onClick: onShowFoodPass },
+    { icon: User, label: "My Profile", onClick: onShowProfile },
+    { icon: Swords, label: "Ranked", onClick: onShowRanked },
     ...(isBetaTester || isAdmin ? [{ icon: FlaskConical, label: "Beta", onClick: onShowBetaPanel }] : []),
     { icon: Settings, label: "Settings", onClick: onShowSettings },
   ];

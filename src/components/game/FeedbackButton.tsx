@@ -28,16 +28,40 @@ export const FeedbackButton = ({ userId, username }: FeedbackButtonProps) => {
     setSending(true);
 
     try {
-      const { error } = await supabase.from("feedback_messages").insert({
+      // Find owner user_id
+      const { data: ownerRole } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "owner")
+        .limit(1)
+        .maybeSingle();
+
+      if (!ownerRole) {
+        toast.error("No owner found to receive feedback");
+        return;
+      }
+
+      // Get owner username
+      const { data: ownerProfile } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("user_id", ownerRole.user_id)
+        .single();
+
+      // Send to owner's messages inbox
+      const { error } = await supabase.from("messages").insert({
         from_user_id: userId,
         from_username: username,
+        to_user_id: ownerRole.user_id,
+        to_username: ownerProfile?.username || "Owner",
+        subject: `[${feedbackType.toUpperCase()}] Feedback from ${username}`,
         content: content.trim(),
-        feedback_type: feedbackType,
+        is_feedback: true,
       });
 
       if (error) throw error;
 
-      toast.success("Feedback sent! Thank you for your input.");
+      toast.success("Feedback sent to owner!");
       setContent("");
       setOpen(false);
     } catch (error) {

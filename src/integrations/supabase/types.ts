@@ -451,6 +451,71 @@ export type Database = {
         }
         Relationships: []
       }
+      food_pass_progress: {
+        Row: {
+          claimed_tiers: number[]
+          current_tier: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          claimed_tiers?: number[]
+          current_tier?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          claimed_tiers?: number[]
+          current_tier?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      food_pass_tiers: {
+        Row: {
+          created_at: string
+          id: string
+          power_unlock: string | null
+          reward_type: string
+          reward_value: number
+          score_required: number
+          skin_id: string | null
+          tier: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          power_unlock?: string | null
+          reward_type: string
+          reward_value?: number
+          score_required: number
+          skin_id?: string | null
+          tier: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          power_unlock?: string | null
+          reward_type?: string
+          reward_value?: number
+          score_required?: number
+          skin_id?: string | null
+          tier?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "food_pass_tiers_skin_id_fkey"
+            columns: ["skin_id"]
+            isOneToOne: false
+            referencedRelation: "custom_skins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_rooms: {
         Row: {
           code: string
@@ -837,9 +902,13 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
+          bio: string | null
           boss_level: number
           created_at: string
           id: string
+          ranked_rank: string | null
+          ranked_tier: number | null
           total_score: number
           tutorial_completed: boolean
           updated_at: string
@@ -847,9 +916,13 @@ export type Database = {
           username: string
         }
         Insert: {
+          avatar_url?: string | null
+          bio?: string | null
           boss_level?: number
           created_at?: string
           id?: string
+          ranked_rank?: string | null
+          ranked_tier?: number | null
           total_score?: number
           tutorial_completed?: boolean
           updated_at?: string
@@ -857,14 +930,51 @@ export type Database = {
           username: string
         }
         Update: {
+          avatar_url?: string | null
+          bio?: string | null
           boss_level?: number
           created_at?: string
           id?: string
+          ranked_rank?: string | null
+          ranked_tier?: number | null
           total_score?: number
           tutorial_completed?: boolean
           updated_at?: string
           user_id?: string
           username?: string
+        }
+        Relationships: []
+      }
+      ranked_matches: {
+        Row: {
+          created_at: string
+          enemies_killed: number
+          id: string
+          rank_earned: string | null
+          tier_earned: number | null
+          user_id: string
+          victory: boolean
+          waves_completed: number
+        }
+        Insert: {
+          created_at?: string
+          enemies_killed?: number
+          id?: string
+          rank_earned?: string | null
+          tier_earned?: number | null
+          user_id: string
+          victory?: boolean
+          waves_completed?: number
+        }
+        Update: {
+          created_at?: string
+          enemies_killed?: number
+          id?: string
+          rank_earned?: string | null
+          tier_earned?: number | null
+          user_id?: string
+          victory?: boolean
+          waves_completed?: number
         }
         Relationships: []
       }

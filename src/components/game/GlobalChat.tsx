@@ -619,7 +619,7 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
             className="ml-auto text-xs text-primary hover:underline flex items-center gap-1"
           >
             <Shield className="w-3 h-3" />
-            Commands
+            {showCommands ? "Hide" : "Show"} Commands
           </button>
         )}
         {warningCount > 0 && !isAdminOrOwner && (
@@ -629,15 +629,18 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
         )}
       </div>
       
-      {/* Admin Commands Help */}
+      {/* Admin Commands - Always visible when toggled */}
       {showCommands && isAdminOrOwner && (
-        <div className="p-2 bg-primary/10 border-b text-xs space-y-1 max-h-32 overflow-auto">
-          <p className="font-medium text-primary">Admin Commands:</p>
-          {ADMIN_COMMANDS.map((c, i) => (
-            <p key={i} className="text-muted-foreground">
-              <code className="bg-secondary px-1 rounded">{c.cmd}</code> - {c.desc}
-            </p>
-          ))}
+        <div className="p-2 bg-primary/10 border-b text-xs space-y-1 max-h-40 overflow-auto">
+          <p className="font-medium text-primary">📌 Admin Commands (visible to you):</p>
+          <div className="grid grid-cols-2 gap-1">
+            {ADMIN_COMMANDS.map((c, i) => (
+              <p key={i} className="text-muted-foreground">
+                <code className="bg-secondary px-1 rounded text-xs">{c.cmd}</code>
+              </p>
+            ))}
+          </div>
+          <p className="text-muted-foreground mt-1 text-[10px]">Type any command in chat to use it!</p>
         </div>
       )}
       

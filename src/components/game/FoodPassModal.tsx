@@ -59,16 +59,26 @@ export const FoodPassModal = ({ open, onOpenChange }: FoodPassModalProps) => {
 
       if (profile) setCurrentScore(profile.total_score);
 
-      // Load claimed tiers
+      // Load claimed tiers - upsert if not exists
       const { data: progress } = await supabase
         .from("food_pass_progress")
-        .select("claimed_tiers")
+        .select("claimed_tiers, current_tier")
         .eq("user_id", user.id)
         .maybeSingle();
 
       if (progress) {
         setClaimedTiers(progress.claimed_tiers || []);
+      } else {
+        // Create initial progress record
+        await supabase.from("food_pass_progress").insert({
+          user_id: user.id,
+          current_tier: 0,
+          claimed_tiers: [],
+        });
+        setClaimedTiers([]);
       }
+    } catch (error) {
+      console.error("Error loading food pass data:", error);
     } finally {
       setLoading(false);
     }

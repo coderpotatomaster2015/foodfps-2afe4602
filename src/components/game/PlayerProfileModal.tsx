@@ -14,6 +14,8 @@ import { toast } from "sonner";
 interface PlayerProfileModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  userId?: string;  // Optional: if provided, view another user's profile
+  viewOnly?: boolean; // If true, hide edit controls
 }
 
 interface ProfileData {
@@ -32,7 +34,7 @@ const RANK_COLORS: Record<string, string> = {
   pro: "text-purple-500",
 };
 
-export const PlayerProfileModal = ({ open, onOpenChange }: PlayerProfileModalProps) => {
+export const PlayerProfileModal = ({ open, onOpenChange, userId, viewOnly = false }: PlayerProfileModalProps) => {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [bio, setBio] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -44,24 +46,31 @@ export const PlayerProfileModal = ({ open, onOpenChange }: PlayerProfileModalPro
     if (open) {
       loadProfile();
     }
-  }, [open]);
+  }, [open, userId]);
 
   const loadProfile = async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      let targetUserId = userId;
+      
+      if (!targetUserId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        targetUserId = user.id;
+      }
 
       const { data } = await supabase
         .from("profiles")
         .select("username, bio, avatar_url, total_score, ranked_rank, ranked_tier")
-        .eq("user_id", user.id)
+        .eq("user_id", targetUserId)
         .single();
 
       if (data) {
         setProfile(data);
         setBio(data.bio || "");
       }
+    } catch (error) {
+      console.error("Error loading profile:", error);
     } finally {
       setLoading(false);
     }
@@ -164,7 +173,7 @@ export const PlayerProfileModal = ({ open, onOpenChange }: PlayerProfileModalPro
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="w-5 h-5 text-primary" />
-            My Profile
+            {viewOnly ? "Player Profile" : "My Profile"}
           </DialogTitle>
         </DialogHeader>
 
@@ -183,19 +192,21 @@ export const PlayerProfileModal = ({ open, onOpenChange }: PlayerProfileModalPro
                     {profile.username.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  className="absolute -bottom-2 -right-2 rounded-full w-8 h-8"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                >
-                  {uploading ? (
-                    <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
-                  ) : (
-                    <Camera className="w-4 h-4" />
-                  )}
-                </Button>
+                {!viewOnly && (
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="absolute -bottom-2 -right-2 rounded-full w-8 h-8"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    {uploading ? (
+                      <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
+                    ) : (
+                      <Camera className="w-4 h-4" />
+                    )}
+                  </Button>
+                )}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -228,29 +239,37 @@ export const PlayerProfileModal = ({ open, onOpenChange }: PlayerProfileModalPro
             {/* Bio Section */}
             <div className="space-y-2">
               <Label>Bio</Label>
-              <Textarea
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                placeholder="Tell others about yourself..."
-                rows={3}
-                maxLength={200}
-              />
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{bio.length}/200</span>
-                <Button size="sm" onClick={saveBio} disabled={saving}>
-                  {saving ? (
-                    <>
-                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      Save Bio
-                    </>
-                  )}
-                </Button>
-              </div>
+              {viewOnly ? (
+                <p className="text-sm text-muted-foreground p-3 bg-muted rounded-lg min-h-[80px]">
+                  {profile.bio || "No bio set"}
+                </p>
+              ) : (
+                <>
+                  <Textarea
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="Tell others about yourself..."
+                    rows={3}
+                    maxLength={200}
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">{bio.length}/200</span>
+                    <Button size="sm" onClick={saveBio} disabled={saving}>
+                      {saving ? (
+                        <>
+                          <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          Save Bio
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         ) : (

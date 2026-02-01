@@ -104,17 +104,53 @@ export const FoodPassModal = ({ open, onOpenChange }: FoodPassModalProps) => {
         await supabase.rpc("add_player_currency", params);
       }
 
-      // Update claimed tiers
+      // If power unlock, add to inventory
+      if (tier.power_unlock) {
+        // Check if already owned
+        const { data: existing } = await supabase
+          .from("player_inventory")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("item_id", tier.power_unlock)
+          .maybeSingle();
+
+        if (!existing) {
+          await supabase.from("player_inventory").insert({
+            user_id: user.id,
+            item_type: "power",
+            item_id: tier.power_unlock,
+            quantity: 1,
+            is_equipped: false,
+          });
+        }
+      }
+
+      // Update claimed tiers - use upsert with conflict handling
       const newClaimedTiers = [...claimedTiers, tier.tier];
 
-      await supabase
+      const { error: upsertError } = await supabase
         .from("food_pass_progress")
-        .upsert({
-          user_id: user.id,
-          current_tier: tier.tier,
-          claimed_tiers: newClaimedTiers,
-          updated_at: new Date().toISOString(),
-        });
+        .upsert(
+          {
+            user_id: user.id,
+            current_tier: tier.tier,
+            claimed_tiers: newClaimedTiers,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" }
+        );
+
+      if (upsertError) {
+        // If upsert fails, try update
+        await supabase
+          .from("food_pass_progress")
+          .update({
+            current_tier: tier.tier,
+            claimed_tiers: newClaimedTiers,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", user.id);
+      }
 
       setClaimedTiers(newClaimedTiers);
       

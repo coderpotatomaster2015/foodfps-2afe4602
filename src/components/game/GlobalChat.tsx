@@ -59,6 +59,12 @@ const ADMIN_COMMANDS = [
   { cmd: "/dm <username> <msg>", desc: "Direct message a user" },
   { cmd: "/serverinfo", desc: "Show server information" },
   { cmd: "/reset <username>", desc: "Reset user's warnings" },
+  { cmd: "/promote <username>", desc: "Give user command permissions" },
+  { cmd: "/demote <username>", desc: "Remove user command permissions" },
+  { cmd: "/leaderboard", desc: "Show top 10 players by score" },
+  { cmd: "/event <type> <mins>", desc: "Start a global event (double_xp, half_damage)" },
+  { cmd: "/maintenance <on/off>", desc: "Toggle maintenance mode" },
+  { cmd: "/ping", desc: "Check server responsiveness" },
 ];
 
 const containsProfanity = (text: string): boolean => {
@@ -587,6 +593,71 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
         } else {
           toast.error("Usage: /reset <username>");
         }
+        break;
+
+      case "/promote":
+        if (args) {
+          const { data: promoteProfile } = await supabase
+            .from("profiles")
+            .select("user_id")
+            .ilike("username", args)
+            .maybeSingle();
+
+          if (promoteProfile) {
+            await supabase.from("chat_permissions").upsert({
+              user_id: promoteProfile.user_id,
+              can_use_commands: true,
+              granted_by: userId,
+            });
+            toast.success(`${args} can now use commands!`);
+          } else {
+            toast.error("User not found");
+          }
+        } else {
+          toast.error("Usage: /promote <username>");
+        }
+        break;
+
+      case "/demote":
+        if (args) {
+          const { data: demoteProfile } = await supabase
+            .from("profiles")
+            .select("user_id")
+            .ilike("username", args)
+            .maybeSingle();
+
+          if (demoteProfile) {
+            await supabase.from("chat_permissions")
+              .delete()
+              .eq("user_id", demoteProfile.user_id);
+            toast.success(`${args} command access removed`);
+          } else {
+            toast.error("User not found");
+          }
+        } else {
+          toast.error("Usage: /demote <username>");
+        }
+        break;
+
+      case "/leaderboard":
+        const { data: topPlayers } = await supabase
+          .from("profiles")
+          .select("username, total_score")
+          .order("total_score", { ascending: false })
+          .limit(10);
+
+        if (topPlayers && topPlayers.length > 0) {
+          const leaderboard = topPlayers.map((p, i) => `${i + 1}. ${p.username}: ${p.total_score}`).join("\n");
+          await supabase.from("global_chat").insert({
+            user_id: userId,
+            username: "🏆 LEADERBOARD",
+            message: leaderboard,
+          });
+        }
+        break;
+
+      case "/ping":
+        toast.success("🏓 Pong! Server is responsive.");
         break;
 
       default:

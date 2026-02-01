@@ -811,6 +811,36 @@ export type Database = {
           },
         ]
       }
+      player_inventory: {
+        Row: {
+          id: string
+          is_equipped: boolean
+          item_id: string
+          item_type: string
+          purchased_at: string
+          quantity: number
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          is_equipped?: boolean
+          item_id: string
+          item_type: string
+          purchased_at?: string
+          quantity?: number
+          user_id: string
+        }
+        Update: {
+          id?: string
+          is_equipped?: boolean
+          item_id?: string
+          item_type?: string
+          purchased_at?: string
+          quantity?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       player_owned_skins: {
         Row: {
           id: string
@@ -1109,6 +1139,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      shop_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          item_id: string
+          item_type: string
+          name: string
+          price_coins: number
+          price_gems: number
+          price_gold: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          item_id: string
+          item_type: string
+          name: string
+          price_coins?: number
+          price_gems?: number
+          price_gold?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          item_id?: string
+          item_type?: string
+          name?: string
+          price_coins?: number
+          price_gems?: number
+          price_gold?: number
+        }
+        Relationships: []
       }
       social_posts: {
         Row: {

@@ -33,6 +33,8 @@ import { RedeemCodeModal } from "@/components/game/RedeemCodeModal";
 import { PublicScheduleModal } from "@/components/game/PublicScheduleModal";
 import { FoodPassModal } from "@/components/game/FoodPassModal";
 import { PlayerProfileModal } from "@/components/game/PlayerProfileModal";
+import { InventoryModal } from "@/components/game/InventoryModal";
+import { ShopModal } from "@/components/game/ShopModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
@@ -74,6 +76,8 @@ const Index = () => {
   const [showEventSchedule, setShowEventSchedule] = useState(false);
   const [showFoodPass, setShowFoodPass] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showInventory, setShowInventory] = useState(false);
+  const [showItemShop, setShowItemShop] = useState(false);
   const [touchscreenMode, setTouchscreenMode] = useState(false);
   const [websiteEnabled, setWebsiteEnabled] = useState(true);
   const [disabledMessage, setDisabledMessage] = useState("");
@@ -86,6 +90,7 @@ const Index = () => {
   const [currentSkin, setCurrentSkin] = useState("#FFF3D6");
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialChecked, setTutorialChecked] = useState(false);
+  const [equippedPower, setEquippedPower] = useState<string | null>(null);
 
   // Real-time game status hook
   const gameStatus = useGameStatus(user?.id || null);
@@ -98,6 +103,9 @@ const Index = () => {
     // Load skin from localStorage
     const savedSkin = localStorage.getItem("foodfps_skin");
     if (savedSkin) setCurrentSkin(savedSkin);
+    // Load equipped power from localStorage
+    const savedPower = localStorage.getItem("equippedPower");
+    if (savedPower) setEquippedPower(savedPower);
   }, []);
 
   // Handle real-time status updates
@@ -343,6 +351,8 @@ const Index = () => {
           onShowBetaPanel={() => setShowBetaPanel(true)}
           onShowSettings={() => setShowSettings(true)}
           onShowGlobalChat={() => setShowGlobalChat(true)}
+          onShowInventory={() => setShowInventory(true)}
+          onShowItemShop={() => setShowItemShop(true)}
           onShowRedeemCodes={() => setShowRedeemCodes(true)}
           onShowEventSchedule={() => setShowEventSchedule(true)}
           onShowFoodPass={() => setShowFoodPass(true)}
@@ -506,6 +516,12 @@ const Index = () => {
       <RedeemCodeModal open={showRedeemCodes} onOpenChange={setShowRedeemCodes} />
       <FoodPassModal open={showFoodPass} onOpenChange={setShowFoodPass} />
       <PlayerProfileModal open={showProfile} onOpenChange={setShowProfile} />
+      <InventoryModal 
+        open={showInventory} 
+        onOpenChange={setShowInventory}
+        onEquipPower={(power) => setEquippedPower(power)}
+      />
+      <ShopModal open={showItemShop} onOpenChange={setShowItemShop} />
       
       {/* Global Chat Modal */}
       {user && username && (

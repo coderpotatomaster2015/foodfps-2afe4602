@@ -5,6 +5,7 @@ import { GameModeSelector } from "@/components/game/GameModeSelector";
 import { GameCanvas } from "@/components/game/GameCanvas";
 import { BossMode } from "@/components/game/BossMode";
 import { RankedMode } from "@/components/game/RankedMode";
+import { YouVsMeMode } from "@/components/game/YouVsMeMode";
 import { Lobby } from "@/components/game/Lobby";
 import { TimedLobby } from "@/components/game/TimedLobby";
 import { TimedGameCanvas } from "@/components/game/TimedGameCanvas";
@@ -43,7 +44,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { applyRainbowToDocument, removeRainbowFromDocument } from "@/utils/rainbowEffect";
 
-export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | null;
+export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | "youvsme" | null;
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -480,6 +481,15 @@ const Index = () => {
 
       {gameMode === "ranked" && (
         <RankedMode
+          username={username}
+          onBack={handleBackToMenu}
+          touchscreenMode={touchscreenMode}
+          playerSkin={currentSkin}
+        />
+      )}
+
+      {gameMode === "youvsme" && (
+        <YouVsMeMode
           username={username}
           onBack={handleBackToMenu}
           touchscreenMode={touchscreenMode}

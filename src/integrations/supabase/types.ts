@@ -358,6 +358,83 @@ export type Database = {
         }
         Relationships: []
       }
+      class_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string
+          description: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          max_students: number | null
+          name: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_students?: number | null
+          name: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_students?: number | null
+          name?: string
+        }
+        Relationships: []
+      }
+      class_members: {
+        Row: {
+          class_code_id: string
+          id: string
+          ip_address: string | null
+          is_ip_blocked: boolean | null
+          joined_at: string
+          session_ends_at: string | null
+          user_id: string
+          username: string
+        }
+        Insert: {
+          class_code_id: string
+          id?: string
+          ip_address?: string | null
+          is_ip_blocked?: boolean | null
+          joined_at?: string
+          session_ends_at?: string | null
+          user_id: string
+          username: string
+        }
+        Update: {
+          class_code_id?: string
+          id?: string
+          ip_address?: string | null
+          is_ip_blocked?: boolean | null
+          joined_at?: string
+          session_ends_at?: string | null
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_members_class_code_id_fkey"
+            columns: ["class_code_id"]
+            isOneToOne: false
+            referencedRelation: "class_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_skins: {
         Row: {
           created_at: string
@@ -417,6 +494,42 @@ export type Database = {
           id?: string
           reward_type?: string
           reward_value?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      equipped_loadout: {
+        Row: {
+          equipped_power: string | null
+          id: string
+          slot_1: string | null
+          slot_2: string | null
+          slot_3: string | null
+          slot_4: string | null
+          slot_5: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          equipped_power?: string | null
+          id?: string
+          slot_1?: string | null
+          slot_2?: string | null
+          slot_3?: string | null
+          slot_4?: string | null
+          slot_5?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          equipped_power?: string | null
+          id?: string
+          slot_1?: string | null
+          slot_2?: string | null
+          slot_3?: string | null
+          slot_4?: string | null
+          slot_5?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -1258,6 +1371,14 @@ export type Database = {
           reason: string
         }[]
       }
+      get_class_info: {
+        Args: { _user_id: string }
+        Returns: {
+          class_name: string
+          school_mode_only: boolean
+          session_ends_at: string
+        }[]
+      }
       gift_currency: {
         Args: {
           _coins?: number
@@ -1286,6 +1407,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_class_member: { Args: { _user_id: string }; Returns: boolean }
       is_owner: { Args: { _user_id: string }; Returns: boolean }
       is_user_banned: { Args: { _user_id: string }; Returns: boolean }
     }

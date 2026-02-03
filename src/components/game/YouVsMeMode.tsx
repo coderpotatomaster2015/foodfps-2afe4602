@@ -56,8 +56,9 @@ export const YouVsMeMode = ({ username, onBack, touchscreenMode = false, playerS
   const [ammo, setAmmo] = useState(10);
   const [maxAmmo, setMaxAmmo] = useState(10);
   const [currentWeapon, setCurrentWeapon] = useState<Weapon>("pistol");
-  const [unlockedWeapons] = useState<Weapon[]>(WEAPON_ORDER); // Player gets all weapons
+  const [unlockedWeapons] = useState<Weapon[]>(WEAPON_ORDER);
   const [spawnImmunity, setSpawnImmunity] = useState(true);
+  const [hasPermission, setHasPermission] = useState(false);
 
   const playerRef = useRef<any>(null);
   const botRef = useRef<any>(null);
@@ -73,6 +74,25 @@ export const YouVsMeMode = ({ username, onBack, touchscreenMode = false, playerS
   const touchAimRef = useRef({ x: 480, y: 320 });
   const touchShootingRef = useRef(false);
 
+  useEffect(() => {
+    checkPermissions();
+  }, []);
+
+  const checkPermissions = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .in("role", ["admin", "owner"]);
+
+    if (roleData && roleData.length > 0) {
+      setHasPermission(true);
+    }
+  };
+
   const startGame = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -82,7 +102,6 @@ export const YouVsMeMode = ({ username, onBack, touchscreenMode = false, playerS
     botBulletsRef.current = [];
     particlesRef.current = [];
 
-    // Initialize player
     playerRef.current = {
       x: 200,
       y: canvas.height / 2,
@@ -97,7 +116,6 @@ export const YouVsMeMode = ({ username, onBack, touchscreenMode = false, playerS
       maxAmmo: 10,
     };
 
-    // Initialize AI bot - has all weapons, same HP as player
     botRef.current = {
       x: 760,
       y: canvas.height / 2,
@@ -122,7 +140,6 @@ export const YouVsMeMode = ({ username, onBack, touchscreenMode = false, playerS
     setMaxAmmo(10);
     setCurrentWeapon("pistol");
 
-    // Spawn immunity
     spawnImmunityRef.current = true;
     setSpawnImmunity(true);
     setTimeout(() => {

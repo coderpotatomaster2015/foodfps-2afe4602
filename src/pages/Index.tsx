@@ -6,6 +6,7 @@ import { GameCanvas } from "@/components/game/GameCanvas";
 import { BossMode } from "@/components/game/BossMode";
 import { RankedMode } from "@/components/game/RankedMode";
 import { YouVsMeMode } from "@/components/game/YouVsMeMode";
+import { SchoolMode } from "@/components/game/SchoolMode";
 import { Lobby } from "@/components/game/Lobby";
 import { TimedLobby } from "@/components/game/TimedLobby";
 import { TimedGameCanvas } from "@/components/game/TimedGameCanvas";
@@ -44,7 +45,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { applyRainbowToDocument, removeRainbowFromDocument } from "@/utils/rainbowEffect";
 
-export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | "youvsme" | null;
+export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | "youvsme" | "school" | null;
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -92,6 +93,7 @@ const Index = () => {
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialChecked, setTutorialChecked] = useState(false);
   const [equippedPower, setEquippedPower] = useState<string | null>(null);
+  const [isClassMode, setIsClassMode] = useState(false);
 
   // Real-time game status hook
   const gameStatus = useGameStatus(user?.id || null);
@@ -107,6 +109,9 @@ const Index = () => {
     // Load equipped power from localStorage
     const savedPower = localStorage.getItem("equippedPower");
     if (savedPower) setEquippedPower(savedPower);
+    // Check if user is in class mode
+    const classMode = localStorage.getItem("isClassMode") === "true";
+    setIsClassMode(classMode);
   }, []);
 
   // Handle real-time status updates
@@ -497,6 +502,14 @@ const Index = () => {
         />
       )}
 
+      {gameMode === "school" && (
+        <SchoolMode
+          username={username}
+          onBack={handleBackToMenu}
+          touchscreenMode={touchscreenMode}
+          playerSkin={currentSkin}
+        />
+      )}
       <AdminCodeModal open={showAdminCode} onOpenChange={setShowAdminCode} onSuccess={() => setShowAdminPanel(true)} />
       <AdminPanel open={showAdminPanel} onClose={() => setShowAdminPanel(false)} />
       <OwnerPanel open={showOwnerPanel} onClose={() => setShowOwnerPanel(false)} />

@@ -8,10 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { X, Megaphone, Image, Check, X as XIcon, Loader2, Crown, Sparkles, Users, 
-         Ban, Paintbrush, Coins, Gift, MessageCircle, Zap, Shield } from "lucide-react";
+         Ban, Paintbrush, Coins, Gift, MessageCircle, Zap, Shield, GraduationCap, Swords } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SkinEditor } from "./SkinEditor";
+import { ClassCodePanel } from "./ClassCodePanel";
+import { WeaponEditorPanel } from "./WeaponEditorPanel";
+import { PreMadeUpdatesPanel } from "./PreMadeUpdatesPanel";
 
 interface OwnerPanelProps {
   open: boolean;
@@ -455,8 +458,17 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
             <TabsTrigger value="skins" className="gap-1 text-xs">
               <Paintbrush className="w-3 h-3" /> Skin Editor
             </TabsTrigger>
+            <TabsTrigger value="weapons" className="gap-1 text-xs">
+              <Swords className="w-3 h-3" /> Weapons
+            </TabsTrigger>
+            <TabsTrigger value="classes" className="gap-1 text-xs">
+              <GraduationCap className="w-3 h-3" /> Classes
+            </TabsTrigger>
             <TabsTrigger value="currency" className="gap-1 text-xs">
               <Coins className="w-3 h-3" /> Currency
+            </TabsTrigger>
+            <TabsTrigger value="updates" className="gap-1 text-xs">
+              <Sparkles className="w-3 h-3" /> Updates
             </TabsTrigger>
             <TabsTrigger value="abuse" className="gap-1 text-xs">
               <Zap className="w-3 h-3" /> Admin Abuse
@@ -824,6 +836,21 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
                   <li>• Pure visual chaos for the duration!</li>
                 </ul>
               </Card>
+            </TabsContent>
+
+            {/* Weapon Editor Tab */}
+            <TabsContent value="weapons" className="mt-0">
+              <WeaponEditorPanel />
+            </TabsContent>
+
+            {/* Class Codes Tab */}
+            <TabsContent value="classes" className="mt-0">
+              <ClassCodePanel />
+            </TabsContent>
+
+            {/* Pre-Made Updates Tab */}
+            <TabsContent value="updates" className="mt-0">
+              <PreMadeUpdatesPanel />
             </TabsContent>
           </ScrollArea>
         </Tabs>

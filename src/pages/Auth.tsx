@@ -102,28 +102,31 @@ export const Auth = () => {
         return;
       }
 
-      // Create a class-specific account
-      const email = `${username.toLowerCase()}_class_${classCode.toLowerCase()}@foodfps.game`;
-      const tempPassword = `class_${classCode}_${Date.now()}`;
+      // Create a class-specific account with a deterministic password based on code and username
+      const email = `${username.toLowerCase().replace(/\s+/g, '_')}_class_${classCode.toLowerCase()}@foodfps.game`;
+      // Use a consistent password so users can rejoin
+      const tempPassword = `Class${classCode.toUpperCase()}User${username.toLowerCase().replace(/\s+/g, '')}123!`;
 
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      // First try to sign in (in case user already exists)
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password: tempPassword,
-        options: {
-          data: { username, isClassMember: true, classCode: classCode.toUpperCase() },
-          emailRedirectTo: `${window.location.origin}/`,
-        },
       });
-
-      if (signUpError) {
-        // If account exists, try to sign in
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+      
+      if (signInError) {
+        // Account doesn't exist, create it
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password: tempPassword,
+          options: {
+            data: { username: username.trim(), isClassMember: true, classCode: classCode.toUpperCase() },
+            emailRedirectTo: `${window.location.origin}/`,
+          },
         });
-        
-        if (signInError) {
-          toast.error("Failed to join class. Try a different username.");
+
+        if (signUpError) {
+          console.error("Signup error:", signUpError);
+          toast.error("Failed to create class account. Try a different username.");
           setLoading(false);
           return;
         }
@@ -131,13 +134,19 @@ export const Auth = () => {
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Add to class members
-        await supabase.from("class_members").upsert({
+        // Add to class members using upsert
+        const { error: memberError } = await supabase.from("class_members").upsert({
           class_code_id: classData.id,
           user_id: user.id,
           username: username.trim(),
           is_ip_blocked: true,
+        }, {
+          onConflict: 'user_id,class_code_id'
         });
+
+        if (memberError) {
+          console.error("Member add error:", memberError);
+        }
 
         // Store class mode flag
         localStorage.setItem("isClassMode", "true");

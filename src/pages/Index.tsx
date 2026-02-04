@@ -369,19 +369,25 @@ const Index = () => {
 
       {/* Top right bar - Admin, Owner, Teacher and Logout */}
       <div className="fixed top-4 right-4 flex gap-2 z-50">
-        {isTeacher && !isAdmin && (
+        {isClassMode && (
+          <div className="bg-green-500/20 border border-green-500/50 rounded-lg px-3 py-1.5 flex items-center gap-2 text-sm">
+            <GraduationCap className="w-4 h-4 text-green-500" />
+            <span className="text-green-400">Class Mode</span>
+          </div>
+        )}
+        {isTeacher && !isAdmin && !isClassMode && (
           <Button variant="secondary" size="sm" onClick={() => setShowTeacherPanel(true)} className="gap-2">
             <GraduationCap className="w-4 h-4" />
             Teacher
           </Button>
         )}
-        {isOwner && (
+        {isOwner && !isClassMode && (
           <Button size="sm" onClick={() => setShowOwnerPanel(true)} className="gap-2 bg-amber-600 hover:bg-amber-700">
             <Crown className="w-4 h-4" />
             Owner
           </Button>
         )}
-        {isAdmin && (
+        {isAdmin && !isClassMode && (
           <Button variant="default" size="sm" onClick={handleAdminClick} className="gap-2">
             <Shield className="w-4 h-4" />
             Admin

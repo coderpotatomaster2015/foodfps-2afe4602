@@ -301,6 +301,8 @@ const Index = () => {
   const handleLogout = async () => {
     localStorage.removeItem("play_as_guest");
     localStorage.removeItem("foodfps_username");
+    localStorage.removeItem("isClassMode");
+    localStorage.removeItem("classCode");
     await supabase.auth.signOut();
     navigate("/auth");
   };

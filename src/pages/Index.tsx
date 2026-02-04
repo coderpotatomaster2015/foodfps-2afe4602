@@ -342,8 +342,8 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      {/* Left Sidebar for game tabs */}
-      {user && !gameMode && (
+      {/* Left Sidebar for game tabs - hidden for class mode users */}
+      {user && !gameMode && !isClassMode && (
         <GameSidebar
           unreadMessages={unreadMessages}
           isAdmin={isAdmin}

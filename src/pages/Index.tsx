@@ -426,9 +426,10 @@ const Index = () => {
         <GameModeSelector 
           username={username} 
           onModeSelect={handleModeSelect}
-          soloDisabled={soloDisabled}
-          multiplayerDisabled={multiplayerDisabled}
-          bossDisabled={bossDisabled}
+          soloDisabled={soloDisabled || isClassMode}
+          multiplayerDisabled={multiplayerDisabled || isClassMode}
+          bossDisabled={bossDisabled || isClassMode}
+          isClassMode={isClassMode}
         />
       )}
 

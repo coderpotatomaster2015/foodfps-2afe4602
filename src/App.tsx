@@ -64,17 +64,3 @@ const App = () => (
 );
 
 export default App;
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/ownerpage" element={<OwnerPage />} />
-            <Route path="/hacks" element={<Hacks />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </BanCheck>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
-
-export default App;

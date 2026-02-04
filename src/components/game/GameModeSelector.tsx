@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Users, User, Wifi, WifiOff, Skull, Timer, Trophy, Swords, Bot } from "lucide-react";
+import { Users, User, Wifi, WifiOff, Skull, Timer, Trophy, Swords, Bot, GraduationCap, Lock } from "lucide-react";
 import type { GameMode } from "@/pages/Index";
 import { openOfflineGame } from "@/utils/offlineGame";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ interface GameModeSelectorProps {
   soloDisabled?: boolean;
   multiplayerDisabled?: boolean;
   bossDisabled?: boolean;
+  isClassMode?: boolean;
 }
 
 export const GameModeSelector = ({ 
@@ -20,7 +21,8 @@ export const GameModeSelector = ({
   onModeSelect, 
   soloDisabled = false,
   multiplayerDisabled = false,
-  bossDisabled = false
+  bossDisabled = false,
+  isClassMode = false
 }: GameModeSelectorProps) => {
   const [joinCode, setJoinCode] = useState("");
   const [showHostOptions, setShowHostOptions] = useState(false);
@@ -36,6 +38,59 @@ export const GameModeSelector = ({
     setShowHostOptions(false);
   };
 
+  // If class mode, show only School Mode
+  if (isClassMode) {
+    return (
+      <div className="w-full max-w-md space-y-4">
+        <div className="text-center space-y-2">
+          <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent flex items-center justify-center gap-2">
+            <GraduationCap className="w-8 h-8" />
+            School Mode
+          </h1>
+          <p className="text-muted-foreground">Welcome, <span className="text-primary font-semibold">{username}</span></p>
+          <p className="text-xs text-muted-foreground bg-secondary/50 rounded-lg px-3 py-2">
+            You joined via class code. Only School Mode is available.
+          </p>
+        </div>
+
+        <Card 
+          className="p-6 bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-green-500/50 hover:border-green-400 cursor-pointer group transition-all hover:scale-105"
+          onClick={() => onModeSelect("school")}
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-lg bg-green-500/30 flex items-center justify-center transition-all group-hover:bg-green-500 group-hover:scale-110">
+              <GraduationCap className="w-7 h-7 text-green-400 group-hover:text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold">Play School Mode</h3>
+              <p className="text-sm text-muted-foreground">
+                Use elemental powers: Fire, Water, Earth, Air
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <div className="space-y-2">
+          <p className="text-xs text-center text-muted-foreground">Other modes are locked for class members</p>
+          <div className="flex flex-wrap gap-2 justify-center opacity-50">
+            <div className="flex items-center gap-1 text-xs bg-secondary/30 rounded px-2 py-1">
+              <Lock className="w-3 h-3" /> Solo
+            </div>
+            <div className="flex items-center gap-1 text-xs bg-secondary/30 rounded px-2 py-1">
+              <Lock className="w-3 h-3" /> Boss
+            </div>
+            <div className="flex items-center gap-1 text-xs bg-secondary/30 rounded px-2 py-1">
+              <Lock className="w-3 h-3" /> Ranked
+            </div>
+            <div className="flex items-center gap-1 text-xs bg-secondary/30 rounded px-2 py-1">
+              <Lock className="w-3 h-3" /> You vs Me
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-3xl space-y-4">
       <div className="text-center space-y-2">
@@ -45,8 +100,8 @@ export const GameModeSelector = ({
         <p className="text-muted-foreground">Welcome, <span className="text-primary font-semibold">{username}</span></p>
       </div>
 
-      {/* Main Game Modes - 2x2 Grid */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Main Game Modes - 2x3 Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <Card 
           className={`p-4 bg-card border-border transition-colors ${soloDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary cursor-pointer group'}`}
           onClick={() => !soloDisabled && onModeSelect("solo")}
@@ -56,7 +111,7 @@ export const GameModeSelector = ({
               <User className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold">Solo Mode</h3>
+              <h3 className="text-lg font-bold">Solo</h3>
               <p className="text-xs text-muted-foreground">
                 {soloDisabled ? "Disabled" : "Endless waves"}
               </p>
@@ -73,7 +128,7 @@ export const GameModeSelector = ({
               <Skull className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold">Boss Mode</h3>
+              <h3 className="text-lg font-bold">Boss</h3>
               <p className="text-xs text-muted-foreground">
                 {bossDisabled ? "Disabled" : "Fight bosses"}
               </p>
@@ -92,7 +147,7 @@ export const GameModeSelector = ({
             <div>
               <h3 className="text-lg font-bold">Ranked</h3>
               <p className="text-xs text-muted-foreground">
-                7 waves, earn ranks
+                7 waves, ranks
               </p>
             </div>
           </div>
@@ -107,9 +162,26 @@ export const GameModeSelector = ({
               <Bot className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold">You vs. Me</h3>
+              <h3 className="text-lg font-bold">You vs Me</h3>
               <p className="text-xs text-muted-foreground">
                 1v1 AI duel
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className="p-4 bg-card border-border hover:border-green-500 cursor-pointer group"
+          onClick={() => onModeSelect("school")}
+        >
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-green-500">
+              <GraduationCap className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">School</h3>
+              <p className="text-xs text-muted-foreground">
+                Elemental powers
               </p>
             </div>
           </div>

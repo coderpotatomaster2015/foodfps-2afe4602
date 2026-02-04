@@ -143,9 +143,34 @@ const Index = () => {
     checkAdminRole();
     checkTeacherRole();
     checkBetaTester();
+    checkClassMemberStatus();
     loadUserProfile();
     loadUnreadMessages();
   }, [user, loading, navigate]);
+
+  const checkClassMemberStatus = async () => {
+    if (!user) return;
+    
+    try {
+      // Check if user is a class member in the database
+      const { data, error } = await supabase.rpc('is_class_member', { _user_id: user.id });
+      
+      if (data === true) {
+        setIsClassMode(true);
+        localStorage.setItem("isClassMode", "true");
+      } else {
+        // Only clear class mode if localStorage says true but DB says false
+        const localClassMode = localStorage.getItem("isClassMode") === "true";
+        if (localClassMode && !data) {
+          setIsClassMode(false);
+          localStorage.removeItem("isClassMode");
+          localStorage.removeItem("classCode");
+        }
+      }
+    } catch (error) {
+      console.error("Error checking class member status:", error);
+    }
+  };
 
   const checkWebsiteStatus = async () => {
     try {
@@ -301,6 +326,8 @@ const Index = () => {
   const handleLogout = async () => {
     localStorage.removeItem("play_as_guest");
     localStorage.removeItem("foodfps_username");
+    localStorage.removeItem("isClassMode");
+    localStorage.removeItem("classCode");
     await supabase.auth.signOut();
     navigate("/auth");
   };
@@ -342,8 +369,8 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      {/* Left Sidebar for game tabs */}
-      {user && !gameMode && (
+      {/* Left Sidebar for game tabs - hidden for class mode users */}
+      {user && !gameMode && !isClassMode && (
         <GameSidebar
           unreadMessages={unreadMessages}
           isAdmin={isAdmin}
@@ -369,19 +396,25 @@ const Index = () => {
 
       {/* Top right bar - Admin, Owner, Teacher and Logout */}
       <div className="fixed top-4 right-4 flex gap-2 z-50">
-        {isTeacher && !isAdmin && (
+        {isClassMode && (
+          <div className="bg-green-500/20 border border-green-500/50 rounded-lg px-3 py-1.5 flex items-center gap-2 text-sm">
+            <GraduationCap className="w-4 h-4 text-green-500" />
+            <span className="text-green-400">Class Mode</span>
+          </div>
+        )}
+        {isTeacher && !isAdmin && !isClassMode && (
           <Button variant="secondary" size="sm" onClick={() => setShowTeacherPanel(true)} className="gap-2">
             <GraduationCap className="w-4 h-4" />
             Teacher
           </Button>
         )}
-        {isOwner && (
+        {isOwner && !isClassMode && (
           <Button size="sm" onClick={() => setShowOwnerPanel(true)} className="gap-2 bg-amber-600 hover:bg-amber-700">
             <Crown className="w-4 h-4" />
             Owner
           </Button>
         )}
-        {isAdmin && (
+        {isAdmin && !isClassMode && (
           <Button variant="default" size="sm" onClick={handleAdminClick} className="gap-2">
             <Shield className="w-4 h-4" />
             Admin
@@ -426,9 +459,10 @@ const Index = () => {
         <GameModeSelector 
           username={username} 
           onModeSelect={handleModeSelect}
-          soloDisabled={soloDisabled}
-          multiplayerDisabled={multiplayerDisabled}
-          bossDisabled={bossDisabled}
+          soloDisabled={soloDisabled || isClassMode}
+          multiplayerDisabled={multiplayerDisabled || isClassMode}
+          bossDisabled={bossDisabled || isClassMode}
+          isClassMode={isClassMode}
         />
       )}
 

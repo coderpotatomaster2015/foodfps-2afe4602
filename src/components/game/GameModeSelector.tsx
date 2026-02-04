@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Users, User, Wifi, WifiOff, Skull, Timer, Trophy, Swords, Bot } from "lucide-react";
+import { Users, User, Wifi, WifiOff, Skull, Timer, Trophy, Swords, Bot, GraduationCap, Lock } from "lucide-react";
 import type { GameMode } from "@/pages/Index";
 import { openOfflineGame } from "@/utils/offlineGame";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ interface GameModeSelectorProps {
   soloDisabled?: boolean;
   multiplayerDisabled?: boolean;
   bossDisabled?: boolean;
+  isClassMode?: boolean;
 }
 
 export const GameModeSelector = ({ 
@@ -20,7 +21,8 @@ export const GameModeSelector = ({
   onModeSelect, 
   soloDisabled = false,
   multiplayerDisabled = false,
-  bossDisabled = false
+  bossDisabled = false,
+  isClassMode = false
 }: GameModeSelectorProps) => {
   const [joinCode, setJoinCode] = useState("");
   const [showHostOptions, setShowHostOptions] = useState(false);

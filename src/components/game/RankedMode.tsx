@@ -275,56 +275,62 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
   }, []);
 
   const startWave = useCallback(() => {
-    const waveConfig = WAVE_CONFIG[currentWave - 1];
-    if (!waveConfig) return;
+    try {
+      const waveConfig = WAVE_CONFIG[currentWave - 1];
+      if (!waveConfig) return;
 
-    setGameState("playing");
-    enemiesRef.current = [];
-    bulletsRef.current = [];
-    enemyBulletsRef.current = [];
-    pickupsRef.current = [];
-    particlesRef.current = [];
-    spawnedCountRef.current = 0;
-    setEnemiesRemaining(0);
+      // Set game state first - canvas will be rendered
+      setGameState("playing");
+      enemiesRef.current = [];
+      bulletsRef.current = [];
+      enemyBulletsRef.current = [];
+      pickupsRef.current = [];
+      particlesRef.current = [];
+      spawnedCountRef.current = 0;
+      setEnemiesRemaining(0);
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const startHp = specialPowerRef.current === "shield" ? 125 : 100;
-    playerRef.current = {
-      x: canvas.width / 2,
-      y: canvas.height / 2,
-      r: 14,
-      speed: 180,
-      angle: 0,
-      weapon: currentWeapon,
-      lastShot: -1,
-      lastMelee: -1,
-      hp: startHp,
-      ammo: WEAPONS[currentWeapon].ammo,
-      maxAmmo: WEAPONS[currentWeapon].maxAmmo,
-    };
+      // Initialize player with default canvas size (960x640)
+      const startHp = specialPowerRef.current === "shield" ? 125 : 100;
+      playerRef.current = {
+        x: 480, // 960 / 2
+        y: 320, // 640 / 2
+        r: 14,
+        speed: 180,
+        angle: 0,
+        weapon: currentWeapon,
+        lastShot: -1,
+        lastMelee: -1,
+        hp: startHp,
+        ammo: WEAPONS[currentWeapon].ammo,
+        maxAmmo: WEAPONS[currentWeapon].maxAmmo,
+      };
 
-    setHealth(startHp);
-    setAmmo(WEAPONS[currentWeapon].ammo);
-    setMaxAmmo(WEAPONS[currentWeapon].maxAmmo);
+      setHealth(startHp);
+      setAmmo(WEAPONS[currentWeapon].ammo);
+      setMaxAmmo(WEAPONS[currentWeapon].maxAmmo);
 
-    // Spawn immunity
-    spawnImmunityRef.current = true;
-    setSpawnImmunity(true);
-    setTimeout(() => {
-      spawnImmunityRef.current = false;
-      setSpawnImmunity(false);
-    }, 3000);
+      // Spawn immunity
+      spawnImmunityRef.current = true;
+      setSpawnImmunity(true);
+      setTimeout(() => {
+        spawnImmunityRef.current = false;
+        setSpawnImmunity(false);
+      }, 3000);
 
-    // Spawn enemies over time
-    spawnIntervalRef.current = setInterval(() => {
-      if (spawnedCountRef.current < waveConfig.count) {
-        spawnEnemy(currentWave);
-      } else {
-        if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
-      }
-    }, waveConfig.spawnDelay);
+      // Clear existing spawn interval
+      if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
+      
+      // Spawn enemies over time
+      spawnIntervalRef.current = setInterval(() => {
+        if (spawnedCountRef.current < waveConfig.count) {
+          spawnEnemy(currentWave);
+        } else {
+          if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
+        }
+      }, waveConfig.spawnDelay);
+    } catch (error) {
+      console.error("Error starting Ranked wave:", error);
+    }
   }, [currentWave, spawnEnemy, currentWeapon]);
 
   const calculateRank = (wavesCompleted: number): { rank: string; tier: number } | null => {

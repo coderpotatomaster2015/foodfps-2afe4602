@@ -94,58 +94,61 @@ export const YouVsMeMode = ({ username, onBack, touchscreenMode = false, playerS
   };
 
   const startGame = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    try {
+      // Set game state first - canvas will be rendered
+      setGameState("playing");
+      playerBulletsRef.current = [];
+      botBulletsRef.current = [];
+      particlesRef.current = [];
 
-    setGameState("playing");
-    playerBulletsRef.current = [];
-    botBulletsRef.current = [];
-    particlesRef.current = [];
+      // Initialize player at default positions (canvas is 960x640)
+      playerRef.current = {
+        x: 200,
+        y: 320, // 640 / 2
+        r: 14,
+        speed: 180,
+        angle: 0,
+        weapon: "pistol" as Weapon,
+        lastShot: -1,
+        lastMelee: -1,
+        hp: 100,
+        ammo: 10,
+        maxAmmo: 10,
+      };
 
-    playerRef.current = {
-      x: 200,
-      y: canvas.height / 2,
-      r: 14,
-      speed: 180,
-      angle: 0,
-      weapon: "pistol" as Weapon,
-      lastShot: -1,
-      lastMelee: -1,
-      hp: 100,
-      ammo: 10,
-      maxAmmo: 10,
-    };
+      botRef.current = {
+        x: 760,
+        y: 320, // 640 / 2
+        r: 14,
+        speed: 150,
+        angle: Math.PI,
+        weapon: "pistol" as Weapon,
+        lastShot: -1,
+        lastWeaponSwitch: 0,
+        hp: 100,
+        ammo: 999,
+        state: "aggressive" as "aggressive" | "defensive" | "flanking",
+        targetX: 760,
+        targetY: 320,
+        strafeDirTime: 0,
+        strafeDir: 1,
+      };
 
-    botRef.current = {
-      x: 760,
-      y: canvas.height / 2,
-      r: 14,
-      speed: 150,
-      angle: Math.PI,
-      weapon: "pistol" as Weapon,
-      lastShot: -1,
-      lastWeaponSwitch: 0,
-      hp: 100,
-      ammo: 999,
-      state: "aggressive" as "aggressive" | "defensive" | "flanking",
-      targetX: 760,
-      targetY: canvas.height / 2,
-      strafeDirTime: 0,
-      strafeDir: 1,
-    };
+      setHealth(100);
+      setBotHealth(100);
+      setAmmo(10);
+      setMaxAmmo(10);
+      setCurrentWeapon("pistol");
 
-    setHealth(100);
-    setBotHealth(100);
-    setAmmo(10);
-    setMaxAmmo(10);
-    setCurrentWeapon("pistol");
-
-    spawnImmunityRef.current = true;
-    setSpawnImmunity(true);
-    setTimeout(() => {
-      spawnImmunityRef.current = false;
-      setSpawnImmunity(false);
-    }, 3000);
+      spawnImmunityRef.current = true;
+      setSpawnImmunity(true);
+      setTimeout(() => {
+        spawnImmunityRef.current = false;
+        setSpawnImmunity(false);
+      }, 3000);
+    } catch (error) {
+      console.error("Error starting You vs Me Mode:", error);
+    }
   }, []);
 
   const handleTouchMove = useCallback((dx: number, dy: number) => {

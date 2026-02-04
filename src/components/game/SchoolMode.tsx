@@ -138,39 +138,43 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
   };
 
   const startGame = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    try {
+      // Set game state first - canvas will be rendered
+      setGameState("playing");
+      enemiesRef.current = [];
+      projectilesRef.current = [];
+      enemyProjectilesRef.current = [];
+      particlesRef.current = [];
 
-    setGameState("playing");
-    enemiesRef.current = [];
-    projectilesRef.current = [];
-    enemyProjectilesRef.current = [];
-    particlesRef.current = [];
+      // Initialize player with default canvas size (will be updated in game loop)
+      playerRef.current = {
+        x: 480, // 960 / 2
+        y: 320, // 640 / 2
+        r: 14,
+        speed: 180,
+        angle: 0,
+        hp: 100,
+      };
 
-    playerRef.current = {
-      x: canvas.width / 2,
-      y: canvas.height / 2,
-      r: 14,
-      speed: 180,
-      angle: 0,
-      hp: 100,
-    };
+      setHealth(100);
+      setScore(0);
+      setCurrentPower("fire");
 
-    setHealth(100);
-    setScore(0);
-    setCurrentPower("fire");
+      spawnImmunityRef.current = true;
+      setSpawnImmunity(true);
+      setTimeout(() => {
+        spawnImmunityRef.current = false;
+        setSpawnImmunity(false);
+      }, 3000);
 
-    spawnImmunityRef.current = true;
-    setSpawnImmunity(true);
-    setTimeout(() => {
-      spawnImmunityRef.current = false;
-      setSpawnImmunity(false);
-    }, 3000);
-
-    // Spawn enemies periodically
-    spawnIntervalRef.current = setInterval(() => {
-      spawnEnemy();
-    }, 2000);
+      // Spawn enemies periodically
+      if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
+      spawnIntervalRef.current = setInterval(() => {
+        spawnEnemy();
+      }, 2000);
+    } catch (error) {
+      console.error("Error starting School Mode:", error);
+    }
   }, []);
 
   const spawnEnemy = () => {

@@ -143,9 +143,34 @@ const Index = () => {
     checkAdminRole();
     checkTeacherRole();
     checkBetaTester();
+    checkClassMemberStatus();
     loadUserProfile();
     loadUnreadMessages();
   }, [user, loading, navigate]);
+
+  const checkClassMemberStatus = async () => {
+    if (!user) return;
+    
+    try {
+      // Check if user is a class member in the database
+      const { data, error } = await supabase.rpc('is_class_member', { _user_id: user.id });
+      
+      if (data === true) {
+        setIsClassMode(true);
+        localStorage.setItem("isClassMode", "true");
+      } else {
+        // Only clear class mode if localStorage says true but DB says false
+        const localClassMode = localStorage.getItem("isClassMode") === "true";
+        if (localClassMode && !data) {
+          setIsClassMode(false);
+          localStorage.removeItem("isClassMode");
+          localStorage.removeItem("classCode");
+        }
+      }
+    } catch (error) {
+      console.error("Error checking class member status:", error);
+    }
+  };
 
   const checkWebsiteStatus = async () => {
     try {

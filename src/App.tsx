@@ -43,11 +43,27 @@ const GlobalErrorHandler = ({ children }: { children: React.ReactNode }) => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BanCheck>
-        <BrowserRouter>
-          <Routes>
+      <GlobalErrorHandler>
+        <Toaster />
+        <Sonner />
+        <BanCheck>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/ownerpage" element={<OwnerPage />} />
+              <Route path="/hacks" element={<Hacks />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </BanCheck>
+      </GlobalErrorHandler>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
+
+export default App;
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/ownerpage" element={<OwnerPage />} />

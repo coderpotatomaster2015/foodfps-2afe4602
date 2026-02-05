@@ -257,17 +257,66 @@ export const InventoryModal = ({ open, onOpenChange, onEquipPower, onEquipWeapon
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="powers" className="flex-1">
+        <Tabs defaultValue="weapons" className="flex-1">
           <TabsList className="w-full">
+            <TabsTrigger value="weapons" className="flex-1 gap-1">
+              <Swords className="w-4 h-4" />
+              Weapons
+            </TabsTrigger>
             <TabsTrigger value="powers" className="flex-1 gap-1">
               <Zap className="w-4 h-4" />
               Powers
             </TabsTrigger>
             <TabsTrigger value="health" className="flex-1 gap-1">
               <Heart className="w-4 h-4" />
-              Health Packs
+              Health
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="weapons" className="mt-4">
+            <ScrollArea className="h-[300px]">
+              {loading ? (
+                <div className="flex justify-center p-8">
+                  <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+                </div>
+              ) : weapons.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  <Swords className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>No weapons purchased</p>
+                  <p className="text-xs mt-1">You have the Pistol by default. Buy more from the Shop!</p>
+                </div>
+              ) : (
+                <div className="space-y-3 p-1">
+                  {weapons.map(item => (
+                    <Card key={item.id} className={`p-4 ${item.is_equipped ? "ring-2 ring-primary" : ""}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
+                            <Swords className="w-5 h-5 text-orange-500" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium capitalize">{item.item_id.replace(/_/g, " ")}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              {WEAPON_DESCRIPTIONS[item.item_id] || "Weapon"}
+                            </p>
+                          </div>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant={item.is_equipped ? "outline" : "default"}
+                          onClick={() => toggleWeaponEquip(item.item_id)}
+                        >
+                          {item.is_equipped ? (
+                            <><Check className="w-4 h-4 mr-1" /> Equipped</>
+                          ) : "Equip"}
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </TabsContent>
 
           <TabsContent value="powers" className="mt-4">
             <ScrollArea className="h-[300px]">

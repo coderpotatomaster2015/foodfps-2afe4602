@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Store, Zap, Heart, Coins, Gem, Star, Check } from "lucide-react";
+import { Store, Zap, Heart, Coins, Gem, Star, Check, Swords } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -86,8 +86,9 @@ export const ShopModal = ({ open, onOpenChange }: ShopModalProps) => {
   };
 
   const purchaseItem = async (item: ShopItem) => {
-    if (ownedItems.has(item.item_id) && item.item_type === "power") {
-      toast.error("You already own this power!");
+    // Allow buying multiple health packs, but not duplicate weapons/powers
+    if (ownedItems.has(item.item_id) && item.item_type !== "health_pack") {
+      toast.error("You already own this item!");
       return;
     }
 
@@ -160,6 +161,7 @@ export const ShopModal = ({ open, onOpenChange }: ShopModalProps) => {
     }
   };
 
+  const weapons = items.filter(item => item.item_type === "weapon");
   const powers = items.filter(item => item.item_type === "power");
   const healthPacks = items.filter(item => item.item_type === "health_pack");
 

@@ -150,6 +150,48 @@ export const InventoryModal = ({ open, onOpenChange, onEquipPower, onEquipWeapon
     }
   };
 
+  const toggleWeaponEquip = async (itemId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const item = inventory.find(i => i.item_id === itemId && i.item_type === "weapon");
+      if (!item) return;
+
+      const newEquipped = !item.is_equipped;
+
+      await supabase
+        .from("player_inventory")
+        .update({ is_equipped: newEquipped })
+        .eq("user_id", user.id)
+        .eq("item_id", itemId);
+
+      setInventory(prev => prev.map(i => 
+        i.item_id === itemId && i.item_type === "weapon" 
+          ? { ...i, is_equipped: newEquipped }
+          : i
+      ));
+
+      // Get all equipped weapons and notify parent
+      const equippedWeapons = inventory
+        .filter(i => i.item_type === "weapon" && (i.item_id === itemId ? newEquipped : i.is_equipped))
+        .map(i => i.item_id);
+      
+      // Always include pistol
+      if (!equippedWeapons.includes("pistol")) {
+        equippedWeapons.unshift("pistol");
+      }
+
+      localStorage.setItem("equippedWeapons", JSON.stringify(equippedWeapons));
+      onEquipWeapons?.(equippedWeapons);
+      
+      toast.success(newEquipped ? `Equipped ${itemId}!` : `Unequipped ${itemId}`);
+    } catch (error) {
+      console.error("Error toggling weapon:", error);
+      toast.error("Failed to update weapon");
+    }
+  };
+
   const useHealthPack = async (itemId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -198,6 +240,7 @@ export const InventoryModal = ({ open, onOpenChange, onEquipPower, onEquipWeapon
     }
   };
 
+  const weapons = inventory.filter(item => item.item_type === "weapon");
   const powers = inventory.filter(item => item.item_type === "power");
   const healthPacks = inventory.filter(item => item.item_type === "health_pack");
 

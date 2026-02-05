@@ -177,17 +177,18 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
     }
   }, []);
 
-  const spawnEnemy = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const spawnEnemy = useCallback(() => {
+    // Use fixed canvas dimensions (960x640) instead of checking canvas ref
+    const W = 960;
+    const H = 640;
 
     const side = Math.floor(Math.random() * 4);
     let x = 0, y = 0;
     switch (side) {
-      case 0: x = Math.random() * 960; y = -30; break;
-      case 1: x = 990; y = Math.random() * 640; break;
-      case 2: x = Math.random() * 960; y = 670; break;
-      case 3: x = -30; y = Math.random() * 640; break;
+      case 0: x = Math.random() * W; y = -30; break;
+      case 1: x = W + 30; y = Math.random() * H; break;
+      case 2: x = Math.random() * W; y = H + 30; break;
+      case 3: x = -30; y = Math.random() * H; break;
     }
 
     const enemy: Enemy = {
@@ -203,7 +204,7 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
     };
 
     enemiesRef.current.push(enemy);
-  };
+  }, []);
 
   const handleTouchMove = useCallback((dx: number, dy: number) => {
     touchMoveRef.current = { x: dx, y: dy };

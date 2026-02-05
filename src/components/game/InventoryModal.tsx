@@ -54,7 +54,7 @@ const HEALTH_PACK_VALUES: Record<string, number> = {
   large_health: 100,
 };
 
-export const InventoryModal = ({ open, onOpenChange, onEquipPower }: InventoryModalProps) => {
+export const InventoryModal = ({ open, onOpenChange, onEquipPower, onEquipWeapons }: InventoryModalProps) => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [equippedPower, setEquippedPower] = useState<string | null>(null);

@@ -243,6 +243,10 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
     const waveConfig = WAVE_CONFIG[wave - 1];
     if (!waveConfig || spawnedCountRef.current >= waveConfig.count) return;
 
+    // Use fixed canvas dimensions instead of checking canvas ref
+    const W = 960;
+    const H = 640;
+
     const types = waveConfig.types;
     const type = types[Math.floor(Math.random() * types.length)] as Enemy["type"];
     const stats = getEnemyStats(type, wave);
@@ -250,10 +254,10 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
     const side = Math.floor(Math.random() * 4);
     let x = 0, y = 0;
     switch (side) {
-      case 0: x = Math.random() * 960; y = -30; break;
-      case 1: x = 990; y = Math.random() * 640; break;
-      case 2: x = Math.random() * 960; y = 670; break;
-      case 3: x = -30; y = Math.random() * 640; break;
+      case 0: x = Math.random() * W; y = -30; break;
+      case 1: x = W + 30; y = Math.random() * H; break;
+      case 2: x = Math.random() * W; y = H + 30; break;
+      case 3: x = -30; y = Math.random() * H; break;
     }
 
     const newEnemy: Enemy = {

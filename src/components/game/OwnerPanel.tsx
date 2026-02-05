@@ -8,13 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { X, Megaphone, Image, Check, X as XIcon, Loader2, Crown, Sparkles, Users, 
-         Ban, Paintbrush, Coins, Gift, MessageCircle, Zap, Shield, GraduationCap, Swords } from "lucide-react";
+         Ban, Paintbrush, Coins, Gift, MessageCircle, Zap, Shield, GraduationCap, Swords, Calculator } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SkinEditor } from "./SkinEditor";
 import { ClassCodePanel } from "./ClassCodePanel";
 import { WeaponEditorPanel } from "./WeaponEditorPanel";
 import { PreMadeUpdatesPanel } from "./PreMadeUpdatesPanel";
+import { MathProblemsPanel } from "./MathProblemsPanel";
 
 interface OwnerPanelProps {
   open: boolean;
@@ -464,6 +465,9 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
             <TabsTrigger value="classes" className="gap-1 text-xs">
               <GraduationCap className="w-3 h-3" /> Classes
             </TabsTrigger>
+            <TabsTrigger value="mathproblems" className="gap-1 text-xs">
+              <Calculator className="w-3 h-3" /> Math
+            </TabsTrigger>
             <TabsTrigger value="currency" className="gap-1 text-xs">
               <Coins className="w-3 h-3" /> Currency
             </TabsTrigger>
@@ -774,6 +778,11 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
                   As an owner, you have infinite currency (999,999,999 of each).
                 </p>
               </Card>
+            </TabsContent>
+
+            {/* Math Problems Tab */}
+            <TabsContent value="mathproblems" className="mt-0">
+              <MathProblemsPanel />
             </TabsContent>
 
             {/* Admin Abuse Tab */}

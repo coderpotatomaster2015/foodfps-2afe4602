@@ -13,6 +13,7 @@ interface InventoryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEquipPower?: (power: string | null) => void;
+  onEquipWeapons?: (weapons: string[]) => void;
 }
 
 interface InventoryItem {
@@ -32,13 +33,28 @@ const POWER_DESCRIPTIONS: Record<string, string> = {
   invisibility: "Enemies have reduced accuracy targeting you",
 };
 
+const WEAPON_DESCRIPTIONS: Record<string, string> = {
+  pistol: "Standard sidearm - 40 damage, moderate fire rate",
+  shotgun: "Spread shot - 25 damage per pellet, 5 pellets",
+  sword: "Melee weapon - 80 damage, fast attacks",
+  rifle: "Automatic - 35 damage, accurate",
+  sniper: "Precision - 120 damage, slow fire rate",
+  smg: "Rapid fire - 25 damage, very fast",
+  knife: "Quick melee - 50 damage",
+  rpg: "Explosive - 200 damage, slow reload",
+  axe: "Heavy melee - 100 damage",
+  flamethrower: "Continuous fire - 15 damage per hit",
+  minigun: "Very fast - 20 damage, high ammo",
+  railgun: "Ultimate precision - 250 damage",
+};
+
 const HEALTH_PACK_VALUES: Record<string, number> = {
   small_health: 25,
   medium_health: 50,
   large_health: 100,
 };
 
-export const InventoryModal = ({ open, onOpenChange, onEquipPower }: InventoryModalProps) => {
+export const InventoryModal = ({ open, onOpenChange, onEquipPower, onEquipWeapons }: InventoryModalProps) => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [equippedPower, setEquippedPower] = useState<string | null>(null);
@@ -134,6 +150,48 @@ export const InventoryModal = ({ open, onOpenChange, onEquipPower }: InventoryMo
     }
   };
 
+  const toggleWeaponEquip = async (itemId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const item = inventory.find(i => i.item_id === itemId && i.item_type === "weapon");
+      if (!item) return;
+
+      const newEquipped = !item.is_equipped;
+
+      await supabase
+        .from("player_inventory")
+        .update({ is_equipped: newEquipped })
+        .eq("user_id", user.id)
+        .eq("item_id", itemId);
+
+      setInventory(prev => prev.map(i => 
+        i.item_id === itemId && i.item_type === "weapon" 
+          ? { ...i, is_equipped: newEquipped }
+          : i
+      ));
+
+      // Get all equipped weapons and notify parent
+      const equippedWeapons = inventory
+        .filter(i => i.item_type === "weapon" && (i.item_id === itemId ? newEquipped : i.is_equipped))
+        .map(i => i.item_id);
+      
+      // Always include pistol
+      if (!equippedWeapons.includes("pistol")) {
+        equippedWeapons.unshift("pistol");
+      }
+
+      localStorage.setItem("equippedWeapons", JSON.stringify(equippedWeapons));
+      onEquipWeapons?.(equippedWeapons);
+      
+      toast.success(newEquipped ? `Equipped ${itemId}!` : `Unequipped ${itemId}`);
+    } catch (error) {
+      console.error("Error toggling weapon:", error);
+      toast.error("Failed to update weapon");
+    }
+  };
+
   const useHealthPack = async (itemId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -182,6 +240,7 @@ export const InventoryModal = ({ open, onOpenChange, onEquipPower }: InventoryMo
     }
   };
 
+  const weapons = inventory.filter(item => item.item_type === "weapon");
   const powers = inventory.filter(item => item.item_type === "power");
   const healthPacks = inventory.filter(item => item.item_type === "health_pack");
 
@@ -198,17 +257,66 @@ export const InventoryModal = ({ open, onOpenChange, onEquipPower }: InventoryMo
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="powers" className="flex-1">
+        <Tabs defaultValue="weapons" className="flex-1">
           <TabsList className="w-full">
+            <TabsTrigger value="weapons" className="flex-1 gap-1">
+              <Swords className="w-4 h-4" />
+              Weapons
+            </TabsTrigger>
             <TabsTrigger value="powers" className="flex-1 gap-1">
               <Zap className="w-4 h-4" />
               Powers
             </TabsTrigger>
             <TabsTrigger value="health" className="flex-1 gap-1">
               <Heart className="w-4 h-4" />
-              Health Packs
+              Health
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="weapons" className="mt-4">
+            <ScrollArea className="h-[300px]">
+              {loading ? (
+                <div className="flex justify-center p-8">
+                  <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+                </div>
+              ) : weapons.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  <Swords className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>No weapons purchased</p>
+                  <p className="text-xs mt-1">You have the Pistol by default. Buy more from the Shop!</p>
+                </div>
+              ) : (
+                <div className="space-y-3 p-1">
+                  {weapons.map(item => (
+                    <Card key={item.id} className={`p-4 ${item.is_equipped ? "ring-2 ring-primary" : ""}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
+                            <Swords className="w-5 h-5 text-orange-500" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium capitalize">{item.item_id.replace(/_/g, " ")}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              {WEAPON_DESCRIPTIONS[item.item_id] || "Weapon"}
+                            </p>
+                          </div>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant={item.is_equipped ? "outline" : "default"}
+                          onClick={() => toggleWeaponEquip(item.item_id)}
+                        >
+                          {item.is_equipped ? (
+                            <><Check className="w-4 h-4 mr-1" /> Equipped</>
+                          ) : "Equip"}
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </TabsContent>
 
           <TabsContent value="powers" className="mt-4">
             <ScrollArea className="h-[300px]">

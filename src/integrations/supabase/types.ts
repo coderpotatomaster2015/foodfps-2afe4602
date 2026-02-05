@@ -394,6 +394,41 @@ export type Database = {
         }
         Relationships: []
       }
+      class_math_problems: {
+        Row: {
+          answer: string
+          class_code_id: string | null
+          created_at: string
+          created_by: string
+          id: string
+          question: string
+        }
+        Insert: {
+          answer: string
+          class_code_id?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          question: string
+        }
+        Update: {
+          answer?: string
+          class_code_id?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_math_problems_class_code_id_fkey"
+            columns: ["class_code_id"]
+            isOneToOne: false
+            referencedRelation: "class_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_members: {
         Row: {
           class_code_id: string

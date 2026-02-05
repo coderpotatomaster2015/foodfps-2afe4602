@@ -201,8 +201,12 @@ export const ShopModal = ({ open, onOpenChange }: ShopModalProps) => {
           </div>
         </div>
 
-        <Tabs defaultValue="powers" className="flex-1">
+        <Tabs defaultValue="weapons" className="flex-1">
           <TabsList className="w-full">
+            <TabsTrigger value="weapons" className="flex-1 gap-1">
+              <Swords className="w-4 h-4" />
+              Weapons
+            </TabsTrigger>
             <TabsTrigger value="powers" className="flex-1 gap-1">
               <Zap className="w-4 h-4" />
               Powers
@@ -212,6 +216,63 @@ export const ShopModal = ({ open, onOpenChange }: ShopModalProps) => {
               Health Packs
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="weapons" className="mt-4">
+            <ScrollArea className="h-[350px]">
+              {loading ? (
+                <div className="flex justify-center p-8">
+                  <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-1">
+                  {weapons.map(item => {
+                    const owned = ownedItems.has(item.item_id);
+                    const price = getPrice(item);
+
+                    return (
+                      <Card key={item.id} className={`p-4 ${owned ? "opacity-75" : ""}`}>
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center">
+                              <Swords className="w-6 h-6 text-orange-500" />
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="font-medium">{item.name}</h4>
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {item.description}
+                              </p>
+                            </div>
+                          </div>
+
+                          {owned ? (
+                            <Badge variant="secondary" className="w-fit gap-1">
+                              <Check className="w-3 h-3" /> Owned
+                            </Badge>
+                          ) : price && (
+                            <Button 
+                              size="sm" 
+                              className="w-full"
+                              onClick={() => purchaseItem(item)}
+                              disabled={purchasing === item.id}
+                            >
+                              {purchasing === item.id ? "Purchasing..." : (
+                                <>
+                                  {price.type === "coins" && <Coins className="w-4 h-4 mr-1 text-yellow-400" />}
+                                  {price.type === "gems" && <Gem className="w-4 h-4 mr-1 text-purple-400" />}
+                                  {price.type === "gold" && <Star className="w-4 h-4 mr-1 text-amber-400" />}
+                                  {price.amount}
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </ScrollArea>
+          </TabsContent>
 
           <TabsContent value="powers" className="mt-4">
             <ScrollArea className="h-[350px]">

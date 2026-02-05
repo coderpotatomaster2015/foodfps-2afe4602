@@ -13,6 +13,7 @@ interface InventoryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEquipPower?: (power: string | null) => void;
+  onEquipWeapons?: (weapons: string[]) => void;
 }
 
 interface InventoryItem {
@@ -30,6 +31,21 @@ const POWER_DESCRIPTIONS: Record<string, string> = {
   shield: "Start with 125 HP instead of 100",
   slow_motion: "Enemies move 50% slower near you",
   invisibility: "Enemies have reduced accuracy targeting you",
+};
+
+const WEAPON_DESCRIPTIONS: Record<string, string> = {
+  pistol: "Standard sidearm - 40 damage, moderate fire rate",
+  shotgun: "Spread shot - 25 damage per pellet, 5 pellets",
+  sword: "Melee weapon - 80 damage, fast attacks",
+  rifle: "Automatic - 35 damage, accurate",
+  sniper: "Precision - 120 damage, slow fire rate",
+  smg: "Rapid fire - 25 damage, very fast",
+  knife: "Quick melee - 50 damage",
+  rpg: "Explosive - 200 damage, slow reload",
+  axe: "Heavy melee - 100 damage",
+  flamethrower: "Continuous fire - 15 damage per hit",
+  minigun: "Very fast - 20 damage, high ammo",
+  railgun: "Ultimate precision - 250 damage",
 };
 
 const HEALTH_PACK_VALUES: Record<string, number> = {

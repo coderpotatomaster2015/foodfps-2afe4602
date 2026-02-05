@@ -465,6 +465,9 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
             <TabsTrigger value="classes" className="gap-1 text-xs">
               <GraduationCap className="w-3 h-3" /> Classes
             </TabsTrigger>
+            <TabsTrigger value="mathproblems" className="gap-1 text-xs">
+              <Calculator className="w-3 h-3" /> Math
+            </TabsTrigger>
             <TabsTrigger value="currency" className="gap-1 text-xs">
               <Coins className="w-3 h-3" /> Currency
             </TabsTrigger>

@@ -8,13 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { X, Megaphone, Image, Check, X as XIcon, Loader2, Crown, Sparkles, Users, 
-         Ban, Paintbrush, Coins, Gift, MessageCircle, Zap, Shield, GraduationCap, Swords } from "lucide-react";
+         Ban, Paintbrush, Coins, Gift, MessageCircle, Zap, Shield, GraduationCap, Swords, Calculator } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SkinEditor } from "./SkinEditor";
 import { ClassCodePanel } from "./ClassCodePanel";
 import { WeaponEditorPanel } from "./WeaponEditorPanel";
 import { PreMadeUpdatesPanel } from "./PreMadeUpdatesPanel";
+import { MathProblemsPanel } from "./MathProblemsPanel";
 
 interface OwnerPanelProps {
   open: boolean;

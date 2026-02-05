@@ -780,6 +780,11 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
               </Card>
             </TabsContent>
 
+            {/* Math Problems Tab */}
+            <TabsContent value="mathproblems" className="mt-0">
+              <MathProblemsPanel />
+            </TabsContent>
+
             {/* Admin Abuse Tab */}
             <TabsContent value="abuse" className="mt-0 space-y-4">
               <Card className="p-4 space-y-4 border-rainbow bg-gradient-to-r from-red-500/10 via-yellow-500/10 to-blue-500/10">

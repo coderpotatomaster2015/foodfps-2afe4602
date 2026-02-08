@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, MessageSquare, Shield, Flame, Droplets, Mountain, Wind } from "lucide-react";
 import { AdminChat } from "./AdminChat";
 import { TouchControls } from "./TouchControls";
+import { MathReloadModal } from "./MathReloadModal";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -14,6 +15,8 @@ interface SchoolModeProps {
   onBack: () => void;
   touchscreenMode?: boolean;
   playerSkin?: string;
+  isClassMode?: boolean;
+  classCodeId?: string | null;
 }
 
 type ElementalPower = "fire" | "water" | "earth" | "air";
@@ -27,6 +30,7 @@ interface PowerConfig {
   icon: React.ReactNode;
   effectRadius: number;
   description: string;
+  maxAmmo: number;
 }
 
 const ELEMENTAL_POWERS: Record<ElementalPower, PowerConfig> = {
@@ -38,7 +42,8 @@ const ELEMENTAL_POWERS: Record<ElementalPower, PowerConfig> = {
     particleColor: "#FFD700",
     icon: <Flame className="w-4 h-4" />,
     effectRadius: 80,
-    description: "Burst of flames that burns enemies"
+    description: "Burst of flames that burns enemies",
+    maxAmmo: 10
   },
   water: {
     name: "Water",
@@ -48,7 +53,8 @@ const ELEMENTAL_POWERS: Record<ElementalPower, PowerConfig> = {
     particleColor: "#87CEEB",
     icon: <Droplets className="w-4 h-4" />,
     effectRadius: 100,
-    description: "Wave of water that pushes and damages"
+    description: "Wave of water that pushes and damages",
+    maxAmmo: 15
   },
   earth: {
     name: "Earth",
@@ -58,7 +64,8 @@ const ELEMENTAL_POWERS: Record<ElementalPower, PowerConfig> = {
     particleColor: "#CD853F",
     icon: <Mountain className="w-4 h-4" />,
     effectRadius: 60,
-    description: "Summon rocks that deal heavy damage"
+    description: "Summon rocks that deal heavy damage",
+    maxAmmo: 6
   },
   air: {
     name: "Air",
@@ -68,7 +75,8 @@ const ELEMENTAL_POWERS: Record<ElementalPower, PowerConfig> = {
     particleColor: "#FFFFFF",
     icon: <Wind className="w-4 h-4" />,
     effectRadius: 120,
-    description: "Fast wind slashes with wide area"
+    description: "Fast wind slashes with wide area",
+    maxAmmo: 20
   }
 };
 
@@ -87,7 +95,14 @@ interface Enemy {
   lastShot: number;
 }
 
-export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSkin = "#FFF3D6" }: SchoolModeProps) => {
+export const SchoolMode = ({ 
+  username, 
+  onBack, 
+  touchscreenMode = false, 
+  playerSkin = "#FFF3D6",
+  isClassMode = false,
+  classCodeId = null 
+}: SchoolModeProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [gameState, setGameState] = useState<"ready" | "playing" | "gameover">("ready");
@@ -97,8 +112,16 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
   const [cooldowns, setCooldowns] = useState<Record<ElementalPower, number>>({
     fire: 0, water: 0, earth: 0, air: 0
   });
+  const [ammo, setAmmo] = useState<Record<ElementalPower, number>>({
+    fire: ELEMENTAL_POWERS.fire.maxAmmo,
+    water: ELEMENTAL_POWERS.water.maxAmmo,
+    earth: ELEMENTAL_POWERS.earth.maxAmmo,
+    air: ELEMENTAL_POWERS.air.maxAmmo
+  });
   const [spawnImmunity, setSpawnImmunity] = useState(true);
   const [hasPermission, setHasPermission] = useState(false);
+  const [mathModalOpen, setMathModalOpen] = useState(false);
+  const [reloadingPower, setReloadingPower] = useState<ElementalPower | null>(null);
 
   const playerRef = useRef<any>(null);
   const enemiesRef = useRef<Enemy[]>([]);
@@ -113,10 +136,16 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
   const lastShotRef = useRef<Record<ElementalPower, number>>({
     fire: 0, water: 0, earth: 0, air: 0
   });
+  const ammoRef = useRef(ammo);
 
   const touchMoveRef = useRef({ x: 0, y: 0 });
   const touchAimRef = useRef({ x: 480, y: 320 });
   const touchShootingRef = useRef(false);
+
+  // Keep ammoRef in sync
+  useEffect(() => {
+    ammoRef.current = ammo;
+  }, [ammo]);
 
   useEffect(() => {
     checkPermissions();
@@ -139,17 +168,15 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
 
   const startGame = useCallback(() => {
     try {
-      // Set game state first - canvas will be rendered
       setGameState("playing");
       enemiesRef.current = [];
       projectilesRef.current = [];
       enemyProjectilesRef.current = [];
       particlesRef.current = [];
 
-      // Initialize player with default canvas size (will be updated in game loop)
       playerRef.current = {
-        x: 480, // 960 / 2
-        y: 320, // 640 / 2
+        x: 480,
+        y: 320,
         r: 14,
         speed: 180,
         angle: 0,
@@ -159,6 +186,14 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
       setHealth(100);
       setScore(0);
       setCurrentPower("fire");
+      
+      // Reset ammo
+      setAmmo({
+        fire: ELEMENTAL_POWERS.fire.maxAmmo,
+        water: ELEMENTAL_POWERS.water.maxAmmo,
+        earth: ELEMENTAL_POWERS.earth.maxAmmo,
+        air: ELEMENTAL_POWERS.air.maxAmmo
+      });
 
       spawnImmunityRef.current = true;
       setSpawnImmunity(true);
@@ -167,7 +202,6 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
         setSpawnImmunity(false);
       }, 3000);
 
-      // Spawn enemies periodically
       if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
       spawnIntervalRef.current = setInterval(() => {
         spawnEnemy();
@@ -178,7 +212,6 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
   }, []);
 
   const spawnEnemy = useCallback(() => {
-    // Use fixed canvas dimensions (960x640) instead of checking canvas ref
     const W = 960;
     const H = 640;
 
@@ -206,6 +239,32 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
     enemiesRef.current.push(enemy);
   }, []);
 
+  const handleReload = useCallback(() => {
+    if (isClassMode && classCodeId) {
+      // In class mode, open math modal
+      setReloadingPower(currentPower);
+      setMathModalOpen(true);
+    } else {
+      // Normal reload - just refill ammo
+      setAmmo(prev => ({
+        ...prev,
+        [currentPower]: ELEMENTAL_POWERS[currentPower].maxAmmo
+      }));
+      toast.success(`${ELEMENTAL_POWERS[currentPower].name} reloaded!`);
+    }
+  }, [isClassMode, classCodeId, currentPower]);
+
+  const handleMathCorrect = useCallback(() => {
+    // Reload ALL powers when math is answered correctly
+    setAmmo({
+      fire: ELEMENTAL_POWERS.fire.maxAmmo,
+      water: ELEMENTAL_POWERS.water.maxAmmo,
+      earth: ELEMENTAL_POWERS.earth.maxAmmo,
+      air: ELEMENTAL_POWERS.air.maxAmmo
+    });
+    toast.success("All powers reloaded!");
+  }, []);
+
   const handleTouchMove = useCallback((dx: number, dy: number) => {
     touchMoveRef.current = { x: dx, y: dy };
   }, []);
@@ -219,11 +278,8 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
   }, []);
 
   const handleTouchReload = useCallback(() => {
-    // Cycle through powers
-    const currentIndex = POWER_ORDER.indexOf(currentPower);
-    const nextIndex = (currentIndex + 1) % POWER_ORDER.length;
-    setCurrentPower(POWER_ORDER[nextIndex]);
-  }, [currentPower]);
+    handleReload();
+  }, [handleReload]);
 
   const handleCommand = useCallback((cmd: string) => {
     if (!hasPermission) return;
@@ -272,7 +328,6 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
     const spawnElementalEffect = (x: number, y: number, power: ElementalPower, angle: number) => {
       const config = ELEMENTAL_POWERS[power];
       
-      // Create visual particles based on element
       for (let i = 0; i < 15; i++) {
         const spread = rand(-0.5, 0.5);
         particlesRef.current.push({
@@ -297,6 +352,11 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
         if (POWER_ORDER[index]) {
           setCurrentPower(POWER_ORDER[index]);
         }
+      }
+
+      // R key for reload
+      if (e.key.toLowerCase() === "r") {
+        handleReload();
       }
     };
 
@@ -341,14 +401,12 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
       const enemyProjectiles = enemyProjectilesRef.current;
       const particles = particlesRef.current;
 
-      // Check game over
       if (player.hp <= 0) {
         setGameState("gameover");
         if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
         return;
       }
 
-      // Handle movement
       let dx = 0, dy = 0;
       if (touchscreenMode) {
         dx = touchMoveRef.current.x;
@@ -372,12 +430,19 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
         player.y = Math.max(20, Math.min(H - 20, player.y + dy * player.speed * dt));
       }
 
-      // Handle power attacks
+      // Handle power attacks with ammo check
       const power = ELEMENTAL_POWERS[currentPower];
-      if (mouseRef.current.down && time - lastShotRef.current[currentPower] >= power.cooldown) {
+      const currentAmmo = ammoRef.current[currentPower];
+      
+      if (mouseRef.current.down && time - lastShotRef.current[currentPower] >= power.cooldown && currentAmmo > 0) {
         lastShotRef.current[currentPower] = time;
 
-        // Create projectile based on element type
+        // Decrease ammo
+        setAmmo(prev => ({
+          ...prev,
+          [currentPower]: prev[currentPower] - 1
+        }));
+
         const projCount = currentPower === "water" ? 3 : currentPower === "air" ? 5 : 1;
         
         for (let i = 0; i < projCount; i++) {
@@ -408,7 +473,6 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
         p.y += p.vy * dt;
         p.life -= dt;
 
-        // Add trail
         p.trail.push({ x: p.x, y: p.y, life: 0.2 });
         if (p.trail.length > 10) p.trail.shift();
         p.trail.forEach((t: any) => t.life -= dt);
@@ -419,7 +483,6 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
           continue;
         }
 
-        // Check enemy collision
         for (let j = enemies.length - 1; j >= 0; j--) {
           const e = enemies[j];
           const dist = Math.hypot(p.x - e.x, p.y - e.y);
@@ -428,7 +491,6 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
             e.stun = 0.2;
             spawnParticles(p.x, p.y, p.color, 8);
 
-            // Earth creates explosion
             if (p.element === "earth") {
               for (let k = enemies.length - 1; k >= 0; k--) {
                 const nearbyE = enemies[k];
@@ -439,7 +501,6 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
               }
             }
 
-            // Water pushes enemies back
             if (p.element === "water") {
               const pushAngle = Math.atan2(e.y - player.y, e.x - player.x);
               e.x += Math.cos(pushAngle) * 50;
@@ -470,7 +531,6 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
           e.y += Math.sin(angle) * e.speed * dt;
         }
 
-        // Enemy shooting
         if (time - e.lastShot > 2.5) {
           e.lastShot = time;
           const angle = Math.atan2(player.y - e.y, player.x - e.x);
@@ -486,7 +546,6 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
           });
         }
 
-        // Enemy-player collision
         const dist = Math.hypot(e.x - player.x, e.y - player.y);
         if (dist < e.r + player.r && !spawnImmunityRef.current) {
           player.hp -= 20;
@@ -508,7 +567,6 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
           continue;
         }
 
-        // Check player collision
         const dist = Math.hypot(p.x - player.x, p.y - player.y);
         if (dist < p.r + player.r && !spawnImmunityRef.current) {
           player.hp -= p.dmg;
@@ -532,14 +590,12 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
       // Draw
       ctx.clearRect(0, 0, W, H);
 
-      // Draw background with elemental theme
       const gradient = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W/2);
       gradient.addColorStop(0, "rgba(20, 30, 40, 1)");
       gradient.addColorStop(1, "rgba(10, 15, 20, 1)");
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, W, H);
 
-      // Draw grid
       ctx.save();
       ctx.globalAlpha = 0.1;
       ctx.strokeStyle = ELEMENTAL_POWERS[currentPower].color;
@@ -557,7 +613,6 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
       }
       ctx.restore();
 
-      // Draw particles
       for (const p of particles) {
         ctx.save();
         ctx.globalAlpha = p.life;
@@ -568,9 +623,7 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
         ctx.restore();
       }
 
-      // Draw projectiles with trails
       for (const p of projectiles) {
-        // Draw trail
         for (let i = 0; i < p.trail.length; i++) {
           const t = p.trail[i];
           ctx.save();
@@ -582,7 +635,6 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
           ctx.restore();
         }
 
-        // Draw projectile
         ctx.save();
         ctx.shadowBlur = 15;
         ctx.shadowColor = p.color;
@@ -593,7 +645,6 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
         ctx.restore();
       }
 
-      // Draw enemy projectiles
       for (const p of enemyProjectiles) {
         ctx.save();
         ctx.shadowBlur = 10;
@@ -605,7 +656,6 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
         ctx.restore();
       }
 
-      // Draw enemies with health bars
       for (const e of enemies) {
         ctx.save();
         ctx.shadowBlur = 10;
@@ -615,7 +665,6 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
         ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
         ctx.fill();
 
-        // Health bar
         const barWidth = e.r * 2;
         const hpRatio = e.hp / e.maxHp;
         ctx.fillStyle = "#333";
@@ -625,7 +674,6 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
         ctx.restore();
       }
 
-      // Draw player
       ctx.save();
       if (spawnImmunityRef.current) {
         ctx.globalAlpha = 0.5 + Math.sin(time * 10) * 0.3;
@@ -637,14 +685,12 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
       ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
       ctx.fill();
 
-      // Elemental aura
       ctx.strokeStyle = ELEMENTAL_POWERS[currentPower].color;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(player.x, player.y, player.r + 4 + Math.sin(time * 5) * 2, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Aim line
       ctx.strokeStyle = ELEMENTAL_POWERS[currentPower].color;
       ctx.lineWidth = 2;
       ctx.globalAlpha = 0.6;
@@ -671,7 +717,7 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
       canvas.removeEventListener("mousedown", handleMouseDown);
       canvas.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [gameState, currentPower, touchscreenMode, playerSkin]);
+  }, [gameState, currentPower, touchscreenMode, playerSkin, handleReload]);
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center bg-background p-4">
@@ -684,6 +730,11 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
           <Badge variant="secondary" className="gap-1">
             Score: {score}
           </Badge>
+          {isClassMode && (
+            <Badge variant="outline" className="gap-1 text-primary">
+              Class Mode
+            </Badge>
+          )}
           {hasPermission && (
             <Button variant="ghost" size="sm" onClick={() => setChatOpen(!chatOpen)}>
               <MessageSquare className="w-4 h-4" />
@@ -695,10 +746,12 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
       {/* Game states */}
       {gameState === "ready" && (
         <Card className="p-8 text-center space-y-4 max-w-md">
-          <h2 className="text-2xl font-bold">School Mode</h2>
+          <h2 className="text-2xl font-bold">
+            {isClassMode ? "Class Mode" : "School Mode"}
+          </h2>
           <p className="text-muted-foreground">
             Master the elements! Use Fire, Water, Earth, and Air powers to defeat enemies.
-            No weapons - only elemental magic!
+            {isClassMode && " Press R to reload - solve a math problem to refill all powers!"}
           </p>
           <div className="grid grid-cols-2 gap-2">
             {POWER_ORDER.map((power, i) => (
@@ -758,11 +811,14 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
             )}
           </div>
 
-          {/* Elemental Powers */}
+          {/* Elemental Powers with Ammo */}
           <div className="absolute bottom-20 right-4 flex gap-2">
             {POWER_ORDER.map((power, i) => {
               const config = ELEMENTAL_POWERS[power];
               const isActive = power === currentPower;
+              const currentAmmo = ammo[power];
+              const maxAmmo = config.maxAmmo;
+              
               return (
                 <button
                   key={power}
@@ -779,11 +835,23 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
                   <div className="flex flex-col items-center gap-1">
                     <span style={{ color: config.color }}>{config.icon}</span>
                     <span className="text-xs">{i + 1}</span>
+                    <span className={`text-xs ${currentAmmo === 0 ? "text-red-500" : ""}`}>
+                      {currentAmmo}/{maxAmmo}
+                    </span>
                   </div>
                 </button>
               );
             })}
           </div>
+
+          {/* Reload hint for class mode */}
+          {isClassMode && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+              <Badge variant="outline" className="text-xs">
+                Press R to reload (Math Challenge)
+              </Badge>
+            </div>
+          )}
 
           {/* Touch controls */}
           {touchscreenMode && (
@@ -807,6 +875,14 @@ export const SchoolMode = ({ username, onBack, touchscreenMode = false, playerSk
           onCommand={handleCommand} 
         />
       )}
+
+      {/* Math Reload Modal for Class Mode */}
+      <MathReloadModal
+        open={mathModalOpen}
+        onOpenChange={setMathModalOpen}
+        classCodeId={classCodeId}
+        onCorrect={handleMathCorrect}
+      />
     </div>
   );
 };

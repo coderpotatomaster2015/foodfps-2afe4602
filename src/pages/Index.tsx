@@ -94,6 +94,7 @@ const Index = () => {
   const [tutorialChecked, setTutorialChecked] = useState(false);
   const [equippedPower, setEquippedPower] = useState<string | null>(null);
   const [isClassMode, setIsClassMode] = useState(false);
+  const [classCodeId, setClassCodeId] = useState<string | null>(null);
 
   // Real-time game status hook
   const gameStatus = useGameStatus(user?.id || null);
@@ -158,11 +159,24 @@ const Index = () => {
       if (data === true) {
         setIsClassMode(true);
         localStorage.setItem("isClassMode", "true");
+        
+        // Get the class code ID for math problems
+        const { data: memberData } = await supabase
+          .from("class_members")
+          .select("class_code_id")
+          .eq("user_id", user.id)
+          .limit(1)
+          .maybeSingle();
+        
+        if (memberData?.class_code_id) {
+          setClassCodeId(memberData.class_code_id);
+        }
       } else {
         // Only clear class mode if localStorage says true but DB says false
         const localClassMode = localStorage.getItem("isClassMode") === "true";
         if (localClassMode && !data) {
           setIsClassMode(false);
+          setClassCodeId(null);
           localStorage.removeItem("isClassMode");
           localStorage.removeItem("classCode");
         }
@@ -542,6 +556,8 @@ const Index = () => {
           onBack={handleBackToMenu}
           touchscreenMode={touchscreenMode}
           playerSkin={currentSkin}
+          isClassMode={isClassMode}
+          classCodeId={classCodeId}
         />
       )}
       <AdminCodeModal open={showAdminCode} onOpenChange={setShowAdminCode} onSuccess={() => setShowAdminPanel(true)} />

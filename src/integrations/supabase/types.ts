@@ -114,6 +114,7 @@ export type Database = {
           expires_at: string
           id: string
           is_active: boolean
+          metadata: Json | null
         }
         Insert: {
           created_at?: string
@@ -122,6 +123,7 @@ export type Database = {
           expires_at: string
           id?: string
           is_active?: boolean
+          metadata?: Json | null
         }
         Update: {
           created_at?: string
@@ -130,6 +132,7 @@ export type Database = {
           expires_at?: string
           id?: string
           is_active?: boolean
+          metadata?: Json | null
         }
         Relationships: []
       }
@@ -288,6 +291,8 @@ export type Database = {
           id: string
           is_active: boolean
           message: string
+          show_on_first_login: boolean | null
+          title: string | null
         }
         Insert: {
           created_at?: string
@@ -296,6 +301,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           message: string
+          show_on_first_login?: boolean | null
+          title?: string | null
         }
         Update: {
           created_at?: string
@@ -304,6 +311,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           message?: string
+          show_on_first_login?: boolean | null
+          title?: string | null
         }
         Relationships: []
       }
@@ -702,6 +711,11 @@ export type Database = {
           id: string
           leaderboard_public: boolean
           multiplayer_disabled: boolean
+          normal_disabled: boolean | null
+          normal_disabled_message: string | null
+          ranked_disabled: boolean | null
+          school_disabled: boolean | null
+          school_disabled_message: string | null
           solo_disabled: boolean
           updated_at: string
           website_enabled: boolean
@@ -713,6 +727,11 @@ export type Database = {
           id?: string
           leaderboard_public?: boolean
           multiplayer_disabled?: boolean
+          normal_disabled?: boolean | null
+          normal_disabled_message?: string | null
+          ranked_disabled?: boolean | null
+          school_disabled?: boolean | null
+          school_disabled_message?: string | null
           solo_disabled?: boolean
           updated_at?: string
           website_enabled?: boolean
@@ -724,6 +743,11 @@ export type Database = {
           id?: string
           leaderboard_public?: boolean
           multiplayer_disabled?: boolean
+          normal_disabled?: boolean | null
+          normal_disabled_message?: string | null
+          ranked_disabled?: boolean | null
+          school_disabled?: boolean | null
+          school_disabled_message?: string | null
           solo_disabled?: boolean
           updated_at?: string
           website_enabled?: boolean

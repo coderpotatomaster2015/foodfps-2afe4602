@@ -5,10 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Megaphone, Image, Check, X as XIcon, Loader2, Crown, Sparkles, Users, 
-         Ban, Paintbrush, Coins, Gift, MessageCircle, Zap, Shield, GraduationCap, Swords, Calculator } from "lucide-react";
+         Ban, Paintbrush, Coins, Gift, MessageCircle, Zap, Shield, GraduationCap, 
+         Swords, Calculator, Trophy, Radio, Cake, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SkinEditor } from "./SkinEditor";
@@ -16,6 +19,7 @@ import { ClassCodePanel } from "./ClassCodePanel";
 import { WeaponEditorPanel } from "./WeaponEditorPanel";
 import { PreMadeUpdatesPanel } from "./PreMadeUpdatesPanel";
 import { MathProblemsPanel } from "./MathProblemsPanel";
+import { AbuseSchedulePanel } from "./AbuseSchedulePanel";
 
 interface OwnerPanelProps {
   open: boolean;
@@ -59,6 +63,27 @@ interface ChatBannedUser {
 interface UserProfile {
   user_id: string;
   username: string;
+  total_score: number;
+  ranked_rank: string | null;
+  ranked_tier: number | null;
+}
+
+interface Broadcast {
+  id: string;
+  title: string;
+  message: string;
+  is_active: boolean;
+  expires_at: string | null;
+  show_on_first_login: boolean;
+  created_at: string;
+}
+
+interface GameSettings {
+  school_disabled: boolean;
+  normal_disabled: boolean;
+  ranked_disabled: boolean;
+  school_disabled_message: string | null;
+  normal_disabled_message: string | null;
 }
 
 export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
@@ -67,8 +92,17 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
   const [ipBans, setIPBans] = useState<IPBan[]>([]);
   const [chatBannedUsers, setChatBannedUsers] = useState<ChatBannedUser[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
+  const [gameSettings, setGameSettings] = useState<GameSettings>({
+    school_disabled: false,
+    normal_disabled: false,
+    ranked_disabled: false,
+    school_disabled_message: null,
+    normal_disabled_message: null
+  });
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [userId, setUserId] = useState<string>("");
 
   // Create ad form
   const [adTitle, setAdTitle] = useState("");
@@ -89,15 +123,42 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
   // Admin abuse
   const [abuseDuration, setAbuseDuration] = useState("5");
 
+  // Score/Rank management
+  const [selectedUser, setSelectedUser] = useState("");
+  const [newScore, setNewScore] = useState("");
+  const [newRank, setNewRank] = useState("");
+  const [newTier, setNewTier] = useState("");
+
+  // Broadcast form
+  const [broadcastTitle, setBroadcastTitle] = useState("");
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [broadcastDuration, setBroadcastDuration] = useState("60");
+  const [broadcastFirstLogin, setBroadcastFirstLogin] = useState(false);
+
+  // Mode disabled messages
+  const [schoolDisabledMsg, setSchoolDisabledMsg] = useState("");
+  const [normalDisabledMsg, setNormalDisabledMsg] = useState("");
+
   useEffect(() => {
     if (open) {
-      loadAds();
-      loadAdSignups();
-      loadIPBans();
-      loadChatBannedUsers();
-      loadUsers();
+      loadAll();
     }
   }, [open]);
+
+  const loadAll = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) setUserId(user.id);
+    
+    await Promise.all([
+      loadAds(),
+      loadAdSignups(),
+      loadIPBans(),
+      loadChatBannedUsers(),
+      loadUsers(),
+      loadBroadcasts(),
+      loadGameSettings()
+    ]);
+  };
 
   const loadAds = async () => {
     const { data } = await supabase
@@ -134,7 +195,6 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
       .eq("is_chat_banned", true);
     
     if (warnings && warnings.length > 0) {
-      // Fetch usernames for banned users
       const userIds = warnings.map(w => w.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
@@ -157,10 +217,39 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
   const loadUsers = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("user_id, username")
+      .select("user_id, username, total_score, ranked_rank, ranked_tier")
       .order("username");
     
     if (data) setUsers(data);
+  };
+
+  const loadBroadcasts = async () => {
+    const { data } = await supabase
+      .from("broadcasts")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (data) setBroadcasts(data as Broadcast[]);
+  };
+
+  const loadGameSettings = async () => {
+    const { data } = await supabase
+      .from("game_settings")
+      .select("*")
+      .limit(1)
+      .single();
+    
+    if (data) {
+      setGameSettings({
+        school_disabled: (data as any).school_disabled || false,
+        normal_disabled: (data as any).normal_disabled || false,
+        ranked_disabled: (data as any).ranked_disabled || false,
+        school_disabled_message: (data as any).school_disabled_message || null,
+        normal_disabled_message: (data as any).normal_disabled_message || null
+      });
+      setSchoolDisabledMsg((data as any).school_disabled_message || "");
+      setNormalDisabledMsg((data as any).normal_disabled_message || "");
+    }
   };
 
   const generateAdImage = async () => {
@@ -337,11 +426,11 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
     }
   };
 
-  const unbanFromChat = async (userId: string) => {
+  const unbanFromChat = async (chatUserId: string) => {
     const { error } = await supabase
       .from("chat_warnings")
       .update({ is_chat_banned: false, warning_count: 0 })
-      .eq("user_id", userId);
+      .eq("user_id", chatUserId);
 
     if (error) {
       toast.error("Failed to unban user");
@@ -399,15 +488,138 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
     }
   };
 
-  const activateUltimateAbuse = async () => {
+  const updateUserScore = async () => {
+    if (!selectedUser) {
+      toast.error("Please select a user");
+      return;
+    }
+
+    const score = parseInt(newScore);
+    if (isNaN(score)) {
+      toast.error("Please enter a valid score");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ total_score: score })
+      .eq("user_id", selectedUser);
+
+    if (error) {
+      toast.error("Failed to update score");
+    } else {
+      toast.success("Score updated!");
+      setNewScore("");
+      loadUsers();
+    }
+  };
+
+  const updateUserRank = async () => {
+    if (!selectedUser) {
+      toast.error("Please select a user");
+      return;
+    }
+
+    const updateData: any = {};
+    if (newRank) updateData.ranked_rank = newRank;
+    if (newTier) updateData.ranked_tier = parseInt(newTier);
+
+    if (Object.keys(updateData).length === 0) {
+      toast.error("Please enter a rank or tier");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update(updateData)
+      .eq("user_id", selectedUser);
+
+    if (error) {
+      toast.error("Failed to update rank");
+    } else {
+      toast.success("Rank updated!");
+      setNewRank("");
+      setNewTier("");
+      loadUsers();
+    }
+  };
+
+  const createBroadcast = async () => {
+    if (!broadcastMessage.trim()) {
+      toast.error("Please enter a message");
+      return;
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + parseInt(abuseDuration));
+    expiresAt.setMinutes(expiresAt.getMinutes() + parseInt(broadcastDuration));
+
+    const { error } = await supabase.from("broadcasts").insert({
+      title: broadcastTitle || "Announcement",
+      message: broadcastMessage,
+      created_by: user.id,
+      expires_at: expiresAt.toISOString(),
+      show_on_first_login: broadcastFirstLogin,
+      is_active: true
+    });
+
+    if (error) {
+      toast.error("Failed to create broadcast");
+    } else {
+      toast.success(`Broadcast created for ${broadcastDuration} minutes!`);
+      setBroadcastTitle("");
+      setBroadcastMessage("");
+      setBroadcastDuration("60");
+      setBroadcastFirstLogin(false);
+      loadBroadcasts();
+    }
+  };
+
+  const deleteBroadcast = async (id: string) => {
+    const { error } = await supabase.from("broadcasts").delete().eq("id", id);
+    
+    if (error) {
+      toast.error("Failed to delete broadcast");
+    } else {
+      toast.success("Broadcast deleted");
+      loadBroadcasts();
+    }
+  };
+
+  const toggleModeDisabled = async (mode: "school" | "normal" | "ranked", value: boolean) => {
+    const updateData: any = {};
+    updateData[`${mode}_disabled`] = value;
+    
+    if (mode === "school") {
+      updateData.school_disabled_message = schoolDisabledMsg || "School mode is currently disabled";
+    } else if (mode === "normal") {
+      updateData.normal_disabled_message = normalDisabledMsg || "Normal accounts are currently disabled";
+    }
+
+    const { error } = await supabase
+      .from("game_settings")
+      .update(updateData)
+      .not("id", "is", null);
+
+    if (error) {
+      toast.error("Failed to update settings");
+    } else {
+      toast.success(`${mode} mode ${value ? "disabled" : "enabled"}`);
+      setGameSettings(prev => ({ ...prev, [`${mode}_disabled`]: value }));
+    }
+  };
+
+  const activateAbuse = async (type: string, duration: number) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + duration);
 
     const { error } = await supabase.from("admin_abuse_events").insert({
-      event_type: "ultimate",
+      event_type: type,
       created_by: user.id,
       expires_at: expiresAt.toISOString(),
     });
@@ -415,11 +627,11 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
     if (error) {
       toast.error("Failed to activate");
     } else {
-      toast.success(`Ultimate Rainbow Mode activated for ${abuseDuration} minutes!`);
+      toast.success(`${type} activated for ${duration} minutes!`);
     }
   };
 
-  const disableUltimateAbuse = async () => {
+  const disableAllAbuse = async () => {
     const { error } = await supabase
       .from("admin_abuse_events")
       .update({ is_active: false })
@@ -471,6 +683,15 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
             <TabsTrigger value="currency" className="gap-1 text-xs">
               <Coins className="w-3 h-3" /> Currency
             </TabsTrigger>
+            <TabsTrigger value="leaderboard" className="gap-1 text-xs">
+              <Trophy className="w-3 h-3" /> Leaderboard
+            </TabsTrigger>
+            <TabsTrigger value="broadcasts" className="gap-1 text-xs">
+              <Radio className="w-3 h-3" /> Broadcasts
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="gap-1 text-xs">
+              <Settings className="w-3 h-3" /> Mode Settings
+            </TabsTrigger>
             <TabsTrigger value="updates" className="gap-1 text-xs">
               <Sparkles className="w-3 h-3" /> Updates
             </TabsTrigger>
@@ -480,7 +701,7 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
           </TabsList>
 
           <ScrollArea className="flex-1 p-4">
-            {/* Create Ad Tab */}
+            {/* Ads Tab */}
             <TabsContent value="ads" className="mt-0 space-y-4">
               <Card className="p-4 space-y-4">
                 <h3 className="font-semibold flex items-center gap-2">
@@ -564,7 +785,6 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
                 </div>
               </Card>
 
-              {/* Manage Ads */}
               <h3 className="font-semibold">Manage Ads</h3>
               {ads.length === 0 ? (
                 <p className="text-muted-foreground text-center py-4">No ads created yet</p>
@@ -636,9 +856,6 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
                   <Ban className="w-4 h-4 text-red-500" />
                   Add IP Ban
                 </h3>
-                <p className="text-xs text-muted-foreground">
-                  Owners are automatically exempt from IP bans
-                </p>
                 <div className="space-y-3">
                   <div>
                     <Label>IP Address</Label>
@@ -768,15 +985,216 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
                   </Button>
                 </div>
               </Card>
+            </TabsContent>
 
-              <Card className="p-4 bg-amber-500/10 border-amber-500/30">
-                <div className="flex items-center gap-2">
-                  <Crown className="w-5 h-5 text-amber-500" />
-                  <span className="font-medium">Owner Privilege</span>
+            {/* Leaderboard Management Tab */}
+            <TabsContent value="leaderboard" className="mt-0 space-y-4">
+              <Card className="p-4 space-y-4">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-yellow-500" />
+                  Manage User Score/Rank
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <Label>Select User</Label>
+                    <Select value={selectedUser} onValueChange={setSelectedUser}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a user" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users.map(u => (
+                          <SelectItem key={u.user_id} value={u.user_id}>
+                            {u.username} (Score: {u.total_score})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>New Score</Label>
+                      <Input
+                        type="number"
+                        value={newScore}
+                        onChange={(e) => setNewScore(e.target.value)}
+                        placeholder="Enter new score"
+                      />
+                      <Button onClick={updateUserScore} className="w-full" size="sm">
+                        Update Score
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>New Rank</Label>
+                      <Select value={newRank} onValueChange={setNewRank}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select rank" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Bronze">Bronze</SelectItem>
+                          <SelectItem value="Silver">Silver</SelectItem>
+                          <SelectItem value="Gold">Gold</SelectItem>
+                          <SelectItem value="Platinum">Platinum</SelectItem>
+                          <SelectItem value="Diamond">Diamond</SelectItem>
+                          <SelectItem value="Master">Master</SelectItem>
+                          <SelectItem value="Grandmaster">Grandmaster</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        value={newTier}
+                        onChange={(e) => setNewTier(e.target.value)}
+                        placeholder="Tier (1-4)"
+                        min="1"
+                        max="4"
+                      />
+                      <Button onClick={updateUserRank} className="w-full" size="sm">
+                        Update Rank
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  As an owner, you have infinite currency (999,999,999 of each).
-                </p>
+              </Card>
+            </TabsContent>
+
+            {/* Broadcasts Tab */}
+            <TabsContent value="broadcasts" className="mt-0 space-y-4">
+              <Card className="p-4 space-y-4">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Radio className="w-4 h-4 text-primary" />
+                  Create Temporary Broadcast
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <Label>Title</Label>
+                    <Input
+                      value={broadcastTitle}
+                      onChange={(e) => setBroadcastTitle(e.target.value)}
+                      placeholder="e.g., Server Maintenance"
+                    />
+                  </div>
+                  <div>
+                    <Label>Message</Label>
+                    <Textarea
+                      value={broadcastMessage}
+                      onChange={(e) => setBroadcastMessage(e.target.value)}
+                      placeholder="Enter broadcast message..."
+                      rows={3}
+                    />
+                  </div>
+                  <div>
+                    <Label>Duration (minutes)</Label>
+                    <Input
+                      type="number"
+                      value={broadcastDuration}
+                      onChange={(e) => setBroadcastDuration(e.target.value)}
+                      min="1"
+                      max="1440"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={broadcastFirstLogin}
+                      onCheckedChange={setBroadcastFirstLogin}
+                    />
+                    <Label>Show only on first login</Label>
+                  </div>
+                  <Button onClick={createBroadcast} className="w-full gap-2">
+                    <Radio className="w-4 h-4" />
+                    Create Broadcast
+                  </Button>
+                </div>
+              </Card>
+
+              <h3 className="font-semibold">Active Broadcasts</h3>
+              {broadcasts.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">No active broadcasts</p>
+              ) : (
+                broadcasts.map((broadcast) => (
+                  <Card key={broadcast.id} className="p-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-medium">{broadcast.title}</h4>
+                        <p className="text-sm text-muted-foreground">{broadcast.message}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Expires: {broadcast.expires_at ? new Date(broadcast.expires_at).toLocaleString() : "Never"}
+                          {broadcast.show_on_first_login && " • First login only"}
+                        </p>
+                      </div>
+                      <Button size="sm" variant="destructive" onClick={() => deleteBroadcast(broadcast.id)}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </Card>
+                ))
+              )}
+            </TabsContent>
+
+            {/* Mode Settings Tab */}
+            <TabsContent value="settings" className="mt-0 space-y-4">
+              <Card className="p-4 space-y-4">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Settings className="w-4 h-4" />
+                  Disable Account Modes
+                </h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-secondary rounded-lg">
+                    <div>
+                      <p className="font-medium">Disable School Accounts</p>
+                      <p className="text-xs text-muted-foreground">Block school/class mode access</p>
+                    </div>
+                    <Switch
+                      checked={gameSettings.school_disabled}
+                      onCheckedChange={(v) => toggleModeDisabled("school", v)}
+                    />
+                  </div>
+                  {gameSettings.school_disabled && (
+                    <div>
+                      <Label>School Disabled Message</Label>
+                      <Input
+                        value={schoolDisabledMsg}
+                        onChange={(e) => setSchoolDisabledMsg(e.target.value)}
+                        placeholder="School mode is currently disabled"
+                        onBlur={() => toggleModeDisabled("school", true)}
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between p-3 bg-secondary rounded-lg">
+                    <div>
+                      <p className="font-medium">Disable Normal Accounts</p>
+                      <p className="text-xs text-muted-foreground">Block regular account access</p>
+                    </div>
+                    <Switch
+                      checked={gameSettings.normal_disabled}
+                      onCheckedChange={(v) => toggleModeDisabled("normal", v)}
+                    />
+                  </div>
+                  {gameSettings.normal_disabled && (
+                    <div>
+                      <Label>Normal Disabled Message</Label>
+                      <Input
+                        value={normalDisabledMsg}
+                        onChange={(e) => setNormalDisabledMsg(e.target.value)}
+                        placeholder="Normal accounts are currently disabled"
+                        onBlur={() => toggleModeDisabled("normal", true)}
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between p-3 bg-secondary rounded-lg">
+                    <div>
+                      <p className="font-medium">Disable Ranked Mode</p>
+                      <p className="text-xs text-muted-foreground">Block ranked gameplay</p>
+                    </div>
+                    <Switch
+                      checked={gameSettings.ranked_disabled}
+                      onCheckedChange={(v) => toggleModeDisabled("ranked", v)}
+                    />
+                  </div>
+                </div>
               </Card>
             </TabsContent>
 
@@ -807,7 +1225,7 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
                     />
                   </div>
                   <Button
-                    onClick={activateUltimateAbuse}
+                    onClick={() => activateAbuse("ultimate", parseInt(abuseDuration))}
                     className="w-full gap-2 bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 hover:from-red-600 hover:via-yellow-600 hover:to-blue-600"
                   >
                     <Zap className="w-4 h-4" />
@@ -816,34 +1234,134 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
                 </div>
               </Card>
 
-              {/* Disable Rainbow Mode */}
+              {/* Birthday Mode */}
+              <Card className="p-4 space-y-4 border-pink-500/30 bg-gradient-to-r from-pink-500/10 to-purple-500/10">
+                <h3 className="font-semibold flex items-center gap-2 text-pink-400">
+                  <Cake className="w-5 h-5" />
+                  Birthday Mode
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Celebrate with confetti, balloons, and birthday effects everywhere!
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    onClick={() => activateAbuse("birthday", 5)}
+                    size="sm"
+                    className="bg-pink-500 hover:bg-pink-600"
+                  >
+                    5 min
+                  </Button>
+                  <Button
+                    onClick={() => activateAbuse("birthday", 15)}
+                    size="sm"
+                    className="bg-pink-500 hover:bg-pink-600"
+                  >
+                    15 min
+                  </Button>
+                  <Button
+                    onClick={() => activateAbuse("birthday", 60)}
+                    size="sm"
+                    className="bg-pink-500 hover:bg-pink-600"
+                  >
+                    1 hour
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Godmode for All */}
+              <Card className="p-4 space-y-4 border-green-500/30 bg-green-500/10">
+                <h3 className="font-semibold flex items-center gap-2 text-green-400">
+                  <Shield className="w-5 h-5" />
+                  Godmode for All
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Grant invincibility to all players temporarily.
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    onClick={() => activateAbuse("godmode_all", 5)}
+                    size="sm"
+                    variant="outline"
+                    className="border-green-500 text-green-400"
+                  >
+                    5 min
+                  </Button>
+                  <Button
+                    onClick={() => activateAbuse("godmode_all", 15)}
+                    size="sm"
+                    variant="outline"
+                    className="border-green-500 text-green-400"
+                  >
+                    15 min
+                  </Button>
+                  <Button
+                    onClick={() => activateAbuse("godmode_all", 30)}
+                    size="sm"
+                    variant="outline"
+                    className="border-green-500 text-green-400"
+                  >
+                    30 min
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Double Coins */}
+              <Card className="p-4 space-y-4 border-yellow-500/30 bg-yellow-500/10">
+                <h3 className="font-semibold flex items-center gap-2 text-yellow-400">
+                  <Coins className="w-5 h-5" />
+                  Double Coins Event
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  All players earn double coins from matches!
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    onClick={() => activateAbuse("double_coins", 30)}
+                    size="sm"
+                    variant="outline"
+                    className="border-yellow-500 text-yellow-400"
+                  >
+                    30 min
+                  </Button>
+                  <Button
+                    onClick={() => activateAbuse("double_coins", 60)}
+                    size="sm"
+                    variant="outline"
+                    className="border-yellow-500 text-yellow-400"
+                  >
+                    1 hour
+                  </Button>
+                  <Button
+                    onClick={() => activateAbuse("double_coins", 120)}
+                    size="sm"
+                    variant="outline"
+                    className="border-yellow-500 text-yellow-400"
+                  >
+                    2 hours
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Scheduled Events */}
+              <Card className="p-4 space-y-4">
+                <h3 className="font-semibold">Schedule Events</h3>
+                <AbuseSchedulePanel userId={userId} />
+              </Card>
+
+              {/* Disable All */}
               <Card className="p-4 space-y-4 border-destructive/30">
                 <h3 className="font-semibold flex items-center gap-2 text-destructive">
                   <Shield className="w-5 h-5" />
-                  Disable Rainbow Mode
+                  Disable All Abuse Events
                 </h3>
-                <p className="text-sm text-muted-foreground">
-                  Immediately deactivate all active rainbow/abuse events.
-                </p>
                 <Button
-                  onClick={disableUltimateAbuse}
+                  onClick={disableAllAbuse}
                   variant="destructive"
                   className="w-full gap-2"
                 >
                   <Zap className="w-4 h-4" />
-                  Disable All Abuse Events
+                  Disable All Events
                 </Button>
-              </Card>
-
-              <Card className="p-4 bg-secondary/50">
-                <h4 className="font-medium mb-2">What Ultimate Mode does:</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• All UI elements cycle through rainbow colors</li>
-                  <li>• Player skins constantly change colors</li>
-                  <li>• Enemies become rainbow colored</li>
-                  <li>• Background shifts through spectrum</li>
-                  <li>• Pure visual chaos for the duration!</li>
-                </ul>
               </Card>
             </TabsContent>
 

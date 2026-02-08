@@ -134,6 +134,20 @@ export const PreMadeUpdatesPanel = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error("Not authenticated");
+        setLoading(null);
+        return;
+      }
+
+      // Check if update already exists
+      const { data: existing } = await supabase
+        .from("game_updates")
+        .select("id")
+        .eq("name", update.name)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        toast.error("This update has already been deployed");
+        setLoading(null);
         return;
       }
 
@@ -150,20 +164,42 @@ export const PreMadeUpdatesPanel = () => {
         released_at: new Date().toISOString(),
       });
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Update creation error:", updateError);
+        toast.error(`Failed to create update: ${updateError.message}`);
+        setLoading(null);
+        return;
+      }
 
-      // Create seasonal skins
+      // Create seasonal skins - check if they exist first
+      let skinsCreated = 0;
       for (let i = 0; i < update.skinColors.length; i++) {
         const skinName = `${update.season} Skin ${i + 1}`;
-        await supabase.from("player_skins").insert({
-          name: skinName,
-          color: update.skinColors[i],
-          is_seasonal: true,
-          season: update.season,
-          price_coins: 100 * (i + 1),
-          price_gems: 0,
-          price_gold: 0,
-        });
+        
+        // Check if skin already exists
+        const { data: existingSkin } = await supabase
+          .from("player_skins")
+          .select("id")
+          .eq("name", skinName)
+          .limit(1);
+
+        if (!existingSkin || existingSkin.length === 0) {
+          const { error: skinError } = await supabase.from("player_skins").insert({
+            name: skinName,
+            color: update.skinColors[i],
+            is_seasonal: true,
+            season: update.season,
+            price_coins: 100 * (i + 1),
+            price_gems: 0,
+            price_gold: 0,
+          });
+
+          if (!skinError) {
+            skinsCreated++;
+          } else {
+            console.error("Skin creation error:", skinError);
+          }
+        }
       }
 
       // Update UI theme in localStorage (for immediate preview)
@@ -175,7 +211,7 @@ export const PreMadeUpdatesPanel = () => {
       document.documentElement.style.setProperty("--accent", update.uiTheme.accent);
 
       setActivatedUpdates(prev => new Set([...prev, update.id]));
-      toast.success(`${update.name} activated!`);
+      toast.success(`${update.name} activated! ${skinsCreated} new skins created.`);
     } catch (error) {
       console.error("Error activating update:", error);
       toast.error("Failed to activate update");

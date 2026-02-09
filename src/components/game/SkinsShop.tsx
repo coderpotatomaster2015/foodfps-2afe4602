@@ -5,7 +5,9 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Gem, Coins, Star, Check, Palette, Sparkles } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Gem, Coins, Star, Check, Palette, Sparkles, Trash2, Edit2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -50,12 +52,32 @@ export const SkinsShop = ({ open, onOpenChange, onSkinSelect, currentSkin = "#FF
   const [ownedCustomSkinIds, setOwnedCustomSkinIds] = useState<Set<string>>(new Set());
   const [currencies, setCurrencies] = useState<Currencies>({ gems: 0, coins: 0, gold: 0 });
   const [loading, setLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [editingSkin, setEditingSkin] = useState<CustomSkin | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPriceCoins, setEditPriceCoins] = useState("");
+  const [editPriceGems, setEditPriceGems] = useState("");
+  const [editPriceGold, setEditPriceGold] = useState("");
 
   useEffect(() => {
     if (open) {
       loadData();
+      checkAdminRole();
     }
   }, [open]);
+
+  const checkAdminRole = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .in("role", ["admin", "owner"]);
+
+    setIsAdmin(data && data.length > 0);
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -221,6 +243,8 @@ export const SkinsShop = ({ open, onOpenChange, onSkinSelect, currentSkin = "#FF
     }
     if (onSkinSelect) {
       onSkinSelect(skin.color);
+      localStorage.setItem("foodfps_skin", skin.color);
+      localStorage.removeItem("selectedCustomSkin");
     }
     toast.success(`Equipped ${skin.name}!`);
   };
@@ -236,6 +260,58 @@ export const SkinsShop = ({ open, onOpenChange, onSkinSelect, currentSkin = "#FF
       localStorage.setItem("selectedCustomSkin", JSON.stringify({ id: skin.id, imageData: skin.image_data, specialPower: skin.special_power }));
     }
     toast.success(`Equipped ${skin.name}!`);
+  };
+
+  const deleteCustomSkin = async (skin: CustomSkin) => {
+    if (!confirm(`Are you sure you want to delete "${skin.name}"? This cannot be undone.`)) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from("custom_skins")
+      .delete()
+      .eq("id", skin.id);
+
+    if (error) {
+      toast.error("Failed to delete skin");
+    } else {
+      toast.success("Skin deleted");
+      setCustomSkins(prev => prev.filter(s => s.id !== skin.id));
+    }
+  };
+
+  const startEditingSkin = (skin: CustomSkin) => {
+    setEditingSkin(skin);
+    setEditName(skin.name);
+    setEditPriceCoins(skin.price_coins.toString());
+    setEditPriceGems(skin.price_gems.toString());
+    setEditPriceGold(skin.price_gold.toString());
+  };
+
+  const saveEditedSkin = async () => {
+    if (!editingSkin) return;
+
+    const { error } = await supabase
+      .from("custom_skins")
+      .update({
+        name: editName,
+        price_coins: parseInt(editPriceCoins) || 0,
+        price_gems: parseInt(editPriceGems) || 0,
+        price_gold: parseInt(editPriceGold) || 0,
+      })
+      .eq("id", editingSkin.id);
+
+    if (error) {
+      toast.error("Failed to update skin");
+    } else {
+      toast.success("Skin updated");
+      setCustomSkins(prev => prev.map(s => 
+        s.id === editingSkin.id 
+          ? { ...s, name: editName, price_coins: parseInt(editPriceCoins) || 0, price_gems: parseInt(editPriceGems) || 0, price_gold: parseInt(editPriceGold) || 0 }
+          : s
+      ));
+      setEditingSkin(null);
+    }
   };
 
   const getPrice = (skin: Skin | CustomSkin) => {
@@ -295,11 +371,47 @@ export const SkinsShop = ({ open, onOpenChange, onSkinSelect, currentSkin = "#FF
           <DialogTitle className="flex items-center gap-2">
             <Palette className="w-5 h-5 text-primary" />
             Skins Shop
+            {isAdmin && <Badge variant="outline" className="ml-2">Admin Mode</Badge>}
           </DialogTitle>
           <DialogDescription>
             Purchase and equip skins for your character
           </DialogDescription>
         </DialogHeader>
+
+        {/* Edit Skin Modal */}
+        {editingSkin && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <Card className="p-6 w-80 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Edit Skin</h3>
+                <Button size="sm" variant="ghost" onClick={() => setEditingSkin(null)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <Label>Name</Label>
+                  <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label className="text-xs">Coins</Label>
+                    <Input type="number" value={editPriceCoins} onChange={(e) => setEditPriceCoins(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Gems</Label>
+                    <Input type="number" value={editPriceGems} onChange={(e) => setEditPriceGems(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Gold</Label>
+                    <Input type="number" value={editPriceGold} onChange={(e) => setEditPriceGold(e.target.value)} />
+                  </div>
+                </div>
+                <Button onClick={saveEditedSkin} className="w-full">Save Changes</Button>
+              </div>
+            </Card>
+          </div>
+        )}
 
         {/* Currency display */}
         <div className="flex gap-4 justify-center py-2 border-b border-border">
@@ -379,6 +491,34 @@ export const SkinsShop = ({ open, onOpenChange, onSkinSelect, currentSkin = "#FF
                         className={`p-4 cursor-pointer transition-all hover:scale-105 relative`}
                         onClick={() => owned ? selectCustomSkin(skin) : undefined}
                       >
+                        {/* Admin controls */}
+                        {isAdmin && (
+                          <div className="absolute top-1 right-1 flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEditingSkin(skin);
+                              }}
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteCustomSkin(skin);
+                              }}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        )}
+                        
                         <div className="flex flex-col items-center gap-3">
                           {skin.image_data ? (
                             <img

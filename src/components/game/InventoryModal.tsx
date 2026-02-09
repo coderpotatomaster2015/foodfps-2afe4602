@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Backpack, Zap, Heart, Swords, Check, Package } from "lucide-react";
+import { Backpack, Zap, Heart, Swords, Check, Package, X, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -22,6 +22,15 @@ interface InventoryItem {
   item_id: string;
   quantity: number;
   is_equipped: boolean;
+}
+
+interface LoadoutSlots {
+  slot_1: string | null;
+  slot_2: string | null;
+  slot_3: string | null;
+  slot_4: string | null;
+  slot_5: string | null;
+  equipped_power: string | null;
 }
 
 const POWER_DESCRIPTIONS: Record<string, string> = {
@@ -54,14 +63,27 @@ const HEALTH_PACK_VALUES: Record<string, number> = {
   large_health: 100,
 };
 
+const SLOT_NAMES = ["Slot 1", "Slot 2", "Slot 3", "Slot 4", "Slot 5"];
+
 export const InventoryModal = ({ open, onOpenChange, onEquipPower, onEquipWeapons }: InventoryModalProps) => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [equippedPower, setEquippedPower] = useState<string | null>(null);
+  const [loadout, setLoadout] = useState<LoadoutSlots>({
+    slot_1: "pistol",
+    slot_2: null,
+    slot_3: null,
+    slot_4: null,
+    slot_5: null,
+    equipped_power: null,
+  });
+  const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+  const [equippedHealthPacks, setEquippedHealthPacks] = useState<string[]>([]);
 
   useEffect(() => {
     if (open) {
       loadInventory();
+      loadLoadout();
+      loadEquippedHealthPacks();
     }
   }, [open]);
 
@@ -78,10 +100,6 @@ export const InventoryModal = ({ open, onOpenChange, onEquipPower, onEquipWeapon
 
       if (data) {
         setInventory(data);
-        const equipped = data.find(item => item.item_type === "power" && item.is_equipped);
-        if (equipped) {
-          setEquippedPower(equipped.item_id);
-        }
       }
     } catch (error) {
       console.error("Error loading inventory:", error);
@@ -90,106 +108,150 @@ export const InventoryModal = ({ open, onOpenChange, onEquipPower, onEquipWeapon
     }
   };
 
-  const equipPower = async (itemId: string) => {
+  const loadLoadout = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Unequip all powers first
-      await supabase
-        .from("player_inventory")
-        .update({ is_equipped: false })
+      const { data } = await supabase
+        .from("equipped_loadout")
+        .select("*")
         .eq("user_id", user.id)
-        .eq("item_type", "power");
+        .maybeSingle();
 
-      // Equip selected power
-      await supabase
-        .from("player_inventory")
-        .update({ is_equipped: true })
-        .eq("user_id", user.id)
-        .eq("item_id", itemId);
-
-      setEquippedPower(itemId);
-      setInventory(prev => prev.map(item => ({
-        ...item,
-        is_equipped: item.item_type === "power" && item.item_id === itemId
-      })));
-
-      // Save to localStorage for game use
-      localStorage.setItem("equippedPower", itemId);
-      onEquipPower?.(itemId);
-      toast.success(`Equipped ${itemId.replace(/_/g, " ")}!`);
-    } catch (error) {
-      console.error("Error equipping power:", error);
-      toast.error("Failed to equip power");
-    }
-  };
-
-  const unequipPower = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      await supabase
-        .from("player_inventory")
-        .update({ is_equipped: false })
-        .eq("user_id", user.id)
-        .eq("item_type", "power");
-
-      setEquippedPower(null);
-      setInventory(prev => prev.map(item => ({
-        ...item,
-        is_equipped: item.item_type === "power" ? false : item.is_equipped
-      })));
-
-      localStorage.removeItem("equippedPower");
-      onEquipPower?.(null);
-      toast.success("Power unequipped");
-    } catch (error) {
-      console.error("Error unequipping power:", error);
-    }
-  };
-
-  const toggleWeaponEquip = async (itemId: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const item = inventory.find(i => i.item_id === itemId && i.item_type === "weapon");
-      if (!item) return;
-
-      const newEquipped = !item.is_equipped;
-
-      await supabase
-        .from("player_inventory")
-        .update({ is_equipped: newEquipped })
-        .eq("user_id", user.id)
-        .eq("item_id", itemId);
-
-      setInventory(prev => prev.map(i => 
-        i.item_id === itemId && i.item_type === "weapon" 
-          ? { ...i, is_equipped: newEquipped }
-          : i
-      ));
-
-      // Get all equipped weapons and notify parent
-      const equippedWeapons = inventory
-        .filter(i => i.item_type === "weapon" && (i.item_id === itemId ? newEquipped : i.is_equipped))
-        .map(i => i.item_id);
-      
-      // Always include pistol
-      if (!equippedWeapons.includes("pistol")) {
-        equippedWeapons.unshift("pistol");
+      if (data) {
+        setLoadout({
+          slot_1: data.slot_1 || "pistol",
+          slot_2: data.slot_2,
+          slot_3: data.slot_3,
+          slot_4: data.slot_4,
+          slot_5: data.slot_5,
+          equipped_power: data.equipped_power,
+        });
+      } else {
+        // Create default loadout
+        await supabase.from("equipped_loadout").insert({
+          user_id: user.id,
+          slot_1: "pistol",
+        });
       }
+    } catch (error) {
+      console.error("Error loading loadout:", error);
+    }
+  };
+
+  const loadEquippedHealthPacks = () => {
+    const saved = localStorage.getItem("equippedHealthPacks");
+    if (saved) {
+      try {
+        setEquippedHealthPacks(JSON.parse(saved));
+      } catch {
+        setEquippedHealthPacks([]);
+      }
+    }
+  };
+
+  const saveLoadout = async (newLoadout: LoadoutSlots) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      await supabase
+        .from("equipped_loadout")
+        .upsert({
+          user_id: user.id,
+          ...newLoadout,
+          updated_at: new Date().toISOString(),
+        });
+
+      // Update localStorage for game use
+      const equippedWeapons = [
+        newLoadout.slot_1,
+        newLoadout.slot_2,
+        newLoadout.slot_3,
+        newLoadout.slot_4,
+        newLoadout.slot_5,
+      ].filter(Boolean) as string[];
 
       localStorage.setItem("equippedWeapons", JSON.stringify(equippedWeapons));
       onEquipWeapons?.(equippedWeapons);
-      
-      toast.success(newEquipped ? `Equipped ${itemId}!` : `Unequipped ${itemId}`);
+
+      if (newLoadout.equipped_power) {
+        localStorage.setItem("equippedPower", newLoadout.equipped_power);
+        onEquipPower?.(newLoadout.equipped_power);
+      } else {
+        localStorage.removeItem("equippedPower");
+        onEquipPower?.(null);
+      }
     } catch (error) {
-      console.error("Error toggling weapon:", error);
-      toast.error("Failed to update weapon");
+      console.error("Error saving loadout:", error);
     }
+  };
+
+  const equipWeaponToSlot = async (weaponId: string, slotIndex: number) => {
+    const slotKey = `slot_${slotIndex + 1}` as keyof LoadoutSlots;
+    
+    // Check if weapon is already equipped in another slot
+    const existingSlot = Object.entries(loadout).find(
+      ([key, value]) => key.startsWith("slot_") && value === weaponId
+    );
+    
+    const newLoadout = { ...loadout };
+    
+    // If weapon is in another slot, swap
+    if (existingSlot) {
+      const oldSlotKey = existingSlot[0] as keyof LoadoutSlots;
+      (newLoadout as any)[oldSlotKey] = loadout[slotKey];
+    }
+    
+    (newLoadout as any)[slotKey] = weaponId;
+    setLoadout(newLoadout);
+    await saveLoadout(newLoadout);
+    setSelectedSlot(null);
+    toast.success(`${weaponId} equipped to ${SLOT_NAMES[slotIndex]}!`);
+  };
+
+  const clearSlot = async (slotIndex: number) => {
+    // Slot 1 always has pistol
+    if (slotIndex === 0) {
+      toast.error("Slot 1 cannot be empty (pistol required)");
+      return;
+    }
+
+    const slotKey = `slot_${slotIndex + 1}` as keyof LoadoutSlots;
+    const newLoadout = { ...loadout, [slotKey]: null };
+    setLoadout(newLoadout);
+    await saveLoadout(newLoadout);
+    toast.success(`${SLOT_NAMES[slotIndex]} cleared`);
+  };
+
+  const equipPower = async (powerId: string) => {
+    const newLoadout = { ...loadout, equipped_power: powerId };
+    setLoadout(newLoadout);
+    await saveLoadout(newLoadout);
+    toast.success(`${powerId.replace(/_/g, " ")} equipped!`);
+  };
+
+  const unequipPower = async () => {
+    const newLoadout = { ...loadout, equipped_power: null };
+    setLoadout(newLoadout);
+    await saveLoadout(newLoadout);
+    toast.success("Power unequipped");
+  };
+
+  const toggleHealthPackEquipped = (itemId: string) => {
+    const newEquipped = equippedHealthPacks.includes(itemId)
+      ? equippedHealthPacks.filter(id => id !== itemId)
+      : [...equippedHealthPacks, itemId];
+    
+    setEquippedHealthPacks(newEquipped);
+    localStorage.setItem("equippedHealthPacks", JSON.stringify(newEquipped));
+    
+    toast.success(
+      equippedHealthPacks.includes(itemId) 
+        ? `${itemId.replace(/_/g, " ")} unequipped` 
+        : `${itemId.replace(/_/g, " ")} equipped - Press H in game to use`
+    );
   };
 
   const useHealthPack = async (itemId: string) => {
@@ -244,24 +306,32 @@ export const InventoryModal = ({ open, onOpenChange, onEquipPower, onEquipWeapon
   const powers = inventory.filter(item => item.item_type === "power");
   const healthPacks = inventory.filter(item => item.item_type === "health_pack");
 
+  // Get available weapons (owned + pistol)
+  const availableWeapons = ["pistol", ...weapons.map(w => w.item_id)];
+
+  const getSlotWeapon = (slotIndex: number): string | null => {
+    const slotKey = `slot_${slotIndex + 1}` as keyof LoadoutSlots;
+    return loadout[slotKey] as string | null;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[80vh] flex flex-col">
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Backpack className="w-5 h-5 text-primary" />
-            Inventory
+            Inventory & Loadout
           </DialogTitle>
           <DialogDescription>
-            Manage your powers and items
+            Equip weapons to slots, manage powers, and use health packs
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="weapons" className="flex-1">
+        <Tabs defaultValue="loadout" className="flex-1">
           <TabsList className="w-full">
-            <TabsTrigger value="weapons" className="flex-1 gap-1">
+            <TabsTrigger value="loadout" className="flex-1 gap-1">
               <Swords className="w-4 h-4" />
-              Weapons
+              Weapon Slots
             </TabsTrigger>
             <TabsTrigger value="powers" className="flex-1 gap-1">
               <Zap className="w-4 h-4" />
@@ -269,53 +339,95 @@ export const InventoryModal = ({ open, onOpenChange, onEquipPower, onEquipWeapon
             </TabsTrigger>
             <TabsTrigger value="health" className="flex-1 gap-1">
               <Heart className="w-4 h-4" />
-              Health
+              Health Packs
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="weapons" className="mt-4">
-            <ScrollArea className="h-[300px]">
-              {loading ? (
-                <div className="flex justify-center p-8">
-                  <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-                </div>
-              ) : weapons.length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">
-                  <Swords className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>No weapons purchased</p>
-                  <p className="text-xs mt-1">You have the Pistol by default. Buy more from the Shop!</p>
-                </div>
-              ) : (
-                <div className="space-y-3 p-1">
-                  {weapons.map(item => (
-                    <Card key={item.id} className={`p-4 ${item.is_equipped ? "ring-2 ring-primary" : ""}`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
+          <TabsContent value="loadout" className="mt-4 space-y-4">
+            {/* Weapon Slots */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Weapon Loadout (5 Slots)</h3>
+              <p className="text-xs text-muted-foreground">Press 1-5 in game to switch weapons</p>
+              <div className="grid grid-cols-5 gap-2">
+                {SLOT_NAMES.map((name, index) => {
+                  const weapon = getSlotWeapon(index);
+                  const isSelected = selectedSlot === index;
+                  
+                  return (
+                    <Card
+                      key={index}
+                      className={`p-3 cursor-pointer transition-all hover:scale-105 ${
+                        isSelected ? "ring-2 ring-primary" : ""
+                      } ${weapon ? "bg-primary/10" : "bg-muted/50"}`}
+                      onClick={() => setSelectedSlot(isSelected ? null : index)}
+                    >
+                      <div className="flex flex-col items-center gap-2 text-center">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          weapon ? "bg-orange-500/20" : "bg-muted"
+                        }`}>
+                          {weapon ? (
                             <Swords className="w-5 h-5 text-orange-500" />
-                          </div>
+                          ) : (
+                            <Plus className="w-5 h-5 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="text-xs font-medium">{name}</div>
+                        <div className="text-xs text-muted-foreground capitalize truncate w-full">
+                          {weapon || "Empty"}
+                        </div>
+                        {weapon && index > 0 && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              clearSlot(index);
+                            }}
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Weapon Selection */}
+            {selectedSlot !== null && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium">Select weapon for {SLOT_NAMES[selectedSlot]}</h3>
+                <ScrollArea className="h-[200px]">
+                  <div className="grid grid-cols-3 gap-2 p-1">
+                    {availableWeapons.map(weaponId => (
+                      <Card
+                        key={weaponId}
+                        className="p-3 cursor-pointer hover:bg-primary/10 transition-colors"
+                        onClick={() => equipWeaponToSlot(weaponId, selectedSlot)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Swords className="w-4 h-4 text-orange-500" />
                           <div>
-                            <h4 className="font-medium capitalize">{item.item_id.replace(/_/g, " ")}</h4>
-                            <p className="text-xs text-muted-foreground">
-                              {WEAPON_DESCRIPTIONS[item.item_id] || "Weapon"}
+                            <p className="text-sm font-medium capitalize">{weaponId}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {WEAPON_DESCRIPTIONS[weaponId]?.split(" - ")[0] || "Weapon"}
                             </p>
                           </div>
                         </div>
-                        <Button 
-                          size="sm" 
-                          variant={item.is_equipped ? "outline" : "default"}
-                          onClick={() => toggleWeaponEquip(item.item_id)}
-                        >
-                          {item.is_equipped ? (
-                            <><Check className="w-4 h-4 mr-1" /> Equipped</>
-                          ) : "Equip"}
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
+                      </Card>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+
+            {/* Owned Weapons Info */}
+            <div className="text-xs text-muted-foreground">
+              <p>Owned weapons: Pistol (default){weapons.length > 0 ? `, ${weapons.map(w => w.item_id).join(", ")}` : ""}</p>
+              <p className="mt-1">Buy more weapons from the Shop!</p>
+            </div>
           </TabsContent>
 
           <TabsContent value="powers" className="mt-4">
@@ -333,7 +445,7 @@ export const InventoryModal = ({ open, onOpenChange, onEquipPower, onEquipWeapon
               ) : (
                 <div className="space-y-3 p-1">
                   {powers.map(item => (
-                    <Card key={item.id} className={`p-4 ${item.is_equipped ? "ring-2 ring-primary" : ""}`}>
+                    <Card key={item.id} className={`p-4 ${loadout.equipped_power === item.item_id ? "ring-2 ring-primary" : ""}`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
@@ -346,7 +458,7 @@ export const InventoryModal = ({ open, onOpenChange, onEquipPower, onEquipWeapon
                             </p>
                           </div>
                         </div>
-                        {item.is_equipped ? (
+                        {loadout.equipped_power === item.item_id ? (
                           <Button size="sm" variant="outline" onClick={unequipPower}>
                             <Check className="w-4 h-4 mr-1" /> Equipped
                           </Button>
@@ -364,45 +476,62 @@ export const InventoryModal = ({ open, onOpenChange, onEquipPower, onEquipWeapon
           </TabsContent>
 
           <TabsContent value="health" className="mt-4">
-            <ScrollArea className="h-[300px]">
-              {loading ? (
-                <div className="flex justify-center p-8">
-                  <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-                </div>
-              ) : healthPacks.length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">
-                  <Heart className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>No health packs owned</p>
-                  <p className="text-xs mt-1">Buy health packs from the Shop!</p>
-                </div>
-              ) : (
-                <div className="space-y-3 p-1">
-                  {healthPacks.map(item => (
-                    <Card key={item.id} className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
-                            <Heart className="w-5 h-5 text-red-500" />
+            <div className="space-y-4">
+              <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                <strong>Tip:</strong> Equip health packs and press H in game to heal!
+              </div>
+              
+              <ScrollArea className="h-[280px]">
+                {loading ? (
+                  <div className="flex justify-center p-8">
+                    <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+                  </div>
+                ) : healthPacks.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    <Heart className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No health packs owned</p>
+                    <p className="text-xs mt-1">Buy health packs from the Shop!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 p-1">
+                    {healthPacks.map(item => {
+                      const isEquipped = equippedHealthPacks.includes(item.item_id);
+                      return (
+                        <Card key={item.id} className={`p-4 ${isEquipped ? "ring-2 ring-red-500" : ""}`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                                <Heart className="w-5 h-5 text-red-500" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium capitalize">{item.item_id.replace(/_/g, " ")}</h4>
+                                <p className="text-xs text-muted-foreground">
+                                  Restores {HEALTH_PACK_VALUES[item.item_id]} HP
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary">x{item.quantity}</Badge>
+                              <Button 
+                                size="sm" 
+                                variant={isEquipped ? "outline" : "secondary"}
+                                onClick={() => toggleHealthPackEquipped(item.item_id)}
+                              >
+                                {isEquipped ? <Check className="w-4 h-4 mr-1" /> : null}
+                                {isEquipped ? "Equipped" : "Equip"}
+                              </Button>
+                              <Button size="sm" onClick={() => useHealthPack(item.item_id)}>
+                                Use Now
+                              </Button>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className="font-medium capitalize">{item.item_id.replace(/_/g, " ")}</h4>
-                            <p className="text-xs text-muted-foreground">
-                              Restores {HEALTH_PACK_VALUES[item.item_id]} HP
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">x{item.quantity}</Badge>
-                          <Button size="sm" onClick={() => useHealthPack(item.item_id)}>
-                            Use
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>

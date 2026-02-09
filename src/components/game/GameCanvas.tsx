@@ -224,7 +224,10 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const loadUserProgress = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setUnlockedWeapons(["pistol"]);
+        return;
+      }
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -232,33 +235,41 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         .eq("user_id", user.id)
         .single();
 
-      const { data: progress } = await supabase
-        .from("player_progress")
-        .select("unlocked_weapons")
-        .eq("user_id", user.id)
-        .single();
+      setTotalScore(profile?.total_score || 0);
 
-      // Fixed weapon progression - calculate based on total score
-      const currentTotalScore = profile?.total_score || 0;
-      setTotalScore(currentTotalScore);
-      
-      // Build unlocked weapons list based on score thresholds
-      const scoreUnlocked: Weapon[] = [];
-      for (const weapon of WEAPON_ORDER) {
-        if (WEAPONS[weapon].unlockScore <= currentTotalScore) {
-          scoreUnlocked.push(weapon);
+      // Load equipped loadout from database
+      const { data: loadout } = await supabase
+        .from("equipped_loadout")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (loadout) {
+        // Get weapons from slots
+        const equippedWeapons = [
+          loadout.slot_1,
+          loadout.slot_2,
+          loadout.slot_3,
+          loadout.slot_4,
+          loadout.slot_5,
+        ].filter(Boolean) as Weapon[];
+        
+        setUnlockedWeapons(equippedWeapons.length > 0 ? equippedWeapons : ["pistol"]);
+        console.log("Loaded equipped weapons:", equippedWeapons);
+      } else {
+        // Fallback to localStorage or pistol only
+        const savedWeapons = localStorage.getItem("equippedWeapons");
+        if (savedWeapons) {
+          try {
+            const parsed = JSON.parse(savedWeapons) as Weapon[];
+            setUnlockedWeapons(parsed.length > 0 ? parsed : ["pistol"]);
+          } catch {
+            setUnlockedWeapons(["pistol"]);
+          }
+        } else {
+          setUnlockedWeapons(["pistol"]);
         }
       }
-      
-      // Merge with database-stored unlocked weapons (for /give command)
-      const dbUnlocked = (progress?.unlocked_weapons as Weapon[]) || [];
-      const allUnlocked = [...new Set([...scoreUnlocked, ...dbUnlocked])];
-      
-      // Sort by weapon order to maintain correct hotbar
-      const sortedUnlocked = WEAPON_ORDER.filter(w => allUnlocked.includes(w));
-      setUnlockedWeapons(sortedUnlocked.length > 0 ? sortedUnlocked : ["pistol"]);
-      
-      console.log("Weapon progression loaded:", { totalScore: currentTotalScore, unlocked: sortedUnlocked });
     } catch (error) {
       console.error("Error loading user progress:", error);
       setUnlockedWeapons(["pistol"]);

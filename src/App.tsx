@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import OwnerPage from "./pages/OwnerPage";
 import Hacks from "./pages/Hacks";
 import { BanCheck } from "./components/BanCheck";
+import { SEOHead, StructuredData } from "./components/SEOHead";
 import { toast } from "sonner";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,8 @@ const App = () => (
         <Sonner />
         <BanCheck>
           <BrowserRouter>
+            <SEOHead />
+            <StructuredData />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />

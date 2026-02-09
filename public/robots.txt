@@ -1,8 +1,13 @@
+# Food FPS - Multiplayer Shooter Game
+# https://foodfps.lovable.app
+
 User-agent: Googlebot
 Allow: /
+Crawl-delay: 1
 
 User-agent: Bingbot
 Allow: /
+Crawl-delay: 1
 
 User-agent: Twitterbot
 Allow: /
@@ -12,3 +17,10 @@ Allow: /
 
 User-agent: *
 Allow: /
+Crawl-delay: 2
+
+# Sitemap location
+Sitemap: https://foodfps.lovable.app/sitemap.xml
+
+# Disallow admin-only pages from indexing
+Disallow: /owner

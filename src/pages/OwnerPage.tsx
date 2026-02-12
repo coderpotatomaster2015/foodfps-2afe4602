@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
-const OWNER_PASSWORD = "DonutSmp12!67kid";
+const OWNER_PASSWORD = "DonutSmp12!67kidsithebest@lwsdvictories.games";
 
 const OwnerPage = () => {
   const navigate = useNavigate();
@@ -81,9 +81,7 @@ const OwnerPage = () => {
         <Card className="p-8 max-w-md w-full text-center space-y-4">
           <LogIn className="w-16 h-16 mx-auto text-primary" />
           <h1 className="text-2xl font-bold">Sign In Required</h1>
-          <p className="text-muted-foreground">
-            You must be signed in with your FoodFPS account to access this page.
-          </p>
+          <p className="text-muted-foreground">You must be signed in with your FoodFPS account to access this page.</p>
           <Button onClick={() => navigate("/auth")} className="w-full">
             Go to Sign In
           </Button>
@@ -113,9 +111,7 @@ const OwnerPage = () => {
         <div className="text-center space-y-2">
           <Lock className="w-16 h-16 mx-auto text-amber-500" />
           <h1 className="text-2xl font-bold">Owner Access</h1>
-          <p className="text-muted-foreground text-sm">
-            Enter the secret password to become an Owner
-          </p>
+          <p className="text-muted-foreground text-sm">Enter the secret password to become an Owner</p>
         </div>
 
         <div className="space-y-4">
@@ -150,11 +146,7 @@ const OwnerPage = () => {
           </Button>
         </div>
 
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/")}
-          className="w-full"
-        >
+        <Button variant="ghost" onClick={() => navigate("/")} className="w-full">
           Back to Game
         </Button>
       </Card>

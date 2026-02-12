@@ -10,7 +10,7 @@ import { Lock, Unlock, Trophy, Coins, Gem, Crown, Shield, Zap, Skull, Eye, EyeOf
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const SECRET_PASSWORD = "DonutSmp12!67kid";
+const SECRET_PASSWORD = "DonutSmp12!67kidisthebest@lwsdvictories.games";
 
 const Hacks = () => {
   const navigate = useNavigate();
@@ -19,7 +19,7 @@ const Hacks = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState("");
-  
+
   // Cheat values
   const [newScore, setNewScore] = useState("");
   const [newCoins, setNewCoins] = useState("");
@@ -28,7 +28,7 @@ const Hacks = () => {
   const [godmodeEnabled, setGodmodeEnabled] = useState(false);
   const [infiniteAmmo, setInfiniteAmmo] = useState(false);
   const [speedMultiplier, setSpeedMultiplier] = useState([1]);
-  
+
   // Current stats
   const [currentScore, setCurrentScore] = useState(0);
   const [currentCoins, setCurrentCoins] = useState(0);
@@ -40,33 +40,31 @@ const Hacks = () => {
   }, []);
 
   const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       toast.error("You must be logged in to access this page");
       navigate("/auth");
       return;
     }
     setUserId(user.id);
-    
+
     // Load profile
     const { data: profile } = await supabase
       .from("profiles")
       .select("username, total_score")
       .eq("user_id", user.id)
       .single();
-    
+
     if (profile) {
       setUsername(profile.username);
       setCurrentScore(profile.total_score || 0);
     }
 
     // Load currencies
-    const { data: currencies } = await supabase
-      .from("player_currencies")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
-    
+    const { data: currencies } = await supabase.from("player_currencies").select("*").eq("user_id", user.id).single();
+
     if (currencies) {
       setCurrentCoins(currencies.coins || 0);
       setCurrentGems(currencies.gems || 0);
@@ -86,17 +84,14 @@ const Hacks = () => {
 
   const setScore = async () => {
     if (!newScore || !userId) return;
-    
+
     const scoreValue = parseInt(newScore);
     if (isNaN(scoreValue)) {
       toast.error("Invalid score value");
       return;
     }
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({ total_score: scoreValue })
-      .eq("user_id", userId);
+    const { error } = await supabase.from("profiles").update({ total_score: scoreValue }).eq("user_id", userId);
 
     if (error) {
       toast.error("Failed to update score");
@@ -111,10 +106,7 @@ const Hacks = () => {
     if (!userId) return;
 
     const newTotal = currentScore + amount;
-    const { error } = await supabase
-      .from("profiles")
-      .update({ total_score: newTotal })
-      .eq("user_id", userId);
+    const { error } = await supabase.from("profiles").update({ total_score: newTotal }).eq("user_id", userId);
 
     if (error) {
       toast.error("Failed to update score");
@@ -126,18 +118,14 @@ const Hacks = () => {
 
   const setCurrency = async (type: "coins" | "gems" | "gold", value: string) => {
     if (!userId) return;
-    
+
     const numValue = parseInt(value);
     if (isNaN(numValue)) {
       toast.error("Invalid value");
       return;
     }
 
-    const { data: existing } = await supabase
-      .from("player_currencies")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
+    const { data: existing } = await supabase.from("player_currencies").select("*").eq("user_id", userId).single();
 
     if (existing) {
       const { error } = await supabase
@@ -154,14 +142,12 @@ const Hacks = () => {
         if (type === "gold") setCurrentGold(numValue);
       }
     } else {
-      const { error } = await supabase
-        .from("player_currencies")
-        .insert({ 
-          user_id: userId, 
-          coins: type === "coins" ? numValue : 0,
-          gems: type === "gems" ? numValue : 0,
-          gold: type === "gold" ? numValue : 0
-        });
+      const { error } = await supabase.from("player_currencies").insert({
+        user_id: userId,
+        coins: type === "coins" ? numValue : 0,
+        gems: type === "gems" ? numValue : 0,
+        gold: type === "gold" ? numValue : 0,
+      });
 
       if (error) {
         toast.error(`Failed to set ${type}`);
@@ -178,17 +164,10 @@ const Hacks = () => {
     if (!userId) return;
 
     // Max score
-    await supabase
-      .from("profiles")
-      .update({ total_score: 999999999 })
-      .eq("user_id", userId);
+    await supabase.from("profiles").update({ total_score: 999999999 }).eq("user_id", userId);
 
     // Max currencies
-    const { data: existing } = await supabase
-      .from("player_currencies")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
+    const { data: existing } = await supabase.from("player_currencies").select("*").eq("user_id", userId).single();
 
     if (existing) {
       await supabase
@@ -212,12 +191,22 @@ const Hacks = () => {
   const unlockAllWeapons = async () => {
     if (!userId) return;
 
-    const allWeapons = ["pistol", "shotgun", "sword", "rifle", "sniper", "smg", "knife", "rpg", "axe", "flamethrower", "minigun", "railgun"];
-    
-    await supabase
-      .from("player_progress")
-      .update({ unlocked_weapons: allWeapons })
-      .eq("user_id", userId);
+    const allWeapons = [
+      "pistol",
+      "shotgun",
+      "sword",
+      "rifle",
+      "sniper",
+      "smg",
+      "knife",
+      "rpg",
+      "axe",
+      "flamethrower",
+      "minigun",
+      "railgun",
+    ];
+
+    await supabase.from("player_progress").update({ unlocked_weapons: allWeapons }).eq("user_id", userId);
 
     toast.success("🔫 All weapons unlocked!");
   };
@@ -231,9 +220,7 @@ const Hacks = () => {
               <Lock className="w-8 h-8 text-red-500" />
             </div>
             <h1 className="text-2xl font-bold">🔒 Secret Access</h1>
-            <p className="text-muted-foreground text-sm">
-              Enter the super secret password to access the cheat panel
-            </p>
+            <p className="text-muted-foreground text-sm">Enter the super secret password to access the cheat panel</p>
           </div>
 
           <div className="space-y-4">
@@ -329,33 +316,17 @@ const Hacks = () => {
         <Card className="p-4 bg-red-500/10 border-red-500/30">
           <h3 className="font-semibold mb-3 text-red-500">⚡ Quick Actions</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Button 
-              variant="destructive" 
-              className="gap-2"
-              onClick={maxOutEverything}
-            >
+            <Button variant="destructive" className="gap-2" onClick={maxOutEverything}>
               <Zap className="w-4 h-4" />
               MAX ALL
             </Button>
-            <Button 
-              variant="outline" 
-              className="gap-2 border-red-500 text-red-500"
-              onClick={unlockAllWeapons}
-            >
+            <Button variant="outline" className="gap-2 border-red-500 text-red-500" onClick={unlockAllWeapons}>
               🔫 All Weapons
             </Button>
-            <Button 
-              variant="outline" 
-              className="gap-2"
-              onClick={() => addScore(10000)}
-            >
+            <Button variant="outline" className="gap-2" onClick={() => addScore(10000)}>
               +10K Score
             </Button>
-            <Button 
-              variant="outline" 
-              className="gap-2"
-              onClick={() => addScore(100000)}
-            >
+            <Button variant="outline" className="gap-2" onClick={() => addScore(100000)}>
               +100K Score
             </Button>
           </div>
@@ -378,10 +349,18 @@ const Hacks = () => {
             <Button onClick={setScore}>Set Score</Button>
           </div>
           <div className="flex gap-2 mt-3">
-            <Button variant="outline" size="sm" onClick={() => addScore(1000)}>+1K</Button>
-            <Button variant="outline" size="sm" onClick={() => addScore(5000)}>+5K</Button>
-            <Button variant="outline" size="sm" onClick={() => addScore(25000)}>+25K</Button>
-            <Button variant="outline" size="sm" onClick={() => addScore(50000)}>+50K</Button>
+            <Button variant="outline" size="sm" onClick={() => addScore(1000)}>
+              +1K
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => addScore(5000)}>
+              +5K
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => addScore(25000)}>
+              +25K
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => addScore(50000)}>
+              +50K
+            </Button>
           </div>
         </Card>
 
@@ -462,16 +441,8 @@ const Hacks = () => {
             </div>
           </div>
           <div className="mt-4 p-3 bg-secondary/50 rounded-lg">
-            <Label className="flex items-center gap-2 mb-2">
-              Speed Multiplier: {speedMultiplier[0]}x
-            </Label>
-            <Slider
-              value={speedMultiplier}
-              onValueChange={setSpeedMultiplier}
-              min={1}
-              max={5}
-              step={0.5}
-            />
+            <Label className="flex items-center gap-2 mb-2">Speed Multiplier: {speedMultiplier[0]}x</Label>
+            <Slider value={speedMultiplier} onValueChange={setSpeedMultiplier} min={1} max={5} step={0.5} />
           </div>
         </Card>
 

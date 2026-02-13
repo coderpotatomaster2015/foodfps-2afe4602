@@ -96,20 +96,29 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   
   const { players, updatePlayerPosition, broadcastBullet, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode } = useMultiplayer(mode, roomCode, username);
 
-  // Load special power from localStorage
+  // Load special power from localStorage AND equippedPower
   useEffect(() => {
     try {
+      // First check selectedCustomSkin for skin-based powers
       const customSkinData = localStorage.getItem("selectedCustomSkin");
       if (customSkinData) {
         const parsed = JSON.parse(customSkinData);
-        specialPowerRef.current = parsed.specialPower || null;
-        
-        // Apply shield power - start with extra HP
-        if (parsed.specialPower === "shield" && playerRef.current) {
-          playerRef.current.hp = 125;
-          playerRef.current.maxHp = 125;
-          setHealth(125);
+        if (parsed.specialPower) {
+          specialPowerRef.current = parsed.specialPower;
         }
+      }
+      
+      // Then check equippedPower from Inventory (overrides skin power)
+      const equippedPower = localStorage.getItem("equippedPower");
+      if (equippedPower) {
+        specialPowerRef.current = equippedPower;
+      }
+      
+      // Apply shield power - start with extra HP
+      if (specialPowerRef.current === "shield" && playerRef.current) {
+        playerRef.current.hp = 125;
+        playerRef.current.maxHp = 125;
+        setHealth(125);
       }
     } catch (e) {
       console.error("Error loading special power:", e);
@@ -706,6 +715,32 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         } else {
           const remaining = Math.ceil((3000 - (now - teleportCooldownRef.current)) / 1000);
           toast.error(`Teleport on cooldown: ${remaining}s`);
+        }
+      }
+      
+      // Handle H key for health packs
+      if (e.key.toLowerCase() === "h") {
+        try {
+          const pendingPacks = JSON.parse(localStorage.getItem("pendingHealthPacks") || "[]");
+          if (pendingPacks.length > 0) {
+            const pack = pendingPacks.shift();
+            localStorage.setItem("pendingHealthPacks", JSON.stringify(pendingPacks));
+            if (player.hp < 100) {
+              player.hp = Math.min(100, player.hp + (pack.healAmount || 25));
+              setHealth(player.hp);
+              toast.success(`+${pack.healAmount || 25} HP!`);
+              spawnParticles(player.x, player.y, "#22c55e", 15);
+            } else {
+              // Put it back if full HP
+              pendingPacks.unshift(pack);
+              localStorage.setItem("pendingHealthPacks", JSON.stringify(pendingPacks));
+              toast.info("Already at full HP!");
+            }
+          } else {
+            toast.error("No health packs equipped! Equip them in Inventory.");
+          }
+        } catch (err) {
+          console.error("Error using health pack:", err);
         }
       }
       

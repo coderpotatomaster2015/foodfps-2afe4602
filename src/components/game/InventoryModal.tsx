@@ -162,7 +162,7 @@ export const InventoryModal = ({ open, onOpenChange, onEquipPower, onEquipWeapon
           user_id: user.id,
           ...newLoadout,
           updated_at: new Date().toISOString(),
-        });
+        }, { onConflict: 'user_id' });
 
       // Update localStorage for game use
       const equippedWeapons = [

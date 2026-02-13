@@ -721,23 +721,66 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       // Handle H key for health packs
       if (e.key.toLowerCase() === "h") {
         try {
+          // First check pendingHealthPacks (from "Use Now" button)
           const pendingPacks = JSON.parse(localStorage.getItem("pendingHealthPacks") || "[]");
           if (pendingPacks.length > 0) {
-            const pack = pendingPacks.shift();
-            localStorage.setItem("pendingHealthPacks", JSON.stringify(pendingPacks));
-            if (player.hp < 100) {
-              player.hp = Math.min(100, player.hp + (pack.healAmount || 25));
+            if (player.hp >= (player.maxHp || 100)) {
+              toast.info("Already at full HP!");
+            } else {
+              const pack = pendingPacks.shift();
+              localStorage.setItem("pendingHealthPacks", JSON.stringify(pendingPacks));
+              player.hp = Math.min(player.maxHp || 100, player.hp + (pack.healAmount || 25));
               setHealth(player.hp);
               toast.success(`+${pack.healAmount || 25} HP!`);
               spawnParticles(player.x, player.y, "#22c55e", 15);
-            } else {
-              // Put it back if full HP
-              pendingPacks.unshift(pack);
-              localStorage.setItem("pendingHealthPacks", JSON.stringify(pendingPacks));
-              toast.info("Already at full HP!");
             }
           } else {
-            toast.error("No health packs equipped! Equip them in Inventory.");
+            // Check equippedHealthPacks (from "Equip" button in Inventory)
+            const equipped = JSON.parse(localStorage.getItem("equippedHealthPacks") || "[]");
+            if (equipped.length > 0) {
+              if (player.hp >= (player.maxHp || 100)) {
+                toast.info("Already at full HP!");
+              } else {
+                const packId = equipped[0]; // Use the first equipped pack type
+                const healAmounts: Record<string, number> = { small_health: 25, medium_health: 50, large_health: 100 };
+                const healAmount = healAmounts[packId] || 25;
+                player.hp = Math.min(player.maxHp || 100, player.hp + healAmount);
+                setHealth(player.hp);
+                toast.success(`+${healAmount} HP!`);
+                spawnParticles(player.x, player.y, "#22c55e", 15);
+                // Consume the health pack from DB asynchronously
+                (async () => {
+                  try {
+                    const { data: { user: currentUser } } = await supabase.auth.getUser();
+                    if (!currentUser) return;
+                    const { data: invItem } = await supabase
+                      .from("player_inventory")
+                      .select("*")
+                      .eq("user_id", currentUser.id)
+                      .eq("item_id", packId)
+                      .eq("item_type", "health_pack")
+                      .maybeSingle();
+                    if (invItem) {
+                      if (invItem.quantity <= 1) {
+                        await supabase.from("player_inventory").delete()
+                          .eq("user_id", currentUser.id).eq("item_id", packId);
+                        // Remove from equipped list
+                        const updatedEquipped = equipped.filter((id: string) => id !== packId);
+                        localStorage.setItem("equippedHealthPacks", JSON.stringify(updatedEquipped));
+                      } else {
+                        await supabase.from("player_inventory")
+                          .update({ quantity: invItem.quantity - 1 })
+                          .eq("user_id", currentUser.id).eq("item_id", packId);
+                      }
+                    }
+                  } catch (err) {
+                    console.error("Error consuming health pack:", err);
+                  }
+                })();
+              }
+            } else {
+              toast.error("No health packs! Equip them in Inventory or buy from Shop.");
+            }
           }
         } catch (err) {
           console.error("Error using health pack:", err);

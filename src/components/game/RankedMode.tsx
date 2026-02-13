@@ -197,46 +197,31 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Load from equipped_loadout table (set via Inventory modal)
-    const { data: loadout } = await supabase
-      .from("equipped_loadout")
-      .select("*")
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("total_score")
       .eq("user_id", user.id)
-      .maybeSingle();
+      .single();
 
-    if (loadout) {
-      const equippedWeapons = [
-        loadout.slot_1,
-        loadout.slot_2,
-        loadout.slot_3,
-        loadout.slot_4,
-        loadout.slot_5,
-      ].filter(Boolean) as Weapon[];
-      
-      setUnlockedWeapons(equippedWeapons.length > 0 ? equippedWeapons : ["pistol"]);
+    const { data: progress } = await supabase
+      .from("player_progress")
+      .select("unlocked_weapons")
+      .eq("user_id", user.id)
+      .single();
 
-      // Load equipped power from loadout
-      if (loadout.equipped_power) {
-        specialPowerRef.current = loadout.equipped_power;
-      }
-    } else {
-      // Fallback to localStorage
-      const savedWeapons = localStorage.getItem("equippedWeapons");
-      if (savedWeapons) {
-        try {
-          const parsed = JSON.parse(savedWeapons) as Weapon[];
-          setUnlockedWeapons(parsed.length > 0 ? parsed : ["pistol"]);
-        } catch {
-          setUnlockedWeapons(["pistol"]);
-        }
+    const currentTotalScore = profile?.total_score || 0;
+    
+    const scoreUnlocked: Weapon[] = [];
+    for (const weapon of WEAPON_ORDER) {
+      if (WEAPONS[weapon].unlockScore <= currentTotalScore) {
+        scoreUnlocked.push(weapon);
       }
     }
-
-    // Also check localStorage power (set by Inventory modal)
-    const equippedPower = localStorage.getItem("equippedPower");
-    if (equippedPower) {
-      specialPowerRef.current = equippedPower;
-    }
+    
+    const dbUnlocked = (progress?.unlocked_weapons as Weapon[]) || [];
+    const allUnlocked = [...new Set([...scoreUnlocked, ...dbUnlocked])];
+    const sortedUnlocked = WEAPON_ORDER.filter(w => allUnlocked.includes(w));
+    setUnlockedWeapons(sortedUnlocked.length > 0 ? sortedUnlocked : ["pistol"]);
   };
 
   const getEnemyStats = (type: string, wave: number) => {

@@ -77,8 +77,6 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
   const playerRef = useRef<any>(null);
   const gameLoopRef = useRef<number | null>(null);
   const bossLevelRef = useRef(1);
-  const specialPowerRef = useRef<string | null>(null);
-  const teleportCooldownRef = useRef(0);
 
   // Apply admin abuse events
   useEffect(() => {
@@ -162,46 +160,14 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Load from equipped_loadout table (set via Inventory modal)
-    const { data: loadout } = await supabase
-      .from("equipped_loadout")
-      .select("*")
+    const { data: progress } = await supabase
+      .from("player_progress")
+      .select("unlocked_weapons")
       .eq("user_id", user.id)
-      .maybeSingle();
+      .single();
 
-    if (loadout) {
-      const equippedWeapons = [
-        loadout.slot_1,
-        loadout.slot_2,
-        loadout.slot_3,
-        loadout.slot_4,
-        loadout.slot_5,
-      ].filter(Boolean) as Weapon[];
-      
-      setUnlockedWeapons(equippedWeapons.length > 0 ? equippedWeapons : ["pistol"]);
-
-      // Load equipped power
-      if (loadout.equipped_power) {
-        specialPowerRef.current = loadout.equipped_power;
-        localStorage.setItem("equippedPower", loadout.equipped_power);
-      }
-    } else {
-      // Fallback to localStorage
-      const savedWeapons = localStorage.getItem("equippedWeapons");
-      if (savedWeapons) {
-        try {
-          const parsed = JSON.parse(savedWeapons) as Weapon[];
-          setUnlockedWeapons(parsed.length > 0 ? parsed : ["pistol"]);
-        } catch {
-          setUnlockedWeapons(["pistol"]);
-        }
-      }
-    }
-
-    // Also load power from localStorage (set by Inventory modal)
-    const equippedPower = localStorage.getItem("equippedPower");
-    if (equippedPower) {
-      specialPowerRef.current = equippedPower;
+    if (progress?.unlocked_weapons) {
+      setUnlockedWeapons(progress.unlocked_weapons as Weapon[]);
     }
   };
 

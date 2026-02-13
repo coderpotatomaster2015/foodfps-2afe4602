@@ -262,42 +262,6 @@ export type Database = {
         }
         Relationships: []
       }
-      beta_tasks: {
-        Row: {
-          assigned_by: string
-          completed_at: string | null
-          created_at: string
-          description: string
-          feedback: string | null
-          id: string
-          status: string
-          tester_user_id: string
-          title: string
-        }
-        Insert: {
-          assigned_by: string
-          completed_at?: string | null
-          created_at?: string
-          description: string
-          feedback?: string | null
-          id?: string
-          status?: string
-          tester_user_id: string
-          title: string
-        }
-        Update: {
-          assigned_by?: string
-          completed_at?: string | null
-          created_at?: string
-          description?: string
-          feedback?: string | null
-          id?: string
-          status?: string
-          tester_user_id?: string
-          title?: string
-        }
-        Relationships: []
-      }
       beta_testers: {
         Row: {
           granted_at: string

@@ -156,13 +156,19 @@ export const InventoryModal = ({ open, onOpenChange, onEquipPower, onEquipWeapon
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      await supabase
+      const { error } = await supabase
         .from("equipped_loadout")
         .upsert({
           user_id: user.id,
           ...newLoadout,
           updated_at: new Date().toISOString(),
-        });
+        }, { onConflict: 'user_id' });
+
+      if (error) {
+        console.error("Error saving loadout to DB:", error);
+        toast.error("Failed to save loadout");
+        return;
+      }
 
       // Update localStorage for game use
       const equippedWeapons = [

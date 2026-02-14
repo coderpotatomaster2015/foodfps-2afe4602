@@ -96,19 +96,31 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   
   const { players, updatePlayerPosition, broadcastBullet, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode } = useMultiplayer(mode, roomCode, username);
 
-  // Load special power from localStorage
+  // Load special power from localStorage - check both equippedPower and selectedCustomSkin
   useEffect(() => {
     try {
-      const customSkinData = localStorage.getItem("selectedCustomSkin");
-      if (customSkinData) {
-        const parsed = JSON.parse(customSkinData);
-        specialPowerRef.current = parsed.specialPower || null;
+      // First check equippedPower (set by InventoryModal)
+      const equippedPower = localStorage.getItem("equippedPower");
+      if (equippedPower) {
+        specialPowerRef.current = equippedPower;
         
-        // Apply shield power - start with extra HP
-        if (parsed.specialPower === "shield" && playerRef.current) {
+        if (equippedPower === "shield" && playerRef.current) {
           playerRef.current.hp = 125;
           playerRef.current.maxHp = 125;
           setHealth(125);
+        }
+      } else {
+        // Fallback to selectedCustomSkin power
+        const customSkinData = localStorage.getItem("selectedCustomSkin");
+        if (customSkinData) {
+          const parsed = JSON.parse(customSkinData);
+          specialPowerRef.current = parsed.specialPower || null;
+          
+          if (parsed.specialPower === "shield" && playerRef.current) {
+            playerRef.current.hp = 125;
+            playerRef.current.maxHp = 125;
+            setHealth(125);
+          }
         }
       }
     } catch (e) {
@@ -494,6 +506,75 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         addCurrency(0, 0, amount);
         toast.success(`Added ${amount} gold!`);
       }
+    } else if (cmd.startsWith("/laser")) {
+      // Fire a powerful laser beam that kills all enemies in a line
+      if (playerRef.current) {
+        const { x, y, angle } = playerRef.current;
+        gameStateRef.current.enemies = gameStateRef.current.enemies.filter((e: any) => {
+          const dx = e.x - x, dy = e.y - y;
+          const dist = Math.hypot(dx, dy);
+          const angleToEnemy = Math.atan2(dy, dx);
+          const angleDiff = Math.abs(angleToEnemy - angle);
+          if (dist < 500 && angleDiff < 0.3) {
+            setScore(prev => prev + 10);
+            setKills(prev => prev + 1);
+            return false;
+          }
+          return true;
+        });
+        toast.success("⚡ Laser beam fired!");
+      }
+    } else if (cmd.startsWith("/slowmo")) {
+      // Slow all enemies for 8 seconds
+      gameStateRef.current.enemies.forEach((e: any) => {
+        e.originalSpeed = e.originalSpeed || e.speed;
+        e.speed = e.speed * 0.3;
+      });
+      toast.success("🐌 Slow motion for 8 seconds!");
+      setTimeout(() => {
+        gameStateRef.current.enemies.forEach((e: any) => {
+          if (e.originalSpeed) { e.speed = e.originalSpeed; e.originalSpeed = undefined; }
+        });
+        toast.info("Slow motion ended");
+      }, 8000);
+    } else if (cmd.startsWith("/cloak")) {
+      // Make player invisible (enemies don't target for 10s)
+      if (playerRef.current) {
+        playerRef.current.cloaked = true;
+        toast.success("🫥 Cloak active for 10 seconds! Enemies won't target you.");
+        setTimeout(() => {
+          if (playerRef.current) playerRef.current.cloaked = false;
+          toast.info("Cloak expired");
+        }, 10000);
+      }
+    } else if (cmd.startsWith("/magnet")) {
+      // Pull all pickups to player
+      if (playerRef.current) {
+        gameStateRef.current.pickups.forEach((p: any) => {
+          p.x = playerRef.current.x;
+          p.y = playerRef.current.y;
+        });
+        toast.success("🧲 Magnet activated! All pickups pulled to you.");
+      }
+    } else if (cmd.startsWith("/doubledmg")) {
+      // Double damage for 15 seconds
+      specialPowerRef.current = "double_damage";
+      toast.success("💥 Double damage for 15 seconds!");
+      setTimeout(() => {
+        specialPowerRef.current = null;
+        toast.info("Double damage expired");
+      }, 15000);
+    } else if (cmd.startsWith("/maxhp")) {
+      const match = cmd.match(/\/maxhp\s+(\d+)/);
+      if (match && playerRef.current) {
+        const amount = parseInt(match[1]);
+        playerRef.current.maxHp = amount;
+        playerRef.current.hp = amount;
+        setHealth(amount);
+        toast.success(`Max HP set to ${amount}!`);
+      }
+    } else if (cmd.startsWith("/weather")) {
+      toast.success("🌤️ Weather: Clear skies, perfect conditions for battle!");
     }
   }, [hasPermission, revivePlayer]);
 
@@ -706,6 +787,24 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         } else {
           const remaining = Math.ceil((3000 - (now - teleportCooldownRef.current)) / 1000);
           toast.error(`Teleport on cooldown: ${remaining}s`);
+        }
+      }
+      
+      // Handle H key for health pack usage
+      if (e.key.toLowerCase() === "h") {
+        try {
+          const pendingHealthPacks = JSON.parse(localStorage.getItem("pendingHealthPacks") || "[]");
+          if (pendingHealthPacks.length > 0) {
+            const pack = pendingHealthPacks.shift();
+            localStorage.setItem("pendingHealthPacks", JSON.stringify(pendingHealthPacks));
+            player.hp = Math.min(player.maxHp, player.hp + pack.healAmount);
+            setHealth(player.hp);
+            toast.success(`Used health pack! +${pack.healAmount} HP`);
+          } else {
+            toast.error("No health packs available! Buy & equip them from inventory.");
+          }
+        } catch (err) {
+          console.error("Health pack error:", err);
         }
       }
       

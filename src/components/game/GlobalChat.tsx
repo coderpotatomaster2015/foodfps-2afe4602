@@ -62,9 +62,12 @@ const ADMIN_COMMANDS = [
   { cmd: "/promote <username>", desc: "Give user command permissions" },
   { cmd: "/demote <username>", desc: "Remove user command permissions" },
   { cmd: "/leaderboard", desc: "Show top 10 players by score" },
-  { cmd: "/event <type> <mins>", desc: "Start a global event (double_xp, half_damage)" },
+  { cmd: "/event <type> <mins>", desc: "Start a global event" },
   { cmd: "/maintenance <on/off>", desc: "Toggle maintenance mode" },
   { cmd: "/ping", desc: "Check server responsiveness" },
+  { cmd: "/whois <username>", desc: "Look up player info" },
+  { cmd: "/coinflip", desc: "Flip a coin" },
+  { cmd: "/roll [sides]", desc: "Roll a dice (default d6)" },
 ];
 
 const containsProfanity = (text: string): boolean => {
@@ -659,6 +662,97 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
       case "/ping":
         toast.success("🏓 Pong! Server is responsive.");
         break;
+
+      case "/event": {
+        const eventParts = args.split(" ");
+        if (eventParts.length >= 1) {
+          const eventType = eventParts[0]; // double_xp, half_damage, etc.
+          const eventMins = parseInt(eventParts[1]) || 10;
+          const { data: { user: eventUser } } = await supabase.auth.getUser();
+          if (eventUser) {
+            const eventExpires = new Date();
+            eventExpires.setMinutes(eventExpires.getMinutes() + eventMins);
+            
+            await supabase.from("admin_abuse_events").insert({
+              event_type: eventType,
+              created_by: eventUser.id,
+              expires_at: eventExpires.toISOString(),
+              is_active: true,
+            });
+            
+            await supabase.from("global_chat").insert({
+              user_id: userId,
+              username: "🎉 EVENT",
+              message: `${eventType.replace(/_/g, " ").toUpperCase()} event started for ${eventMins} minutes!`,
+            });
+            toast.success(`Event ${eventType} started for ${eventMins} minutes!`);
+          }
+        } else {
+          toast.error("Usage: /event <type> <minutes>");
+        }
+        break;
+      }
+
+      case "/maintenance": {
+        const maintenanceState = args.toLowerCase();
+        if (maintenanceState === "on" || maintenanceState === "off") {
+          const enabled = maintenanceState === "off"; // website_enabled = OFF means maintenance ON
+          await supabase
+            .from("game_settings")
+            .update({ website_enabled: enabled })
+            .eq("id", (await supabase.from("game_settings").select("id").limit(1).single()).data?.id || "");
+          
+          toast.success(`Maintenance mode ${maintenanceState === "on" ? "ENABLED" : "DISABLED"}`);
+          await supabase.from("global_chat").insert({
+            user_id: userId,
+            username: "⚠️ SYSTEM",
+            message: `Maintenance mode ${maintenanceState.toUpperCase()} by ${username}`,
+          });
+        } else {
+          toast.error("Usage: /maintenance <on/off>");
+        }
+        break;
+      }
+
+      case "/whois": {
+        if (args) {
+          const { data: whoisProfile } = await supabase
+            .from("profiles")
+            .select("username, total_score, created_at, boss_level, ranked_rank")
+            .ilike("username", args)
+            .maybeSingle();
+
+          if (whoisProfile) {
+            const joined = new Date(whoisProfile.created_at).toLocaleDateString();
+            toast.info(`👤 ${whoisProfile.username}\n• Score: ${whoisProfile.total_score}\n• Boss Level: ${whoisProfile.boss_level}\n• Rank: ${whoisProfile.ranked_rank || "Unranked"}\n• Joined: ${joined}`);
+          } else {
+            toast.error("User not found");
+          }
+        } else {
+          toast.error("Usage: /whois <username>");
+        }
+        break;
+      }
+
+      case "/coinflip":
+        const result = Math.random() < 0.5 ? "Heads" : "Tails";
+        await supabase.from("global_chat").insert({
+          user_id: userId,
+          username: "🎲 COINFLIP",
+          message: `${username} flipped a coin: ${result}!`,
+        });
+        break;
+
+      case "/roll": {
+        const sides = parseInt(args) || 6;
+        const rollResult = Math.floor(Math.random() * sides) + 1;
+        await supabase.from("global_chat").insert({
+          user_id: userId,
+          username: "🎲 DICE",
+          message: `${username} rolled a d${sides}: ${rollResult}!`,
+        });
+        break;
+      }
 
       default:
         toast.error("Unknown command. Click 'Commands' to see available commands.");

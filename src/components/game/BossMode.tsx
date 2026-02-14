@@ -77,6 +77,8 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
   const playerRef = useRef<any>(null);
   const gameLoopRef = useRef<number | null>(null);
   const bossLevelRef = useRef(1);
+  const specialPowerRef = useRef<string | null>(null);
+  const teleportCooldownRef = useRef<number>(0);
 
   // Apply admin abuse events
   useEffect(() => {
@@ -160,14 +162,46 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data: progress } = await supabase
-      .from("player_progress")
-      .select("unlocked_weapons")
+    // Load from equipped_loadout table (NOT player_progress)
+    const { data: loadout } = await supabase
+      .from("equipped_loadout")
+      .select("*")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (progress?.unlocked_weapons) {
-      setUnlockedWeapons(progress.unlocked_weapons as Weapon[]);
+    if (loadout) {
+      const equippedWeapons = [
+        loadout.slot_1,
+        loadout.slot_2,
+        loadout.slot_3,
+        loadout.slot_4,
+        loadout.slot_5,
+      ].filter(Boolean) as Weapon[];
+      
+      setUnlockedWeapons(equippedWeapons.length > 0 ? equippedWeapons : ["pistol"]);
+      console.log("BossMode loaded equipped weapons:", equippedWeapons);
+    } else {
+      // Fallback to localStorage
+      const savedWeapons = localStorage.getItem("equippedWeapons");
+      if (savedWeapons) {
+        try {
+          const parsed = JSON.parse(savedWeapons) as Weapon[];
+          setUnlockedWeapons(parsed.length > 0 ? parsed : ["pistol"]);
+        } catch {
+          setUnlockedWeapons(["pistol"]);
+        }
+      }
+    }
+
+    // Also load equipped power
+    const equippedPower = localStorage.getItem("equippedPower");
+    if (equippedPower) {
+      specialPowerRef.current = equippedPower;
+      if (equippedPower === "shield" && playerRef.current) {
+        playerRef.current.hp = 125;
+        playerRef.current.maxHp = 125;
+        setHealth(125);
+      }
     }
   };
 
@@ -276,6 +310,35 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
       if (e.key.toLowerCase() === "r" && player.ammo < player.maxAmmo) {
         player.ammo = player.maxAmmo;
         setAmmo(player.ammo);
+      }
+      
+      // Handle teleport power with SHIFT key
+      if (e.key.toLowerCase() === "shift" && specialPowerRef.current === "teleport") {
+        const now = performance.now();
+        if (!teleportCooldownRef.current || now - teleportCooldownRef.current >= 3000) {
+          teleportCooldownRef.current = now;
+          const teleportDist = 150;
+          player.x = Math.max(20, Math.min(W - 20, player.x + Math.cos(player.angle) * teleportDist));
+          player.y = Math.max(20, Math.min(H - 20, player.y + Math.sin(player.angle) * teleportDist));
+          spawnParticles(player.x, player.y, "#00FFFF", 20);
+          toast.info("Teleported!");
+        }
+      }
+      
+      // Handle H key for health pack usage
+      if (e.key.toLowerCase() === "h") {
+        try {
+          const pendingHealthPacks = JSON.parse(localStorage.getItem("pendingHealthPacks") || "[]");
+          if (pendingHealthPacks.length > 0) {
+            const pack = pendingHealthPacks.shift();
+            localStorage.setItem("pendingHealthPacks", JSON.stringify(pendingHealthPacks));
+            player.hp = Math.min(100, player.hp + pack.healAmount);
+            setHealth(player.hp);
+            toast.success(`Used health pack! +${pack.healAmount} HP`);
+          }
+        } catch (err) {
+          console.error("Health pack error:", err);
+        }
       }
       
       const keyNum = parseInt(e.key);
@@ -397,10 +460,10 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
 
       if (dx !== 0 || dy !== 0) {
         const len = Math.hypot(dx, dy);
-        dx /= len;
-        dy /= len;
-        player.x = Math.max(20, Math.min(W - 20, player.x + dx * player.speed * adminStateRef.current.speedMultiplier * dt));
-        player.y = Math.max(20, Math.min(H - 20, player.y + dy * player.speed * adminStateRef.current.speedMultiplier * dt));
+        let speedMultiplier = adminStateRef.current.speedMultiplier;
+        if (specialPowerRef.current === "speed") speedMultiplier *= 1.3;
+        player.x = Math.max(20, Math.min(W - 20, player.x + dx * player.speed * speedMultiplier * dt));
+        player.y = Math.max(20, Math.min(H - 20, player.y + dy * player.speed * speedMultiplier * dt));
       }
 
       // Shooting
@@ -424,7 +487,7 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
             vy: Math.sin(finalAngle) * weapon.bulletSpeed,
             r: 8,
             life: 2.5,
-            dmg: weapon.damage,
+            dmg: weapon.damage * (specialPowerRef.current === "double_damage" ? 2 : 1),
             color: weapon.color,
           });
         }

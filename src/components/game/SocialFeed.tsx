@@ -116,16 +116,48 @@ export const SocialFeed = ({ open, onOpenChange }: SocialFeedProps) => {
         .eq("user_id", user.id)
         .single();
 
+      // Call AI moderation
+      toast.info("🤖 AI is reviewing your post...");
+      
+      const { data: moderationResult, error: modError } = await supabase.functions.invoke("moderate-post", {
+        body: { content, image_url: imageUrl || null }
+      });
+
+      if (modError) {
+        console.error("Moderation error:", modError);
+        // Fallback to manual review if AI fails
+        toast.warning("AI moderation unavailable, submitting for manual review");
+      }
+
+      const aiDecision = moderationResult?.decision;
+
+      if (aiDecision === "decline") {
+        toast.error("❌ Your post was declined by AI moderation. Please ensure your content is appropriate.");
+        setSending(false);
+        return;
+      }
+
+      const isAutoApproved = aiDecision === "approve";
+
       const { error } = await supabase.from("social_posts").insert({
         user_id: user.id,
         username: profile?.username || "Unknown",
         content,
         image_url: imageUrl || null,
+        is_approved: isAutoApproved,
+        is_pending: !isAutoApproved,
+        approved_at: isAutoApproved ? new Date().toISOString() : null,
       });
 
       if (error) throw error;
 
-      toast.success("Post submitted for approval!");
+      if (isAutoApproved) {
+        toast.success("✅ Post approved by AI and published!");
+        loadPosts();
+      } else {
+        toast.success("Post submitted for manual review!");
+      }
+      
       setComposing(false);
       setContent("");
       setImageUrl("");
@@ -259,10 +291,10 @@ export const SocialFeed = ({ open, onOpenChange }: SocialFeedProps) => {
                   </div>
                 )}
 
-                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
-                  <p className="text-sm text-yellow-500">
+                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                  <p className="text-sm text-green-500">
                     <Clock className="w-4 h-4 inline mr-2" />
-                    Your post will be reviewed by an admin before being published.
+                    Your post will be reviewed by AI. Appropriate posts are auto-approved instantly!
                   </p>
                 </div>
 

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Users, User, Wifi, WifiOff, Skull, Timer, Trophy, Swords, Bot, GraduationCap, Lock } from "lucide-react";
+import { Users, User, Wifi, WifiOff, Skull, Timer, Trophy, Swords, Bot, GraduationCap, Lock, Heart, Biohazard, Target, Flag, Shield } from "lucide-react";
 import type { GameMode } from "@/pages/Index";
 import { openOfflineGame } from "@/utils/offlineGame";
 import { toast } from "sonner";
@@ -182,6 +182,92 @@ export const GameModeSelector = ({
               <h3 className="text-lg font-bold">School</h3>
               <p className="text-xs text-muted-foreground">
                 Elemental powers
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        {/* New Game Modes Row */}
+        <Card 
+          className="p-4 bg-card border-border hover:border-orange-500 cursor-pointer group"
+          onClick={() => onModeSelect("survival")}
+        >
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-orange-500">
+              <Heart className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">Survival</h3>
+              <p className="text-xs text-muted-foreground">
+                Wave-based
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className="p-4 bg-card border-border hover:border-emerald-500 cursor-pointer group"
+          onClick={() => onModeSelect("zombie")}
+        >
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-emerald-500">
+              <Biohazard className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">Zombie</h3>
+              <p className="text-xs text-muted-foreground">
+                Horde mode
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className="p-4 bg-card border-border hover:border-red-500 cursor-pointer group"
+          onClick={() => onModeSelect("arena")}
+        >
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-red-500">
+              <Target className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">Arena</h3>
+              <p className="text-xs text-muted-foreground">
+                25-kill win
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className="p-4 bg-card border-border hover:border-purple-500 cursor-pointer group"
+          onClick={() => onModeSelect("infection")}
+        >
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-purple-500">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">Infection</h3>
+              <p className="text-xs text-muted-foreground">
+                Survive infected
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className="p-4 bg-card border-border hover:border-cyan-500 cursor-pointer group"
+          onClick={() => onModeSelect("ctf")}
+        >
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-cyan-500">
+              <Flag className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">CTF</h3>
+              <p className="text-xs text-muted-foreground">
+                Capture 3 flags
               </p>
             </div>
           </div>

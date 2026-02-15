@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useCanvasRecording } from "@/hooks/useCanvasRecording";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, MessageSquare, Shield } from "lucide-react";
 import { AdminChat } from "./AdminChat";
@@ -95,6 +96,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const teleportCooldownRef = useRef(0);
   
   const { players, updatePlayerPosition, broadcastBullet, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode } = useMultiplayer(mode, roomCode, username);
+  const { startRecording, stopRecording, isRecording } = useCanvasRecording(username, mode);
 
   // Load special power from localStorage - check both equippedPower and selectedCustomSkin
   useEffect(() => {
@@ -611,6 +613,11 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       setSpawnImmunity(false);
     }, 5000);
 
+    // Auto-start canvas recording
+    if (canvas) {
+      startRecording(canvas);
+    }
+
     let keys: Record<string, boolean> = {};
     let mouse = { x: W / 2, y: H / 2, down: false };
 
@@ -639,7 +646,16 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     let particles: any[] = [];
     let time = 0;
     let lastSpawn = 0;
-    let enemySpawnInterval = 2.0;
+    let enemySpawnInterval = mode === "zombie" ? 1.0 : mode === "survival" ? 2.5 : mode === "infection" ? 3.0 : 2.0;
+    let waveNumber = 1;
+    let waveEnemiesRemaining = 0;
+    let arenaKillTarget = 25;
+    let ctfPlayerScore = 0;
+    let ctfEnemyScore = 0;
+    let ctfPlayerFlag = { x: 100, y: H / 2, captured: false };
+    let ctfEnemyFlag = { x: W - 100, y: H / 2, captured: false };
+    let ctfCarryingFlag = false;
+    let modeWon = false;
 
     gameStateRef.current.enemies = enemies;
     gameStateRef.current.pickups = pickups;
@@ -648,6 +664,27 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
 
     const expandMap = () => {
       gameStateRef.current.mapBoundsMultiplier += 0.1;
+    };
+
+    const getEnemyHp = () => {
+      if (mode === "survival") return 60 + waveNumber * 15;
+      if (mode === "zombie") return 40;
+      if (mode === "infection") return 80;
+      return 60;
+    };
+
+    const getEnemySpeed = () => {
+      if (mode === "zombie") return rand(20, 50);
+      if (mode === "survival") return rand(40 + waveNumber * 3, 80 + waveNumber * 5);
+      if (mode === "infection") return rand(50, 90);
+      return rand(40, 80);
+    };
+
+    const getEnemyColor = () => {
+      if (mode === "zombie") return "#4CAF50";
+      if (mode === "infection") return "#9C27B0";
+      if (mode === "ctf") return "#2196F3";
+      return "#FF6B6B";
     };
 
     const spawnEnemy = () => {
@@ -659,7 +696,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       else if (side === 2) { x = -30 * mult; y = rand(-40 * mult, H * mult + 40); }
       else { x = W * mult + 30; y = rand(-40 * mult, H * mult + 40); }
       const enemyId = `enemy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      enemies.push({ id: enemyId, x, y, r: 16, speed: rand(40, 80), hp: 60, color: "#FF6B6B", stun: 0, lastHit: 0, lastShot: -1 });
+      const canShoot = mode !== "zombie";
+      enemies.push({ id: enemyId, x, y, r: mode === "zombie" ? 18 : 16, speed: getEnemySpeed(), hp: getEnemyHp(), color: getEnemyColor(), stun: 0, lastHit: 0, lastShot: canShoot ? -1 : 99999 });
     };
 
     const spawnPickup = () => {
@@ -1096,10 +1134,58 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       const isMultiplayerCoop = (mode === "host" || mode === "join") && coopMode;
       const shouldSpawn = !isMultiplayerCoop || (isMultiplayerCoop && isHost);
       
-      if (shouldSpawn && time - lastSpawn > enemySpawnInterval) {
-        lastSpawn = time;
-        spawnEnemy();
-        if (enemySpawnInterval > 0.6) enemySpawnInterval *= 0.993;
+      // Survival wave logic
+      if (mode === "survival" && enemies.length === 0 && waveEnemiesRemaining <= 0 && time > 3) {
+        waveNumber++;
+        waveEnemiesRemaining = 5 + waveNumber * 3;
+        enemySpawnInterval = Math.max(0.5, 2.5 - waveNumber * 0.15);
+        toast.success(`Wave ${waveNumber}! ${waveEnemiesRemaining} enemies incoming!`);
+      }
+
+      // Arena win condition
+      if (mode === "arena" && kills >= arenaKillTarget && !modeWon) {
+        modeWon = true;
+        saveProgress(score);
+        toast.success(`🏆 Arena Victory! ${arenaKillTarget} kills reached!`);
+      }
+
+      // CTF logic
+      if (mode === "ctf") {
+        // Check if player picks up enemy flag
+        if (!ctfCarryingFlag && Math.hypot(player.x - ctfEnemyFlag.x, player.y - ctfEnemyFlag.y) < 30) {
+          ctfCarryingFlag = true;
+          toast.info("🚩 You grabbed the flag! Return to your base!");
+        }
+        // Check if player returns flag to base
+        if (ctfCarryingFlag && Math.hypot(player.x - ctfPlayerFlag.x, player.y - ctfPlayerFlag.y) < 30) {
+          ctfCarryingFlag = false;
+          ctfPlayerScore++;
+          ctfEnemyFlag.x = W - 100;
+          ctfEnemyFlag.y = H / 2;
+          toast.success(`🎉 Flag captured! Score: ${ctfPlayerScore}/3`);
+          if (ctfPlayerScore >= 3 && !modeWon) {
+            modeWon = true;
+            saveProgress(score);
+            toast.success("🏆 CTF Victory! You captured 3 flags!");
+          }
+        }
+      }
+      
+      if (shouldSpawn && time - lastSpawn > enemySpawnInterval && !modeWon) {
+        // In survival mode, only spawn if there are wave enemies remaining
+        if (mode === "survival") {
+          if (waveEnemiesRemaining > 0) {
+            lastSpawn = time;
+            spawnEnemy();
+            waveEnemiesRemaining--;
+          }
+        } else {
+          lastSpawn = time;
+          spawnEnemy();
+          if (enemySpawnInterval > 0.6) enemySpawnInterval *= 0.993;
+          // Zombie mode spawns more frequently
+          if (mode === "zombie" && enemySpawnInterval > 0.3) enemySpawnInterval *= 0.99;
+        }
       }
 
       // In coop mode, host broadcasts enemy state, non-hosts sync from shared state
@@ -1154,6 +1240,100 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         ctx.stroke();
       }
       ctx.restore();
+
+      // Draw CTF flags
+      if (mode === "ctf") {
+        // Player base flag (blue)
+        ctx.save();
+        ctx.fillStyle = "#2196F3";
+        ctx.beginPath();
+        ctx.arc(ctfPlayerFlag.x, ctfPlayerFlag.y, 20, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 16px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("🏠", ctfPlayerFlag.x, ctfPlayerFlag.y);
+        ctx.restore();
+
+        // Enemy flag (red)
+        ctx.save();
+        ctx.fillStyle = ctfCarryingFlag ? "rgba(255,68,68,0.3)" : "#FF4444";
+        ctx.beginPath();
+        ctx.arc(ctfEnemyFlag.x, ctfEnemyFlag.y, 20, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 16px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("🚩", ctfEnemyFlag.x, ctfEnemyFlag.y);
+        ctx.restore();
+
+        // Flag carrier indicator
+        if (ctfCarryingFlag) {
+          ctx.save();
+          ctx.fillStyle = "#FF4444";
+          ctx.font = "bold 12px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("🚩 CARRYING FLAG", player.x, player.y - 30);
+          ctx.restore();
+        }
+
+        // CTF score display
+        ctx.save();
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillRect(W / 2 - 80, 10, 160, 30);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 16px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(`Captures: ${ctfPlayerScore}/3`, W / 2, 30);
+        ctx.restore();
+      }
+
+      // Draw mode-specific HUD on canvas
+      if (mode === "survival") {
+        ctx.save();
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillRect(W / 2 - 70, 10, 140, 30);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 14px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(`Wave ${waveNumber} • ${enemies.length} left`, W / 2, 30);
+        ctx.restore();
+      }
+
+      if (mode === "arena") {
+        ctx.save();
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillRect(W / 2 - 80, 10, 160, 30);
+        ctx.fillStyle = modeWon ? "#22c55e" : "#fff";
+        ctx.font = "bold 14px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(modeWon ? "🏆 VICTORY!" : `Kills: ${kills}/${arenaKillTarget}`, W / 2, 30);
+        ctx.restore();
+      }
+
+      if (mode === "zombie") {
+        ctx.save();
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillRect(W / 2 - 70, 10, 140, 30);
+        ctx.fillStyle = "#4CAF50";
+        ctx.font = "bold 14px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(`🧟 Zombies: ${enemies.length}`, W / 2, 30);
+        ctx.restore();
+      }
+
+      if (mode === "infection") {
+        ctx.save();
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillRect(W / 2 - 70, 10, 140, 30);
+        ctx.fillStyle = "#9C27B0";
+        ctx.font = "bold 14px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(`☣ Infected: ${enemies.length}`, W / 2, 30);
+        ctx.restore();
+      }
 
       // Draw pickups
       for (const p of pickups) {
@@ -1387,7 +1567,10 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     };
   }, [unlockedWeapons, mode, broadcastBullet, players, username, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode, playerSkin]);
 
-  const handleBackWithScoreboard = () => {
+  const handleBackWithScoreboard = async () => {
+    // Stop recording and save
+    await stopRecording(score, kills);
+    
     // Save progress when leaving the game
     if (score > 0) {
       saveProgress(score);

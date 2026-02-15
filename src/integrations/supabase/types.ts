@@ -709,6 +709,45 @@ export type Database = {
           },
         ]
       }
+      game_recordings: {
+        Row: {
+          created_at: string
+          duration_seconds: number
+          file_size: number | null
+          file_url: string | null
+          id: string
+          kills: number | null
+          mode: string
+          score: number | null
+          user_id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          kills?: number | null
+          mode: string
+          score?: number | null
+          user_id: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          kills?: number | null
+          mode?: string
+          score?: number | null
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
       game_rooms: {
         Row: {
           code: string

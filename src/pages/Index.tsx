@@ -45,7 +45,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { applyRainbowToDocument, removeRainbowFromDocument } from "@/utils/rainbowEffect";
 
-export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | "youvsme" | "school" | null;
+export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | "youvsme" | "school" | "survival" | "zombie" | "arena" | "infection" | "ctf" | null;
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -497,8 +497,8 @@ const Index = () => {
         />
       )}
 
-      {/* Standard Game - Solo, Offline, or standard multiplayer */}
-      {(isInGame || gameMode === "solo" || gameMode === "offline") && gameMode !== "boss" && gameMode !== "timed-host" && (
+      {/* Standard Game - Solo, Offline, or standard multiplayer, or new modes */}
+      {(isInGame || gameMode === "solo" || gameMode === "offline" || gameMode === "survival" || gameMode === "zombie" || gameMode === "arena" || gameMode === "infection" || gameMode === "ctf") && gameMode !== "boss" && gameMode !== "timed-host" && (
         <GameCanvas 
           mode={gameMode as Exclude<GameMode, null | "boss" | "timed-host" | "timed-join">} 
           username={username} 

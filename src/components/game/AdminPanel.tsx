@@ -16,6 +16,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { RedeemCodesPanel } from "./RedeemCodesPanel";
 import { AbuseSchedulePanel } from "./AbuseSchedulePanel";
+import { BetaTasksAdmin } from "./BetaTasksAdmin";
+import { AdminAbuseRequests } from "./AdminAbuseRequests";
 
 interface AdminPanelProps {
   open: boolean;
@@ -785,6 +787,10 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
               <Calendar className="w-3 h-3" />
               Schedule
             </TabsTrigger>
+            <TabsTrigger value="beta-tasks" className="gap-1 text-xs">
+              <FlaskConical className="w-3 h-3" />
+              Beta Tasks
+            </TabsTrigger>
           </TabsList>
 
           {/* Analytics Dashboard */}
@@ -1462,6 +1468,14 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
           {/* Schedule Tab */}
           <TabsContent value="schedule" className="flex-1 p-4 overflow-auto">
             <AbuseSchedulePanel userId={currentUserId} />
+            <div className="mt-6 border-t pt-4">
+              <AdminAbuseRequests userId={currentUserId} />
+            </div>
+          </TabsContent>
+
+          {/* Beta Tasks Tab */}
+          <TabsContent value="beta-tasks" className="flex-1 p-4 overflow-auto">
+            <BetaTasksAdmin userId={currentUserId} />
           </TabsContent>
         </Tabs>
       </Card>

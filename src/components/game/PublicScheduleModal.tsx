@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { Calendar, Clock, Zap, Sparkles } from "lucide-react";
+import { Calendar, Clock, Zap, Sparkles, Send } from "lucide-react";
 import { format, isToday, isTomorrow, isPast, parseISO } from "date-fns";
+import { AbuseRequestPanel } from "./AbuseRequestPanel";
 
 interface ScheduledEvent {
   id: string;
@@ -30,10 +32,13 @@ const EVENT_LABELS: Record<string, { label: string; color: string; emoji: string
 export const PublicScheduleModal = ({ open, onOpenChange }: PublicScheduleModalProps) => {
   const [schedules, setSchedules] = useState<ScheduledEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
 
   useEffect(() => {
     if (open) {
       loadSchedules();
+      loadUser();
     }
 
     const channel = supabase
@@ -43,15 +48,20 @@ export const PublicScheduleModal = ({ open, onOpenChange }: PublicScheduleModalP
       })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [open]);
+
+  const loadUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setUserId(user.id);
+    const { data: profile } = await supabase.from("profiles").select("username").eq("user_id", user.id).maybeSingle();
+    if (profile) setUsername(profile.username);
+  };
 
   const loadSchedules = async () => {
     setLoading(true);
     const today = new Date().toISOString().split('T')[0];
-    
     const { data, error } = await supabase
       .from('admin_abuse_schedule')
       .select('*')
@@ -59,10 +69,7 @@ export const PublicScheduleModal = ({ open, onOpenChange }: PublicScheduleModalP
       .eq('is_activated', false)
       .order('scheduled_date', { ascending: true })
       .order('scheduled_time', { ascending: true });
-
-    if (!error && data) {
-      setSchedules(data);
-    }
+    if (!error && data) setSchedules(data);
     setLoading(false);
   };
 
@@ -95,62 +102,63 @@ export const PublicScheduleModal = ({ open, onOpenChange }: PublicScheduleModalP
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {loading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading...</div>
-          ) : schedules.length === 0 ? (
-            <div className="text-center py-8">
-              <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-              <p className="text-muted-foreground">No upcoming events scheduled</p>
-              <p className="text-sm text-muted-foreground">Check back later!</p>
-            </div>
-          ) : (
-            schedules.map(schedule => {
-              const eventInfo = getEventInfo(schedule.event_type);
-              return (
-                <div
-                  key={schedule.id}
-                  className="relative overflow-hidden rounded-xl border border-border bg-card p-4"
-                >
-                  {/* Gradient accent */}
-                  <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${eventInfo.color}`} />
-                  
-                  <div className="flex items-start gap-3">
-                    <div className="text-3xl">{eventInfo.emoji}</div>
-                    <div className="flex-1 space-y-2">
-                      <h3 className="font-bold text-lg">{eventInfo.label}</h3>
-                      
-                      <div className="flex flex-wrap items-center gap-3 text-sm">
-                        <span className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-full">
-                          <Calendar className="h-3 w-3" />
-                          {getDateLabel(schedule.scheduled_date)}
-                        </span>
-                        <span className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-full">
-                          <Clock className="h-3 w-3" />
-                          {formatTime(schedule.scheduled_time)}
-                        </span>
-                        <span className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-full">
-                          <Zap className="h-3 w-3" />
-                          {schedule.duration_minutes} min
-                        </span>
-                      </div>
+        <Tabs defaultValue="schedule">
+          <TabsList className="w-full">
+            <TabsTrigger value="schedule" className="flex-1 text-xs">Upcoming Events</TabsTrigger>
+            <TabsTrigger value="request" className="flex-1 text-xs">
+              <Send className="w-3 h-3 mr-1" />
+              Request Event
+            </TabsTrigger>
+          </TabsList>
 
-                      {schedule.description && (
-                        <p className="text-sm text-muted-foreground mt-2">
-                          {schedule.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+          <TabsContent value="schedule">
+            <div className="space-y-4">
+              {loading ? (
+                <div className="text-center py-8 text-muted-foreground">Loading...</div>
+              ) : schedules.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground">No upcoming events scheduled</p>
                 </div>
-              );
-            })
-          )}
-        </div>
+              ) : (
+                schedules.map(schedule => {
+                  const eventInfo = getEventInfo(schedule.event_type);
+                  return (
+                    <div key={schedule.id} className="relative overflow-hidden rounded-xl border border-border bg-card p-4">
+                      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${eventInfo.color}`} />
+                      <div className="flex items-start gap-3">
+                        <div className="text-3xl">{eventInfo.emoji}</div>
+                        <div className="flex-1 space-y-2">
+                          <h3 className="font-bold text-lg">{eventInfo.label}</h3>
+                          <div className="flex flex-wrap items-center gap-3 text-sm">
+                            <span className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-full">
+                              <Calendar className="h-3 w-3" />{getDateLabel(schedule.scheduled_date)}
+                            </span>
+                            <span className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-full">
+                              <Clock className="h-3 w-3" />{formatTime(schedule.scheduled_time)}
+                            </span>
+                            <span className="flex items-center gap-1 bg-secondary/50 px-2 py-1 rounded-full">
+                              <Zap className="h-3 w-3" />{schedule.duration_minutes} min
+                            </span>
+                          </div>
+                          {schedule.description && <p className="text-sm text-muted-foreground mt-2">{schedule.description}</p>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </TabsContent>
 
-        <p className="text-xs text-center text-muted-foreground mt-4">
-          Events are activated by admins at the scheduled time
-        </p>
+          <TabsContent value="request">
+            {userId ? (
+              <AbuseRequestPanel userId={userId} username={username} />
+            ) : (
+              <p className="text-center text-muted-foreground py-4">Log in to request events</p>
+            )}
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

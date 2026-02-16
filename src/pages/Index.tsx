@@ -37,6 +37,7 @@ import { FoodPassModal } from "@/components/game/FoodPassModal";
 import { PlayerProfileModal } from "@/components/game/PlayerProfileModal";
 import { InventoryModal } from "@/components/game/InventoryModal";
 import { ShopModal } from "@/components/game/ShopModal";
+import { ServicePanel } from "@/components/game/ServicePanel";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,7 @@ const Index = () => {
   const [showProfile, setShowProfile] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
   const [showItemShop, setShowItemShop] = useState(false);
+  const [showServicePanel, setShowServicePanel] = useState(false);
   const [touchscreenMode, setTouchscreenMode] = useState(false);
   const [websiteEnabled, setWebsiteEnabled] = useState(true);
   const [disabledMessage, setDisabledMessage] = useState("");
@@ -584,6 +586,7 @@ const Index = () => {
         onOpenChange={setShowSettings}
         touchscreenMode={touchscreenMode}
         onTouchscreenModeChange={handleTouchscreenChange}
+        onOpenServicePanel={() => setShowServicePanel(true)}
       />
       <AdSignupModal open={showAdSignup} onOpenChange={setShowAdSignup} />
       <RedeemCodeModal open={showRedeemCodes} onOpenChange={setShowRedeemCodes} />
@@ -595,7 +598,7 @@ const Index = () => {
         onEquipPower={(power) => setEquippedPower(power)}
       />
       <ShopModal open={showItemShop} onOpenChange={setShowItemShop} />
-      
+      <ServicePanel open={showServicePanel} onOpenChange={setShowServicePanel} />
       {/* Global Chat Modal */}
       {user && username && (
         <GlobalChatModal

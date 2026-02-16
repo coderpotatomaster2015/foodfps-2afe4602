@@ -11,6 +11,7 @@ interface SettingsModalProps {
   onOpenChange: (open: boolean) => void;
   touchscreenMode: boolean;
   onTouchscreenModeChange: (enabled: boolean) => void;
+  onOpenServicePanel?: () => void;
 }
 
 // Predefined UI color themes
@@ -103,10 +104,13 @@ export const SettingsModal = ({
   open, 
   onOpenChange, 
   touchscreenMode, 
-  onTouchscreenModeChange 
+  onTouchscreenModeChange,
+  onOpenServicePanel 
 }: SettingsModalProps) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [selectedTheme, setSelectedTheme] = useState("default");
+  const [tapCount, setTapCount] = useState(0);
+  const [tapTimer, setTapTimer] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const savedSound = localStorage.getItem("foodfps_sound");
@@ -144,11 +148,24 @@ export const SettingsModal = ({
     playSound("click");
   };
 
+  const handleTitleClick = () => {
+    const newCount = tapCount + 1;
+    setTapCount(newCount);
+    if (tapTimer) clearTimeout(tapTimer);
+    const timer = setTimeout(() => setTapCount(0), 2000);
+    setTapTimer(timer);
+    if (newCount >= 5 && onOpenServicePanel) {
+      setTapCount(0);
+      onOpenChange(false);
+      onOpenServicePanel();
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 cursor-pointer select-none" onClick={handleTitleClick}>
             <Settings className="w-5 h-5" />
             Settings
           </DialogTitle>

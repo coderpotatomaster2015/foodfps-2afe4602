@@ -70,9 +70,23 @@ export const ServicePanel = ({ open, onOpenChange }: ServicePanelProps) => {
       setTargetProfile(profile);
 
       const [messages, posts, chatLogs, bans, currencies, roles, active, settings] = await Promise.all([
-        supabase.from("messages").select("*").or(`from_user_id.eq.${profile.user_id},to_user_id.eq.${profile.user_id}`).order("created_at", { ascending: false }).limit(50),
-        supabase.from("social_posts").select("*").eq("user_id", profile.user_id).order("created_at", { ascending: false }),
-        supabase.from("global_chat").select("*").eq("user_id", profile.user_id).order("created_at", { ascending: false }).limit(100),
+        supabase
+          .from("messages")
+          .select("*")
+          .or(`from_user_id.eq.${profile.user_id},to_user_id.eq.${profile.user_id}`)
+          .order("created_at", { ascending: false })
+          .limit(50),
+        supabase
+          .from("social_posts")
+          .select("*")
+          .eq("user_id", profile.user_id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("global_chat")
+          .select("*")
+          .eq("user_id", profile.user_id)
+          .order("created_at", { ascending: false })
+          .limit(100),
         supabase.from("bans").select("*").eq("user_id", profile.user_id).order("banned_at", { ascending: false }),
         supabase.from("player_currencies").select("*").eq("user_id", profile.user_id).maybeSingle(),
         supabase.from("user_roles").select("*").eq("user_id", profile.user_id),
@@ -101,7 +115,9 @@ export const ServicePanel = ({ open, onOpenChange }: ServicePanelProps) => {
     const reason = prompt("Reason:");
     if (!hours) return;
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     const expiresAt = new Date();
@@ -129,9 +145,13 @@ export const ServicePanel = ({ open, onOpenChange }: ServicePanelProps) => {
 
     await supabase.from("game_settings").update(updateData).eq("id", "00000000-0000-0000-0000-000000000001");
     toast.success(`${mode} ${disabled ? "disabled" : "enabled"}`);
-    
+
     // Refresh settings
-    const { data } = await supabase.from("game_settings").select("*").eq("id", "00000000-0000-0000-0000-000000000001").maybeSingle();
+    const { data } = await supabase
+      .from("game_settings")
+      .select("*")
+      .eq("id", "00000000-0000-0000-0000-000000000001")
+      .maybeSingle();
     if (data) setTargetGameSettings(data);
   };
 
@@ -157,7 +177,9 @@ export const ServicePanel = ({ open, onOpenChange }: ServicePanelProps) => {
                 placeholder="Password..."
                 autoFocus
               />
-              <Button className="w-full" onClick={handleLogin}>Unlock</Button>
+              <Button className="w-full" onClick={handleLogin}>
+                Unlock
+              </Button>
             </div>
           </div>
         ) : !targetProfile ? (
@@ -183,43 +205,73 @@ export const ServicePanel = ({ open, onOpenChange }: ServicePanelProps) => {
               <div>
                 <h3 className="font-bold text-lg">{targetProfile.username}</h3>
                 <p className="text-xs text-muted-foreground">
-                  Score: {targetProfile.total_score} • Roles: {targetRoles.map(r => r.role).join(", ") || "user"}
-                  {targetActivePlayers.length > 0 && <span className="text-green-500 ml-2">● Online ({targetActivePlayers[0].mode})</span>}
+                  Score: {targetProfile.total_score} • Roles: {targetRoles.map((r) => r.role).join(", ") || "user"}
+                  {targetActivePlayers.length > 0 && (
+                    <span className="text-green-500 ml-2">● Online ({targetActivePlayers[0].mode})</span>
+                  )}
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setTargetProfile(null)}>Search Another</Button>
-                <Button variant="destructive" size="sm" onClick={banUser}><Ban className="w-4 h-4 mr-1" />Ban</Button>
+                <Button variant="outline" size="sm" onClick={() => setTargetProfile(null)}>
+                  Search Another
+                </Button>
+                <Button variant="destructive" size="sm" onClick={banUser}>
+                  <Ban className="w-4 h-4 mr-1" />
+                  Ban
+                </Button>
               </div>
             </div>
 
             {targetCurrencies && (
               <div className="grid grid-cols-3 gap-2 mb-3">
-                <Card className="p-2 text-center text-sm"><span className="text-muted-foreground">Coins:</span> <span className="font-bold text-yellow-500">{targetCurrencies.coins}</span></Card>
-                <Card className="p-2 text-center text-sm"><span className="text-muted-foreground">Gems:</span> <span className="font-bold text-blue-500">{targetCurrencies.gems}</span></Card>
-                <Card className="p-2 text-center text-sm"><span className="text-muted-foreground">Gold:</span> <span className="font-bold text-amber-500">{targetCurrencies.gold}</span></Card>
+                <Card className="p-2 text-center text-sm">
+                  <span className="text-muted-foreground">Coins:</span>{" "}
+                  <span className="font-bold text-yellow-500">{targetCurrencies.coins}</span>
+                </Card>
+                <Card className="p-2 text-center text-sm">
+                  <span className="text-muted-foreground">Gems:</span>{" "}
+                  <span className="font-bold text-blue-500">{targetCurrencies.gems}</span>
+                </Card>
+                <Card className="p-2 text-center text-sm">
+                  <span className="text-muted-foreground">Gold:</span>{" "}
+                  <span className="font-bold text-amber-500">{targetCurrencies.gold}</span>
+                </Card>
               </div>
             )}
 
             <Tabs defaultValue="chat" className="flex-1 flex flex-col overflow-hidden">
               <TabsList className="flex-wrap h-auto gap-1">
-                <TabsTrigger value="chat" className="text-xs">Chat</TabsTrigger>
-                <TabsTrigger value="messages" className="text-xs">Messages</TabsTrigger>
-                <TabsTrigger value="posts" className="text-xs">Posts</TabsTrigger>
-                <TabsTrigger value="bans" className="text-xs">Bans</TabsTrigger>
-                <TabsTrigger value="modes" className="text-xs">Modes</TabsTrigger>
+                <TabsTrigger value="chat" className="text-xs">
+                  Chat
+                </TabsTrigger>
+                <TabsTrigger value="messages" className="text-xs">
+                  Messages
+                </TabsTrigger>
+                <TabsTrigger value="posts" className="text-xs">
+                  Posts
+                </TabsTrigger>
+                <TabsTrigger value="bans" className="text-xs">
+                  Bans
+                </TabsTrigger>
+                <TabsTrigger value="modes" className="text-xs">
+                  Modes
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="chat" className="flex-1 overflow-hidden">
                 <ScrollArea className="h-full">
                   <div className="space-y-1 pr-4">
-                    {targetChatLogs.map(log => (
+                    {targetChatLogs.map((log) => (
                       <div key={log.id} className="text-sm p-2 bg-secondary/30 rounded">
-                        <span className="text-xs text-muted-foreground">{new Date(log.created_at).toLocaleString()}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(log.created_at).toLocaleString()}
+                        </span>
                         <p>{log.message}</p>
                       </div>
                     ))}
-                    {targetChatLogs.length === 0 && <p className="text-center text-muted-foreground py-4">No chat logs</p>}
+                    {targetChatLogs.length === 0 && (
+                      <p className="text-center text-muted-foreground py-4">No chat logs</p>
+                    )}
                   </div>
                 </ScrollArea>
               </TabsContent>
@@ -227,17 +279,23 @@ export const ServicePanel = ({ open, onOpenChange }: ServicePanelProps) => {
               <TabsContent value="messages" className="flex-1 overflow-hidden">
                 <ScrollArea className="h-full">
                   <div className="space-y-1 pr-4">
-                    {targetMessages.map(msg => (
+                    {targetMessages.map((msg) => (
                       <div key={msg.id} className="text-sm p-2 bg-secondary/30 rounded">
                         <div className="flex justify-between">
-                          <span className="font-medium">{msg.from_username} → {msg.to_username}</span>
-                          <span className="text-xs text-muted-foreground">{new Date(msg.created_at).toLocaleString()}</span>
+                          <span className="font-medium">
+                            {msg.from_username} → {msg.to_username}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(msg.created_at).toLocaleString()}
+                          </span>
                         </div>
                         <p className="text-xs font-medium text-muted-foreground">{msg.subject}</p>
                         <p>{msg.content}</p>
                       </div>
                     ))}
-                    {targetMessages.length === 0 && <p className="text-center text-muted-foreground py-4">No messages</p>}
+                    {targetMessages.length === 0 && (
+                      <p className="text-center text-muted-foreground py-4">No messages</p>
+                    )}
                   </div>
                 </ScrollArea>
               </TabsContent>
@@ -245,9 +303,11 @@ export const ServicePanel = ({ open, onOpenChange }: ServicePanelProps) => {
               <TabsContent value="posts" className="flex-1 overflow-hidden">
                 <ScrollArea className="h-full">
                   <div className="space-y-1 pr-4">
-                    {targetPosts.map(post => (
+                    {targetPosts.map((post) => (
                       <div key={post.id} className="text-sm p-2 bg-secondary/30 rounded">
-                        <span className="text-xs text-muted-foreground">{new Date(post.created_at).toLocaleString()}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(post.created_at).toLocaleString()}
+                        </span>
                         <p>{post.content}</p>
                         <span className={`text-xs ${post.is_approved ? "text-green-500" : "text-yellow-500"}`}>
                           {post.is_approved ? "Approved" : "Pending"}
@@ -262,11 +322,13 @@ export const ServicePanel = ({ open, onOpenChange }: ServicePanelProps) => {
               <TabsContent value="bans" className="flex-1 overflow-hidden">
                 <ScrollArea className="h-full">
                   <div className="space-y-1 pr-4">
-                    {targetBans.map(ban => (
+                    {targetBans.map((ban) => (
                       <div key={ban.id} className="text-sm p-2 bg-secondary/30 rounded">
                         <div className="flex justify-between">
                           <span>{ban.hours}h ban</span>
-                          <span className={`text-xs ${new Date(ban.expires_at) > new Date() ? "text-red-500" : "text-muted-foreground"}`}>
+                          <span
+                            className={`text-xs ${new Date(ban.expires_at) > new Date() ? "text-red-500" : "text-muted-foreground"}`}
+                          >
                             {new Date(ban.expires_at) > new Date() ? "ACTIVE" : "Expired"}
                           </span>
                         </div>
@@ -283,7 +345,7 @@ export const ServicePanel = ({ open, onOpenChange }: ServicePanelProps) => {
                   <p className="text-xs text-muted-foreground">Toggle game modes globally</p>
                   {targetGameSettings && (
                     <>
-                      {["solo", "multiplayer", "boss", "school", "ranked"].map(mode => {
+                      {["solo", "multiplayer", "boss", "school", "ranked"].map((mode) => {
                         const key = `${mode}_disabled` as keyof typeof targetGameSettings;
                         const isDisabled = targetGameSettings[key] || false;
                         return (
@@ -293,7 +355,10 @@ export const ServicePanel = ({ open, onOpenChange }: ServicePanelProps) => {
                               <span className={`text-xs ${isDisabled ? "text-red-500" : "text-green-500"}`}>
                                 {isDisabled ? "Disabled" : "Enabled"}
                               </span>
-                              <Switch checked={!isDisabled} onCheckedChange={(checked) => toggleModeForUser(mode, !checked)} />
+                              <Switch
+                                checked={!isDisabled}
+                                onCheckedChange={(checked) => toggleModeForUser(mode, !checked)}
+                              />
                             </div>
                           </Card>
                         );

@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      abuse_requests: {
+        Row: {
+          created_at: string
+          duration_minutes: number
+          event_type: string
+          id: string
+          reason: string | null
+          requested_date: string
+          requested_time: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number
+          event_type: string
+          id?: string
+          reason?: string | null
+          requested_date: string
+          requested_time: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number
+          event_type?: string
+          id?: string
+          reason?: string | null
+          requested_date?: string
+          requested_time?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
       active_players: {
         Row: {
           created_at: string

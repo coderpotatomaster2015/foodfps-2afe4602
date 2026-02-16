@@ -9,6 +9,7 @@ import { Auth } from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import OwnerPage from "./pages/OwnerPage";
 import Hacks from "./pages/Hacks";
+import AdminAccountViewer from "./pages/AdminAccountViewer";
 import { BanCheck } from "./components/BanCheck";
 import { SEOHead, StructuredData } from "./components/SEOHead";
 import { toast } from "sonner";
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/ownerpage" element={<OwnerPage />} />
               <Route path="/hacks" element={<Hacks />} />
+              <Route path="/userishackingorbanned" element={<AdminAccountViewer />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

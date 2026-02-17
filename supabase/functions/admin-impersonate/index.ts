@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -25,7 +25,7 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // First verify admin credentials using anon client
+    // Verify admin credentials
     const anonClient = createClient(supabaseUrl, anonKey);
     const { data: authData, error: authError } = await anonClient.auth.signInWithPassword({
       email: adminEmail,
@@ -39,7 +39,7 @@ serve(async (req) => {
       );
     }
 
-    // Use service role to check if the authenticated user is admin/owner
+    // Check admin/owner role using service role client
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const { data: roles } = await adminClient
       .from("user_roles")
@@ -57,7 +57,7 @@ serve(async (req) => {
     // Find target user by username
     const { data: targetProfile } = await adminClient
       .from("profiles")
-      .select("user_id")
+      .select("user_id, username")
       .ilike("username", targetUsername)
       .maybeSingle();
 
@@ -68,7 +68,7 @@ serve(async (req) => {
       );
     }
 
-    // Get target user's email from auth
+    // Get target user's email
     const { data: targetUser, error: getUserError } = await adminClient.auth.admin.getUserById(
       targetProfile.user_id
     );
@@ -94,24 +94,11 @@ serve(async (req) => {
       );
     }
 
-    // Extract the token hash from the action link
-    const actionLink = linkData.properties?.action_link;
-    if (!actionLink) {
-      return new Response(
-        JSON.stringify({ error: "No action link generated" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const url = new URL(actionLink);
-    const tokenHash = url.searchParams.get("token") || url.hash?.split("token=")[1]?.split("&")[0];
-
-    // Return the token hash and email so the client can verify OTP
     return new Response(
       JSON.stringify({
         token_hash: linkData.properties?.hashed_token,
         email: targetUser.user.email,
-        username: targetUsername,
+        username: targetProfile.username,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

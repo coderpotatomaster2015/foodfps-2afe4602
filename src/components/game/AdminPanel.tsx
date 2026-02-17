@@ -132,6 +132,7 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [broadcastExpiry, setBroadcastExpiry] = useState("60");
+  const [broadcastTargetUsername, setBroadcastTargetUsername] = useState("");
 
   // Admin abuse modal
   const [abuseModalOpen, setAbuseModalOpen] = useState(false);
@@ -667,18 +668,40 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + parseInt(broadcastExpiry));
 
+    let targetUserId: string | null = null;
+    let targetUsername: string | null = null;
+
+    // If targeting a specific user, look them up
+    if (broadcastTargetUsername.trim()) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("user_id, username")
+        .ilike("username", broadcastTargetUsername.trim())
+        .maybeSingle();
+
+      if (!profile) {
+        toast.error("User not found: " + broadcastTargetUsername.trim());
+        return;
+      }
+      targetUserId = profile.user_id;
+      targetUsername = profile.username;
+    }
+
     const { error } = await supabase.from("broadcasts").insert({
       message: broadcastMessage,
       created_by: user.id,
       expires_at: expiresAt.toISOString(),
-    });
+      target_user_id: targetUserId,
+      target_username: targetUsername,
+    } as any);
 
     if (error) {
       toast.error("Failed to send broadcast");
     } else {
-      toast.success("Broadcast sent to all players!");
+      toast.success(targetUsername ? `Broadcast sent to ${targetUsername}!` : "Broadcast sent to all players!");
       setBroadcastModalOpen(false);
       setBroadcastMessage("");
+      setBroadcastTargetUsername("");
     }
   };
 
@@ -1640,8 +1663,16 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              This message will be shown to all active players instantly.
+              Send to all players or target a specific user.
             </p>
+            <div className="space-y-2">
+              <Label>Target User (leave blank for all)</Label>
+              <Input
+                value={broadcastTargetUsername}
+                onChange={(e) => setBroadcastTargetUsername(e.target.value)}
+                placeholder="Username (optional - blank = everyone)"
+              />
+            </div>
             <div className="space-y-2">
               <Label>Message</Label>
               <Textarea
@@ -1664,7 +1695,7 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
             <div className="flex gap-2">
               <Button className="flex-1" onClick={sendBroadcast}>
                 <Megaphone className="w-4 h-4 mr-2" />
-                Send Broadcast
+                {broadcastTargetUsername.trim() ? "Send to User" : "Send to All"}
               </Button>
               <Button variant="outline" className="flex-1" onClick={() => setBroadcastModalOpen(false)}>
                 Cancel

@@ -102,6 +102,10 @@ const AdminAccountViewer = () => {
         return;
       }
 
+      // Mark that we're impersonating
+      localStorage.setItem("admin_impersonating", "true");
+      localStorage.setItem("admin_impersonating_username", data.username);
+
       toast.success(`Logged in as ${data.username}! Redirecting...`);
       
       // Small delay so the toast is visible, then redirect to main app

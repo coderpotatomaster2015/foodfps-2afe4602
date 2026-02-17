@@ -56,7 +56,7 @@ export const useGameStatus = (userId: string | null) => {
         }
       }
 
-      // Check active broadcasts - get all active ones
+      // Check active broadcasts - get global ones + targeted to this user
       const now = new Date().toISOString();
       const { data: broadcasts } = await supabase
         .from("broadcasts")
@@ -64,9 +64,14 @@ export const useGameStatus = (userId: string | null) => {
         .eq("is_active", true)
         .gt("expires_at", now)
         .order("created_at", { ascending: false })
-        .limit(1);
+        .limit(5);
 
-      const activeBroadcast = broadcasts && broadcasts.length > 0 ? broadcasts[0] : null;
+      // Filter: show global (no target) or targeted at current user
+      const relevantBroadcasts = broadcasts?.filter(
+        b => !(b as any).target_user_id || (b as any).target_user_id === userId
+      ) || [];
+
+      const activeBroadcast = relevantBroadcasts.length > 0 ? relevantBroadcasts[0] : null;
       
       // Show toast for new broadcasts (only once per broadcast)
       if (activeBroadcast && !shownBroadcastsRef.current.has(activeBroadcast.id)) {

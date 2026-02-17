@@ -38,6 +38,8 @@ import { PlayerProfileModal } from "@/components/game/PlayerProfileModal";
 import { InventoryModal } from "@/components/game/InventoryModal";
 import { ShopModal } from "@/components/game/ShopModal";
 import { ServicePanel } from "@/components/game/ServicePanel";
+import { ImpersonationBanner } from "@/components/game/ImpersonationBanner";
+import { LoginStreakTracker } from "@/components/game/LoginStreakTracker";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
@@ -385,6 +387,8 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      {/* Impersonation Warning Banner */}
+      <ImpersonationBanner />
       {/* Left Sidebar for game tabs - hidden for class mode users */}
       {user && !gameMode && !isClassMode && (
         <GameSidebar
@@ -599,6 +603,11 @@ const Index = () => {
       />
       <ShopModal open={showItemShop} onOpenChange={setShowItemShop} />
       <ServicePanel open={showServicePanel} onOpenChange={setShowServicePanel} />
+      
+      {/* Login Streak Tracker - shows welcome back dialog */}
+      {user && username && !gameMode && (
+        <LoginStreakTracker userId={user.id} username={username} />
+      )}
       {/* Global Chat Modal */}
       {user && username && (
         <GlobalChatModal

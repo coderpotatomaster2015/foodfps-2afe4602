@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.moderate-post]
 verify_jwt = false
+
+[functions.admin-impersonate]
+verify_jwt = false

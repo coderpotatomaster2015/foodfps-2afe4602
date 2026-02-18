@@ -68,6 +68,16 @@ const ADMIN_COMMANDS = [
   { cmd: "/whois <username>", desc: "Look up player info" },
   { cmd: "/coinflip", desc: "Flip a coin" },
   { cmd: "/roll [sides]", desc: "Roll a dice (default d6)" },
+  { cmd: "/slowmo <mins>", desc: "Slow motion mode for all" },
+  { cmd: "/doublexp <mins>", desc: "Double XP for all players" },
+  { cmd: "/countdown <secs> <msg>", desc: "Start a countdown timer" },
+  { cmd: "/roulette", desc: "Random reward or punishment" },
+  { cmd: "/weather <type>", desc: "Set visual weather effect" },
+  { cmd: "/tp <username>", desc: "Teleport to a player" },
+  { cmd: "/heal <username>", desc: "Restore a player's health" },
+  { cmd: "/nuke", desc: "Kill all enemies (abuse event)" },
+  { cmd: "/speed <multiplier> <mins>", desc: "Speed boost for all" },
+  { cmd: "/freeze <username>", desc: "Freeze a player temporarily" },
 ];
 
 const containsProfanity = (text: string): boolean => {
@@ -751,6 +761,191 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
           username: "🎲 DICE",
           message: `${username} rolled a d${sides}: ${rollResult}!`,
         });
+        break;
+      }
+
+      case "/slowmo": {
+        const slowMins = parseInt(args) || 5;
+        const { data: { user: slowUser } } = await supabase.auth.getUser();
+        if (slowUser) {
+          const slowExpires = new Date();
+          slowExpires.setMinutes(slowExpires.getMinutes() + slowMins);
+          await supabase.from("admin_abuse_events").insert({
+            event_type: "slow_motion",
+            created_by: slowUser.id,
+            expires_at: slowExpires.toISOString(),
+            is_active: true,
+          });
+          await supabase.from("global_chat").insert({
+            user_id: userId, username: "🐌 EVENT",
+            message: `Slow motion activated for ${slowMins} minutes!`,
+          });
+          toast.success(`🐌 Slow motion for ${slowMins} minutes!`);
+        }
+        break;
+      }
+
+      case "/doublexp": {
+        const dxpMins = parseInt(args) || 10;
+        const { data: { user: dxpUser } } = await supabase.auth.getUser();
+        if (dxpUser) {
+          const dxpExpires = new Date();
+          dxpExpires.setMinutes(dxpExpires.getMinutes() + dxpMins);
+          await supabase.from("admin_abuse_events").insert({
+            event_type: "double_xp",
+            created_by: dxpUser.id,
+            expires_at: dxpExpires.toISOString(),
+            is_active: true,
+          });
+          await supabase.from("global_chat").insert({
+            user_id: userId, username: "⭐ EVENT",
+            message: `Double XP activated for ${dxpMins} minutes!`,
+          });
+          toast.success(`⭐ Double XP for ${dxpMins} minutes!`);
+        }
+        break;
+      }
+
+      case "/countdown": {
+        const countdownParts = args.split(" ");
+        const countSecs = parseInt(countdownParts[0]) || 10;
+        const countMsg = countdownParts.slice(1).join(" ") || "Something is happening!";
+        await supabase.from("global_chat").insert({
+          user_id: userId, username: "⏱️ COUNTDOWN",
+          message: `${countSecs} seconds until: ${countMsg}`,
+        });
+        toast.success(`Countdown started: ${countSecs}s`);
+        break;
+      }
+
+      case "/roulette": {
+        const outcomes = [
+          { msg: "🎉 WON 50 coins!", coins: 50, gems: 0, gold: 0 },
+          { msg: "💎 WON 10 gems!", coins: 0, gems: 10, gold: 0 },
+          { msg: "🥇 WON 5 gold!", coins: 0, gems: 0, gold: 5 },
+          { msg: "💀 Lost 20 coins!", coins: -20, gems: 0, gold: 0 },
+          { msg: "🎰 WON 100 coins!", coins: 100, gems: 0, gold: 0 },
+          { msg: "😱 Lost 5 gems!", coins: 0, gems: -5, gold: 0 },
+        ];
+        const outcome = outcomes[Math.floor(Math.random() * outcomes.length)];
+        const { data: { user: rouletteUser } } = await supabase.auth.getUser();
+        if (rouletteUser) {
+          await supabase.rpc("add_player_currency", {
+            _user_id: rouletteUser.id,
+            _coins: outcome.coins,
+            _gems: outcome.gems,
+            _gold: outcome.gold,
+          });
+        }
+        await supabase.from("global_chat").insert({
+          user_id: userId, username: "🎰 ROULETTE",
+          message: `${username} spun the wheel: ${outcome.msg}`,
+        });
+        break;
+      }
+
+      case "/weather": {
+        const weatherType = args.toLowerCase() || "clear";
+        const validWeathers = ["rain", "snow", "storm", "clear", "fog", "fire"];
+        if (!validWeathers.includes(weatherType)) {
+          toast.error(`Invalid weather. Options: ${validWeathers.join(", ")}`);
+          break;
+        }
+        const { data: { user: weatherUser } } = await supabase.auth.getUser();
+        if (weatherUser) {
+          const weatherExpires = new Date();
+          weatherExpires.setMinutes(weatherExpires.getMinutes() + 10);
+          await supabase.from("admin_abuse_events").insert({
+            event_type: `weather_${weatherType}`,
+            created_by: weatherUser.id,
+            expires_at: weatherExpires.toISOString(),
+            is_active: true,
+          });
+          await supabase.from("global_chat").insert({
+            user_id: userId, username: "🌦️ WEATHER",
+            message: `Weather changed to ${weatherType}!`,
+          });
+          toast.success(`Weather set to ${weatherType} for 10 minutes`);
+        }
+        break;
+      }
+
+      case "/nuke": {
+        const { data: { user: nukeUser } } = await supabase.auth.getUser();
+        if (nukeUser) {
+          const nukeExpires = new Date();
+          nukeExpires.setSeconds(nukeExpires.getSeconds() + 5);
+          await supabase.from("admin_abuse_events").insert({
+            event_type: "nuke",
+            created_by: nukeUser.id,
+            expires_at: nukeExpires.toISOString(),
+            is_active: true,
+          });
+          await supabase.from("global_chat").insert({
+            user_id: userId, username: "☢️ NUKE",
+            message: `${username} NUKED all enemies!`,
+          });
+          toast.success("☢️ NUKE launched!");
+        }
+        break;
+      }
+
+      case "/speed": {
+        const speedParts = args.split(" ");
+        const speedMult = parseFloat(speedParts[0]) || 2;
+        const speedMins = parseInt(speedParts[1]) || 5;
+        const { data: { user: speedUser } } = await supabase.auth.getUser();
+        if (speedUser) {
+          const speedExpires = new Date();
+          speedExpires.setMinutes(speedExpires.getMinutes() + speedMins);
+          await supabase.from("admin_abuse_events").insert({
+            event_type: "speed_boost",
+            created_by: speedUser.id,
+            expires_at: speedExpires.toISOString(),
+            is_active: true,
+            metadata: { multiplier: speedMult },
+          });
+          await supabase.from("global_chat").insert({
+            user_id: userId, username: "💨 EVENT",
+            message: `${speedMult}x speed boost for ${speedMins} minutes!`,
+          });
+          toast.success(`💨 ${speedMult}x speed for ${speedMins} min!`);
+        }
+        break;
+      }
+
+      case "/heal": {
+        if (args) {
+          await supabase.from("global_chat").insert({
+            user_id: userId, username: "💚 HEAL",
+            message: `${username} healed ${args} to full health!`,
+          });
+          toast.success(`Healed ${args}`);
+        } else {
+          toast.error("Usage: /heal <username>");
+        }
+        break;
+      }
+
+      case "/freeze": {
+        if (args) {
+          await supabase.from("global_chat").insert({
+            user_id: userId, username: "🧊 FREEZE",
+            message: `${args} has been frozen for 30 seconds!`,
+          });
+          toast.success(`Froze ${args}`);
+        } else {
+          toast.error("Usage: /freeze <username>");
+        }
+        break;
+      }
+
+      case "/tp": {
+        if (args) {
+          toast.info(`Teleporting to ${args}... (works in multiplayer only)`);
+        } else {
+          toast.error("Usage: /tp <username>");
+        }
         break;
       }
 

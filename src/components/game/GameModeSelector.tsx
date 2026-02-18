@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Users, User, Wifi, WifiOff, Skull, Timer, Trophy, Swords, Bot, GraduationCap, Lock, Heart, Biohazard, Target, Flag, Shield } from "lucide-react";
+import { Users, User, Wifi, WifiOff, Skull, Timer, Trophy, Swords, Bot, GraduationCap, Lock, Heart, Biohazard, Target, Flag, Shield, Mountain, Crosshair, UserCheck, Zap, Circle } from "lucide-react";
 import type { GameMode } from "@/pages/Index";
 import { openOfflineGame } from "@/utils/offlineGame";
 import { toast } from "sonner";
@@ -268,6 +268,92 @@ export const GameModeSelector = ({
               <h3 className="text-lg font-bold">CTF</h3>
               <p className="text-xs text-muted-foreground">
                 Capture 3 flags
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        {/* New Game Modes Row 2 */}
+        <Card 
+          className="p-4 bg-card border-border hover:border-amber-600 cursor-pointer group"
+          onClick={() => onModeSelect("koth")}
+        >
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-amber-600">
+              <Mountain className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">King of Hill</h3>
+              <p className="text-xs text-muted-foreground">
+                Hold the zone
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className="p-4 bg-card border-border hover:border-yellow-500 cursor-pointer group"
+          onClick={() => onModeSelect("gungame")}
+        >
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-yellow-500">
+              <Crosshair className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">Gun Game</h3>
+              <p className="text-xs text-muted-foreground">
+                Cycle weapons
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className="p-4 bg-card border-border hover:border-blue-500 cursor-pointer group"
+          onClick={() => onModeSelect("vip")}
+        >
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-blue-500">
+              <UserCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">Protect VIP</h3>
+              <p className="text-xs text-muted-foreground">
+                Guard the VIP
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className="p-4 bg-card border-border hover:border-rose-500 cursor-pointer group"
+          onClick={() => onModeSelect("lms")}
+        >
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-rose-500">
+              <Zap className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">Last Man</h3>
+              <p className="text-xs text-muted-foreground">
+                No respawns
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card 
+          className="p-4 bg-card border-border hover:border-lime-500 cursor-pointer group"
+          onClick={() => onModeSelect("dodgeball")}
+        >
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-lime-500">
+              <Circle className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">Dodgeball</h3>
+              <p className="text-xs text-muted-foreground">
+                Dodge & throw
               </p>
             </div>
           </div>

@@ -7,6 +7,9 @@ import { BossMode } from "@/components/game/BossMode";
 import { RankedMode } from "@/components/game/RankedMode";
 import { YouVsMeMode } from "@/components/game/YouVsMeMode";
 import { SchoolMode } from "@/components/game/SchoolMode";
+import { SurvivalMode } from "@/components/game/SurvivalMode";
+import { ZombieMode } from "@/components/game/ZombieMode";
+import { ArenaDeathmatch } from "@/components/game/ArenaDeathmatch";
 import { Lobby } from "@/components/game/Lobby";
 import { TimedLobby } from "@/components/game/TimedLobby";
 import { TimedGameCanvas } from "@/components/game/TimedGameCanvas";
@@ -504,7 +507,7 @@ const Index = () => {
       )}
 
       {/* Standard Game - Solo, Offline, or standard multiplayer, or new modes */}
-      {(isInGame || gameMode === "solo" || gameMode === "offline" || gameMode === "survival" || gameMode === "zombie" || gameMode === "arena" || gameMode === "infection" || gameMode === "ctf" || gameMode === "koth" || gameMode === "gungame" || gameMode === "vip" || gameMode === "lms" || gameMode === "dodgeball") && gameMode !== "boss" && gameMode !== "timed-host" && (
+      {(isInGame || gameMode === "solo" || gameMode === "offline" || gameMode === "infection" || gameMode === "ctf" || gameMode === "koth" || gameMode === "gungame" || gameMode === "vip" || gameMode === "lms" || gameMode === "dodgeball") && gameMode !== "boss" && gameMode !== "timed-host" && gameMode !== "survival" && gameMode !== "zombie" && gameMode !== "arena" && (
         <GameCanvas 
           mode={gameMode as Exclude<GameMode, null | "boss" | "timed-host" | "timed-join">} 
           username={username} 
@@ -514,6 +517,16 @@ const Index = () => {
           touchscreenMode={touchscreenMode}
           playerSkin={currentSkin}
         />
+      )}
+
+      {gameMode === "survival" && (
+        <SurvivalMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
+      )}
+      {gameMode === "zombie" && (
+        <ZombieMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
+      )}
+      {gameMode === "arena" && (
+        <ArenaDeathmatch username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
       )}
 
       {/* Timed Match Game */}

@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Backpack, Zap, Heart, Swords, Check, Package, X, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getPowerDescription } from "@/components/game/powerUtils";
 
 interface InventoryModalProps {
   open: boolean;
@@ -33,14 +34,6 @@ interface LoadoutSlots {
   equipped_power: string | null;
 }
 
-const POWER_DESCRIPTIONS: Record<string, string> = {
-  teleport: "Press SHIFT to teleport forward (3s cooldown)",
-  double_damage: "Deal 2x damage with all weapons",
-  speed: "30% movement speed increase",
-  shield: "Start with 125 HP instead of 100",
-  slow_motion: "Enemies move 50% slower near you",
-  invisibility: "Enemies have reduced accuracy targeting you",
-};
 
 const WEAPON_DESCRIPTIONS: Record<string, string> = {
   pistol: "Standard sidearm - 40 damage, moderate fire rate",
@@ -460,7 +453,7 @@ export const InventoryModal = ({ open, onOpenChange, onEquipPower, onEquipWeapon
                           <div>
                             <h4 className="font-medium capitalize">{item.item_id.replace(/_/g, " ")}</h4>
                             <p className="text-xs text-muted-foreground">
-                              {POWER_DESCRIPTIONS[item.item_id]}
+                              {getPowerDescription(item.item_id)}
                             </p>
                           </div>
                         </div>

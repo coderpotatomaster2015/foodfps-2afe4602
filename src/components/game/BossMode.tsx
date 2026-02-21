@@ -6,6 +6,7 @@ import { TouchControls } from "./TouchControls";
 import type { GameMode } from "@/pages/Index";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { hasPowerEffect } from "@/components/game/powerUtils";
 
 interface BossModeProps {
   username: string;
@@ -197,7 +198,7 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
     const equippedPower = localStorage.getItem("equippedPower");
     if (equippedPower) {
       specialPowerRef.current = equippedPower;
-      if (equippedPower === "shield" && playerRef.current) {
+      if (hasPowerEffect(equippedPower, "shield") && playerRef.current) {
         playerRef.current.hp = 125;
         playerRef.current.maxHp = 125;
         setHealth(125);
@@ -313,7 +314,7 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
       }
       
       // Handle teleport power with SHIFT key
-      if (e.key.toLowerCase() === "shift" && specialPowerRef.current === "teleport") {
+      if (e.key.toLowerCase() === "shift" && hasPowerEffect(specialPowerRef.current, "teleport")) {
         const now = performance.now();
         if (!teleportCooldownRef.current || now - teleportCooldownRef.current >= 3000) {
           teleportCooldownRef.current = now;
@@ -461,7 +462,7 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
       if (dx !== 0 || dy !== 0) {
         const len = Math.hypot(dx, dy);
         let speedMultiplier = adminStateRef.current.speedMultiplier;
-        if (specialPowerRef.current === "speed") speedMultiplier *= 1.3;
+        if (hasPowerEffect(specialPowerRef.current, "speed")) speedMultiplier *= 1.3;
         player.x = Math.max(20, Math.min(W - 20, player.x + dx * player.speed * speedMultiplier * dt));
         player.y = Math.max(20, Math.min(H - 20, player.y + dy * player.speed * speedMultiplier * dt));
       }
@@ -487,7 +488,7 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
             vy: Math.sin(finalAngle) * weapon.bulletSpeed,
             r: 8,
             life: 2.5,
-            dmg: weapon.damage * (specialPowerRef.current === "double_damage" ? 2 : 1),
+            dmg: weapon.damage * (hasPowerEffect(specialPowerRef.current, "double_damage") ? 2 : 1),
             color: weapon.color,
           });
         }

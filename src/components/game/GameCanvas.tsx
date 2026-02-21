@@ -11,7 +11,6 @@ import type { GameMode } from "@/pages/Index";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useMultiplayer } from "@/hooks/useMultiplayer";
-import { hasPowerEffect } from "@/components/game/powerUtils";
 
 interface GameCanvasProps {
   mode: Exclude<GameMode, null | "boss">;
@@ -117,7 +116,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       if (equippedPower) {
         specialPowerRef.current = equippedPower;
         
-        if (hasPowerEffect(equippedPower, "shield") && playerRef.current) {
+        if (equippedPower === "shield" && playerRef.current) {
           playerRef.current.hp = 125;
           playerRef.current.maxHp = 125;
           setHealth(125);
@@ -129,7 +128,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           const parsed = JSON.parse(customSkinData);
           specialPowerRef.current = parsed.specialPower || null;
           
-          if (hasPowerEffect(parsed.specialPower, "shield") && playerRef.current) {
+          if (parsed.specialPower === "shield" && playerRef.current) {
             playerRef.current.hp = 125;
             playerRef.current.maxHp = 125;
             setHealth(125);
@@ -741,7 +740,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
             
             if (dist <= meleeRange && angleDiff < 0.5) {
               // Apply double damage power
-              const damageMultiplier = hasPowerEffect(specialPowerRef.current, "double_damage") ? 2 : 1;
+              const damageMultiplier = specialPowerRef.current === "double_damage" ? 2 : 1;
               e.hp -= weapon.damage * damageMultiplier;
               e.stun = 0.6;
               spawnParticles(e.x, e.y, weapon.color, 12);
@@ -782,7 +781,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           const finalAngle = ang + rand(-spread, spread);
           const speed = weapon.bulletSpeed;
           // Apply double damage power to bullets
-          const damageMultiplier = hasPowerEffect(specialPowerRef.current, "double_damage") ? 2 : 1;
+          const damageMultiplier = specialPowerRef.current === "double_damage" ? 2 : 1;
           const newBullet = {
             x: player.x + Math.cos(ang) * player.r * 1.6,
             y: player.y + Math.sin(ang) * player.r * 1.6,
@@ -821,7 +820,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       }
       
       // Handle teleport power with SHIFT key
-      if (e.key.toLowerCase() === "shift" && hasPowerEffect(specialPowerRef.current, "teleport")) {
+      if (e.key.toLowerCase() === "shift" && specialPowerRef.current === "teleport") {
         const now = performance.now();
         if (now - teleportCooldownRef.current >= 3000) { // 3 second cooldown
           teleportCooldownRef.current = now;
@@ -956,7 +955,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         let speedMultiplier = adminStateRef.current.speedMultiplier;
         
         // Apply speed boost power (+30%)
-        if (hasPowerEffect(specialPowerRef.current, "speed")) {
+        if (specialPowerRef.current === "speed") {
           speedMultiplier *= 1.3;
         }
         

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Users, User, Wifi, WifiOff, Skull, Timer, Trophy, Swords, Bot, GraduationCap, Lock, Heart, Biohazard, Target, Flag, Shield, Mountain, Crosshair, UserCheck, Zap, Circle } from "lucide-react";
+import { Users, User, Wifi, WifiOff, Skull, Timer, Trophy, Swords, Bot, GraduationCap, Lock, Heart, Biohazard, Target, Flag, Shield, Mountain, Crosshair, UserCheck, Zap, Circle, Gauge, Crown, Ghost, FlipHorizontal, Orbit, Sparkles, Droplets, Snowflake, Dumbbell } from "lucide-react";
 import type { GameMode } from "@/pages/Index";
 import { openOfflineGame } from "@/utils/offlineGame";
 import { toast } from "sonner";
@@ -356,6 +356,78 @@ export const GameModeSelector = ({
                 Dodge & throw
               </p>
             </div>
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-card border-border hover:border-indigo-500 cursor-pointer group" onClick={() => onModeSelect("blitz")}>
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-indigo-500">
+              <Gauge className="w-5 h-5" />
+            </div>
+            <div><h3 className="text-lg font-bold">Blitz Rush</h3><p className="text-xs text-muted-foreground">Fast, short bursts</p></div>
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-card border-border hover:border-amber-500 cursor-pointer group" onClick={() => onModeSelect("juggernaut")}>
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-amber-500"><Crown className="w-5 h-5" /></div>
+            <div><h3 className="text-lg font-bold">Juggernaut</h3><p className="text-xs text-muted-foreground">Tank build survival</p></div>
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-card border-border hover:border-violet-500 cursor-pointer group" onClick={() => onModeSelect("stealth")}>
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-violet-500"><Ghost className="w-5 h-5" /></div>
+            <div><h3 className="text-lg font-bold">Stealth Ops</h3><p className="text-xs text-muted-foreground">Hard hits, low profile</p></div>
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-card border-border hover:border-sky-500 cursor-pointer group" onClick={() => onModeSelect("mirror")}>
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-sky-500"><FlipHorizontal className="w-5 h-5" /></div>
+            <div><h3 className="text-lg font-bold">Mirror Shift</h3><p className="text-xs text-muted-foreground">Flipped controls</p></div>
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-card border-border hover:border-cyan-600 cursor-pointer group" onClick={() => onModeSelect("lowgrav")}>
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-cyan-600"><Orbit className="w-5 h-5" /></div>
+            <div><h3 className="text-lg font-bold">Low Gravity</h3><p className="text-xs text-muted-foreground">Wide movement arcs</p></div>
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-card border-border hover:border-fuchsia-500 cursor-pointer group" onClick={() => onModeSelect("chaos")}>
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-fuchsia-500"><Sparkles className="w-5 h-5" /></div>
+            <div><h3 className="text-lg font-bold">Chaos Lab</h3><p className="text-xs text-muted-foreground">Unpredictable waves</p></div>
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-card border-border hover:border-red-600 cursor-pointer group" onClick={() => onModeSelect("headhunter")}>
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-red-600"><Crosshair className="w-5 h-5" /></div>
+            <div><h3 className="text-lg font-bold">Headhunter</h3><p className="text-xs text-muted-foreground">Precision damage bonus</p></div>
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-card border-border hover:border-rose-600 cursor-pointer group" onClick={() => onModeSelect("vampire")}>
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-rose-600"><Droplets className="w-5 h-5" /></div>
+            <div><h3 className="text-lg font-bold">Vampire</h3><p className="text-xs text-muted-foreground">Drain health on kills</p></div>
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-card border-border hover:border-blue-300 cursor-pointer group" onClick={() => onModeSelect("frostbite")}>
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-blue-300"><Snowflake className="w-5 h-5" /></div>
+            <div><h3 className="text-lg font-bold">Frostbite</h3><p className="text-xs text-muted-foreground">Slow enemies</p></div>
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-card border-border hover:border-slate-500 cursor-pointer group" onClick={() => onModeSelect("titan")}>
+          <div className="space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center transition-all group-hover:bg-slate-500"><Dumbbell className="w-5 h-5" /></div>
+            <div><h3 className="text-lg font-bold">Titan Arena</h3><p className="text-xs text-muted-foreground">Big units, big hits</p></div>
           </div>
         </Card>
       </div>

@@ -58,7 +58,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { applyRainbowToDocument, removeRainbowFromDocument } from "@/utils/rainbowEffect";
 
-export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | "youvsme" | "school" | "survival" | "zombie" | "arena" | "infection" | "ctf" | "koth" | "gungame" | "vip" | "lms" | "dodgeball" | null;
+export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | "youvsme" | "school" | "survival" | "zombie" | "arena" | "infection" | "ctf" | "koth" | "gungame" | "vip" | "lms" | "dodgeball" | "blitz" | "juggernaut" | "stealth" | "mirror" | "lowgrav" | "chaos" | "headhunter" | "vampire" | "frostbite" | "titan" | null;
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -395,6 +395,8 @@ const Index = () => {
     localStorage.setItem("foodfps_touchscreen", String(enabled));
   };
 
+  const soloBasedModes: GameMode[] = ["solo", "offline", "blitz", "juggernaut", "stealth", "mirror", "lowgrav", "chaos", "headhunter", "vampire", "frostbite", "titan"];
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       {/* Impersonation Warning Banner */}
@@ -514,7 +516,7 @@ const Index = () => {
       )}
 
       {/* Standard Game - Solo, Offline, or standard multiplayer */}
-      {(isInGame || gameMode === "solo" || gameMode === "offline") && gameMode !== "boss" && gameMode !== "timed-host" && gameMode !== "survival" && gameMode !== "zombie" && gameMode !== "arena" && gameMode !== "infection" && gameMode !== "ctf" && gameMode !== "koth" && gameMode !== "gungame" && gameMode !== "vip" && gameMode !== "lms" && gameMode !== "dodgeball" && (
+      {((isInGame && !soloBasedModes.includes(gameMode)) || (!!gameMode && soloBasedModes.includes(gameMode))) && gameMode !== "boss" && gameMode !== "timed-host" && gameMode !== "survival" && gameMode !== "zombie" && gameMode !== "arena" && gameMode !== "infection" && gameMode !== "ctf" && gameMode !== "koth" && gameMode !== "gungame" && gameMode !== "vip" && gameMode !== "lms" && gameMode !== "dodgeball" && (
         <GameCanvas 
           mode={gameMode as Exclude<GameMode, null | "boss" | "timed-host" | "timed-join">} 
           username={username} 

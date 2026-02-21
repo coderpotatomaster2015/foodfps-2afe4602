@@ -71,6 +71,52 @@ const WEAPONS: Record<Weapon, WeaponConfig> = {
 
 const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "rifle", "sniper", "smg", "knife", "rpg", "axe", "flamethrower", "minigun", "railgun", "crossbow", "laser_pistol", "grenade_launcher", "katana", "dual_pistols", "plasma_rifle", "boomerang", "whip", "freeze_ray", "harpoon_gun"];
 
+
+type CustomSoloMode = "blitz" | "juggernaut" | "stealth" | "mirror" | "lowgrav" | "chaos" | "headhunter" | "vampire" | "frostbite" | "titan";
+
+interface SoloVariantConfig {
+  label: string;
+  enemyColor: string;
+  bgTop: string;
+  bgBottom: string;
+  playerSpeedMult: number;
+  enemySpeedMult: number;
+  enemyHpMult: number;
+  spawnInterval: number;
+  playerRadius: number;
+  enemyRadius: number;
+  scoreMult: number;
+  pickupChance: number;
+  bulletSpeedMult: number;
+  lifeSteal?: number;
+  reverseControls?: boolean;
+  enemyBulletSlow?: boolean;
+}
+
+const SOLO_MODE_VARIANTS: Record<CustomSoloMode, SoloVariantConfig> = {
+  blitz: { label: "BLITZ RUSH", enemyColor: "#7C3AED", bgTop: "#09051a", bgBottom: "#1f1148", playerSpeedMult: 1.28, enemySpeedMult: 1.2, enemyHpMult: 0.85, spawnInterval: 1.1, playerRadius: 13, enemyRadius: 15, scoreMult: 1.4, pickupChance: 0.45, bulletSpeedMult: 1.2 },
+  juggernaut: { label: "JUGGERNAUT", enemyColor: "#F59E0B", bgTop: "#141008", bgBottom: "#3d2a06", playerSpeedMult: 0.88, enemySpeedMult: 0.92, enemyHpMult: 1.45, spawnInterval: 2.4, playerRadius: 18, enemyRadius: 18, scoreMult: 1.5, pickupChance: 0.4, bulletSpeedMult: 0.95 },
+  stealth: { label: "STEALTH OPS", enemyColor: "#A78BFA", bgTop: "#080b15", bgBottom: "#151a28", playerSpeedMult: 1.15, enemySpeedMult: 1.1, enemyHpMult: 0.8, spawnInterval: 1.7, playerRadius: 11, enemyRadius: 14, scoreMult: 1.35, pickupChance: 0.35, bulletSpeedMult: 1.12 },
+  mirror: { label: "MIRROR SHIFT", enemyColor: "#0EA5E9", bgTop: "#04111a", bgBottom: "#0f3650", playerSpeedMult: 1, enemySpeedMult: 1.05, enemyHpMult: 1, spawnInterval: 1.8, playerRadius: 14, enemyRadius: 16, scoreMult: 1.25, pickupChance: 0.35, bulletSpeedMult: 1.05, reverseControls: true },
+  lowgrav: { label: "LOW GRAVITY", enemyColor: "#22D3EE", bgTop: "#081826", bgBottom: "#113b52", playerSpeedMult: 1.22, enemySpeedMult: 0.9, enemyHpMult: 0.95, spawnInterval: 1.6, playerRadius: 12, enemyRadius: 15, scoreMult: 1.3, pickupChance: 0.42, bulletSpeedMult: 1.35 },
+  chaos: { label: "CHAOS LAB", enemyColor: "#E879F9", bgTop: "#1c0620", bgBottom: "#3e0d53", playerSpeedMult: 1.05, enemySpeedMult: 1.32, enemyHpMult: 1.2, spawnInterval: 0.95, playerRadius: 14, enemyRadius: 17, scoreMult: 1.7, pickupChance: 0.5, bulletSpeedMult: 1.08 },
+  headhunter: { label: "HEADHUNTER", enemyColor: "#EF4444", bgTop: "#180607", bgBottom: "#4a0f12", playerSpeedMult: 0.98, enemySpeedMult: 1.05, enemyHpMult: 1.1, spawnInterval: 1.55, playerRadius: 13, enemyRadius: 16, scoreMult: 1.6, pickupChance: 0.3, bulletSpeedMult: 1.25 },
+  vampire: { label: "VAMPIRE", enemyColor: "#FB7185", bgTop: "#1b070d", bgBottom: "#4a1220", playerSpeedMult: 1.03, enemySpeedMult: 1.1, enemyHpMult: 1.05, spawnInterval: 1.5, playerRadius: 13, enemyRadius: 16, scoreMult: 1.45, pickupChance: 0.3, bulletSpeedMult: 1.08, lifeSteal: 8 },
+  frostbite: { label: "FROSTBITE", enemyColor: "#93C5FD", bgTop: "#071322", bgBottom: "#1b4365", playerSpeedMult: 0.95, enemySpeedMult: 0.8, enemyHpMult: 1.18, spawnInterval: 2.1, playerRadius: 14, enemyRadius: 17, scoreMult: 1.3, pickupChance: 0.38, bulletSpeedMult: 0.95, enemyBulletSlow: true },
+  titan: { label: "TITAN ARENA", enemyColor: "#94A3B8", bgTop: "#0f1115", bgBottom: "#27313d", playerSpeedMult: 0.86, enemySpeedMult: 0.88, enemyHpMult: 1.65, spawnInterval: 2.45, playerRadius: 20, enemyRadius: 22, scoreMult: 1.8, pickupChance: 0.45, bulletSpeedMult: 0.9 },
+};
+
+const getDeviceProfile = () => {
+  const ua = navigator.userAgent.toLowerCase();
+  const isTouch = navigator.maxTouchPoints > 0;
+  const isTablet = /(ipad|tablet|android(?!.*mobile))/i.test(ua) || (isTouch && Math.min(window.innerWidth, window.innerHeight) >= 700);
+  const isMobile = /(iphone|ipod|android.*mobile)/i.test(ua) || (isTouch && Math.max(window.innerWidth, window.innerHeight) < 900);
+
+  if (isTablet) return { name: "tablet", canvasWidth: 1100, canvasHeight: 700, hudScale: 1.1, iconSize: 18 };
+  if (isMobile) return { name: "mobile", canvasWidth: 820, canvasHeight: 520, hudScale: 0.9, iconSize: 14 };
+  return { name: "desktop", canvasWidth: 960, canvasHeight: 640, hudScale: 1, iconSize: 16 };
+};
+
 export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents = [], touchscreenMode = false, playerSkin = "#FFF3D6" }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
@@ -91,6 +137,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const [deaths, setDeaths] = useState(0);
   const [hasPermission, setHasPermission] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [deviceProfile, setDeviceProfile] = useState(getDeviceProfile());
   const touchMoveRef = useRef({ x: 0, y: 0 });
   const touchAimRef = useRef({ x: 480, y: 320 });
   const touchShootingRef = useRef(false);
@@ -106,6 +153,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const teleportCooldownRef = useRef(0);
   
   const { players, updatePlayerPosition, broadcastBullet, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode } = useMultiplayer(mode, roomCode, username);
+  const soloVariant = SOLO_MODE_VARIANTS[mode as CustomSoloMode];
   const { startRecording, stopRecording, isRecording } = useCanvasRecording(username, mode);
 
   // Load special power from localStorage - check both equippedPower and selectedCustomSkin
@@ -145,10 +193,11 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     checkPermissions();
   }, []);
 
-  // Mobile detection
+  // Mobile + device profile detection
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile('ontouchstart' in window || navigator.maxTouchPoints > 0);
+      setDeviceProfile(getDeviceProfile());
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -610,6 +659,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    canvas.width = deviceProfile.canvasWidth;
+    canvas.height = deviceProfile.canvasHeight;
     let W = canvas.width;
     let H = canvas.height;
     gameStateRef.current.W = W;
@@ -634,8 +685,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     const player = {
       x: W / 2,
       y: H / 2,
-      r: 14,
-      speed: 180,
+      r: soloVariant?.playerRadius ?? 14,
+      speed: 180 * (soloVariant?.playerSpeedMult ?? 1),
       angle: 0,
       weapon: "pistol" as Weapon,
       lastShot: -1,
@@ -656,7 +707,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     let particles: any[] = [];
     let time = 0;
     let lastSpawn = 0;
-    let enemySpawnInterval = mode === "zombie" ? 1.0 : mode === "survival" ? 2.5 : mode === "infection" ? 3.0 : 2.0;
+    let enemySpawnInterval = soloVariant?.spawnInterval ?? (mode === "zombie" ? 1.0 : mode === "survival" ? 2.5 : mode === "infection" ? 3.0 : 2.0);
     let waveNumber = 1;
     let waveEnemiesRemaining = 0;
     let arenaKillTarget = 25;
@@ -677,20 +728,17 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     };
 
     const getEnemyHp = () => {
-      if (mode === "survival") return 60 + waveNumber * 15;
-      if (mode === "zombie") return 40;
-      if (mode === "infection") return 80;
-      return 60;
+      const baseHp = mode === "survival" ? 60 + waveNumber * 15 : mode === "zombie" ? 40 : mode === "infection" ? 80 : 60;
+      return baseHp * (soloVariant?.enemyHpMult ?? 1);
     };
 
     const getEnemySpeed = () => {
-      if (mode === "zombie") return rand(20, 50);
-      if (mode === "survival") return rand(40 + waveNumber * 3, 80 + waveNumber * 5);
-      if (mode === "infection") return rand(50, 90);
-      return rand(40, 80);
+      const baseSpeed = mode === "zombie" ? rand(20, 50) : mode === "survival" ? rand(40 + waveNumber * 3, 80 + waveNumber * 5) : mode === "infection" ? rand(50, 90) : rand(40, 80);
+      return baseSpeed * (soloVariant?.enemySpeedMult ?? 1);
     };
 
     const getEnemyColor = () => {
+      if (soloVariant) return soloVariant.enemyColor;
       if (mode === "zombie") return "#4CAF50";
       if (mode === "infection") return "#9C27B0";
       if (mode === "ctf") return "#2196F3";
@@ -707,7 +755,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       else { x = W * mult + 30; y = rand(-40 * mult, H * mult + 40); }
       const enemyId = `enemy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const canShoot = mode !== "zombie";
-      enemies.push({ id: enemyId, x, y, r: mode === "zombie" ? 18 : 16, speed: getEnemySpeed(), hp: getEnemyHp(), color: getEnemyColor(), stun: 0, lastHit: 0, lastShot: canShoot ? -1 : 99999 });
+      enemies.push({ id: enemyId, x, y, r: soloVariant?.enemyRadius ?? (mode === "zombie" ? 18 : 16), speed: getEnemySpeed(), hp: getEnemyHp(), color: getEnemyColor(), stun: 0, lastHit: 0, lastShot: canShoot ? -1 : 99999 });
     };
 
     const spawnPickup = () => {
@@ -747,12 +795,16 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
               if (e.hp <= 0) {
                 spawnParticles(e.x, e.y, "#FF6B6B", 20);
                 setScore(prev => {
-                  const newScore = prev + 10;
+                  const newScore = prev + Math.round(10 * (soloVariant?.scoreMult ?? 1));
                   player.score = newScore;
                   return newScore;
                 });
                 setKills(prev => prev + 1);
-                if (Math.random() < 0.35) pickups.push({ x: e.x, y: e.y, r: 10, amt: 2, ttl: 18 });
+                if (Math.random() < (soloVariant?.pickupChance ?? 0.35)) pickups.push({ x: e.x, y: e.y, r: 10, amt: 2, ttl: 18 });
+                if (soloVariant?.lifeSteal && player.hp > 0) {
+                  player.hp = Math.min(player.maxHp, player.hp + soloVariant.lifeSteal);
+                  setHealth(player.hp);
+                }
                 // Broadcast enemy kill in coop mode
                 if (isMultiplayerCoopMelee && e.id) {
                   broadcastEnemyKilled(e.id, username);
@@ -779,7 +831,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           const ang = player.angle;
           const spread = weapon.spread * (Math.PI / 180);
           const finalAngle = ang + rand(-spread, spread);
-          const speed = weapon.bulletSpeed;
+          const speed = weapon.bulletSpeed * (soloVariant?.bulletSpeedMult ?? 1);
           // Apply double damage power to bullets
           const damageMultiplier = specialPowerRef.current === "double_damage" ? 2 : 1;
           const newBullet = {
@@ -945,6 +997,11 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         if (keys["a"] || keys["arrowleft"]) dx -= 1;
         if (keys["d"] || keys["arrowright"]) dx += 1;
       }
+
+      if (soloVariant?.reverseControls) {
+        dx *= -1;
+        dy *= -1;
+      }
       
       player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
 
@@ -1098,11 +1155,12 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         if (d < 350 && time - e.lastShot >= 3.5) {
           e.lastShot = time;
           const ang = Math.atan2(player.y - e.y, player.x - e.x);
+          const enemyBulletSpeed = soloVariant?.enemyBulletSlow ? 140 : 200;
           enemyBullets.push({
             x: e.x,
             y: e.y,
-            vx: Math.cos(ang) * 200,
-            vy: Math.sin(ang) * 200,
+            vx: Math.cos(ang) * enemyBulletSpeed,
+            vy: Math.sin(ang) * enemyBulletSpeed,
             r: 6,
             life: 3,
             dmg: 10,
@@ -1233,6 +1291,12 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       // Draw
       ctx.clearRect(0, 0, W, H);
 
+      const bgGradient = ctx.createLinearGradient(0, 0, 0, H);
+      bgGradient.addColorStop(0, soloVariant?.bgTop ?? "#0f1220");
+      bgGradient.addColorStop(1, soloVariant?.bgBottom ?? "#0b0e18");
+      ctx.fillStyle = bgGradient;
+      ctx.fillRect(0, 0, W, H);
+
       // Background grid
       ctx.save();
       ctx.globalAlpha = 0.06;
@@ -1331,6 +1395,17 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         ctx.font = "bold 14px sans-serif";
         ctx.textAlign = "center";
         ctx.fillText(`🧟 Zombies: ${enemies.length}`, W / 2, 30);
+        ctx.restore();
+      }
+
+      if (soloVariant) {
+        ctx.save();
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillRect(W / 2 - 120, 10, 240, 30);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 14px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(`${soloVariant.label} • K ${kills} • x${(soloVariant.scoreMult).toFixed(1)}`, W / 2, 30);
         ctx.restore();
       }
 
@@ -1575,7 +1650,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       canvas.removeEventListener("mouseup", handleMouseUp);
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
-  }, [unlockedWeapons, mode, broadcastBullet, players, username, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode, playerSkin]);
+  }, [unlockedWeapons, mode, soloVariant, deviceProfile, broadcastBullet, players, username, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode, playerSkin]);
 
   const handleBackWithScoreboard = async () => {
     // Stop recording and save
@@ -1595,8 +1670,9 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
 
   return (
     <div className="relative">
-      <div className="fixed left-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4 space-y-2">
-        <div className="font-bold text-lg">Food FPS</div>
+      <div className="fixed left-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4 space-y-2"
+        style={{ transform: `scale(${deviceProfile.hudScale})`, transformOrigin: "top left" }}>
+        <div className="font-bold text-lg">Food FPS · {soloVariant?.label ?? mode.toUpperCase()}</div>
         <div className="text-sm text-muted-foreground space-y-1">
           <div><span className="text-primary font-mono">WASD</span> move</div>
           <div><span className="text-primary font-mono">Mouse</span> aim</div>
@@ -1606,7 +1682,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         </div>
       </div>
 
-      <div className="fixed right-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4 space-y-3 min-w-[180px]">
+      <div className="fixed right-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4 space-y-3 min-w-[180px]"
+        style={{ transform: `scale(${deviceProfile.hudScale})`, transformOrigin: "top right" }}>
         <div className="flex justify-between items-center">
           <span className="text-sm text-muted-foreground">Health</span>
           <span className="font-bold text-lg">{Math.round(health)}</span>
@@ -1660,7 +1737,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       </div>
 
       {/* Hotbar */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-card/90 backdrop-blur-sm border border-border rounded-lg p-2 flex gap-2">
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-card/90 backdrop-blur-sm border border-border rounded-lg p-2 flex gap-2"
+        style={{ transform: `scale(${deviceProfile.hudScale})`, transformOrigin: "bottom center" }}>
         {unlockedWeapons.map((weapon, index) => (
           <div
             key={weapon}
@@ -1699,8 +1777,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
 
       <canvas 
         ref={canvasRef} 
-        width={960} 
-        height={640} 
+        width={deviceProfile.canvasWidth} 
+        height={deviceProfile.canvasHeight} 
         className="border-2 border-border rounded-lg shadow-2xl"
       />
 
@@ -1739,8 +1817,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           onAim={handleTouchAim}
           onShoot={handleTouchShoot}
           onReload={handleTouchReload}
-          canvasWidth={960}
-          canvasHeight={640}
+          canvasWidth={deviceProfile.canvasWidth}
+          canvasHeight={deviceProfile.canvasHeight}
         />
       )}
 

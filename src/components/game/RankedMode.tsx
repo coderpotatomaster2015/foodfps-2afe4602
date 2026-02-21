@@ -8,6 +8,7 @@ import { AdminChat } from "./AdminChat";
 import { TouchControls } from "./TouchControls";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { hasPowerEffect } from "@/components/game/powerUtils";
 
 interface RankedModeProps {
   username: string;
@@ -313,7 +314,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
       setEnemiesRemaining(0);
 
       // Initialize player with default canvas size (960x640)
-      const startHp = specialPowerRef.current === "shield" ? 125 : 100;
+      const startHp = hasPowerEffect(specialPowerRef.current, "shield") ? 125 : 100;
       playerRef.current = {
         x: 480, // 960 / 2
         y: 320, // 640 / 2
@@ -529,7 +530,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
       }
 
       // Teleport power
-      if (e.key.toLowerCase() === "shift" && specialPowerRef.current === "teleport") {
+      if (e.key.toLowerCase() === "shift" && hasPowerEffect(specialPowerRef.current, "teleport")) {
         const now = performance.now();
         if (now - teleportCooldownRef.current >= 3000) {
           teleportCooldownRef.current = now;
@@ -634,7 +635,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
         const len = Math.hypot(dx, dy);
         dx /= len; dy /= len;
         let speedMult = adminStateRef.current.speedMultiplier;
-        if (specialPowerRef.current === "speed") speedMult *= 1.3;
+        if (hasPowerEffect(specialPowerRef.current, "speed")) speedMult *= 1.3;
         player.x = Math.max(20, Math.min(W - 20, player.x + dx * player.speed * speedMult * dt));
         player.y = Math.max(20, Math.min(H - 20, player.y + dy * player.speed * speedMult * dt));
       }
@@ -658,7 +659,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
             const angleDiff = Math.abs(angleToEnemy - player.angle);
             
             if (dist <= meleeRange && angleDiff < 0.5) {
-              const damageMultiplier = specialPowerRef.current === "double_damage" ? 2 : 1;
+              const damageMultiplier = hasPowerEffect(specialPowerRef.current, "double_damage") ? 2 : 1;
               e.hp -= weapon.damage * damageMultiplier;
               e.stun = 0.6;
               spawnParticles(e.x, e.y, weapon.color, 12);
@@ -682,7 +683,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
           }
 
           const bulletsToFire = player.weapon === "shotgun" ? 5 : 1;
-          const dmgMult = specialPowerRef.current === "double_damage" ? 2 : 1;
+          const dmgMult = hasPowerEffect(specialPowerRef.current, "double_damage") ? 2 : 1;
           
           for (let i = 0; i < bulletsToFire; i++) {
             const spread = weapon.spread * (Math.PI / 180);
@@ -769,7 +770,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
         
         // Slow motion power
         let speedMult = 1;
-        if (specialPowerRef.current === "slow_motion" && d < 200) {
+        if (hasPowerEffect(specialPowerRef.current, "slow_motion") && d < 200) {
           speedMult = 0.5;
         }
         
@@ -791,7 +792,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
           e.lastShot = time;
           const ang = Math.atan2(player.y - e.y, player.x - e.x);
           // Invisibility power reduces accuracy
-          const spreadMod = specialPowerRef.current === "invisibility" ? rand(-0.5, 0.5) : 0;
+          const spreadMod = hasPowerEffect(specialPowerRef.current, "invisibility") ? rand(-0.5, 0.5) : 0;
           enemyBullets.push({
             x: e.x,
             y: e.y,

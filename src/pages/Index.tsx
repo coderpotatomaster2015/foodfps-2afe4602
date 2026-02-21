@@ -10,6 +10,13 @@ import { SchoolMode } from "@/components/game/SchoolMode";
 import { SurvivalMode } from "@/components/game/SurvivalMode";
 import { ZombieMode } from "@/components/game/ZombieMode";
 import { ArenaDeathmatch } from "@/components/game/ArenaDeathmatch";
+import { InfectionMode } from "@/components/game/InfectionMode";
+import { CaptureTheFlagMode } from "@/components/game/CaptureTheFlagMode";
+import { KingOfTheHillMode } from "@/components/game/KingOfTheHillMode";
+import { GunGameMode } from "@/components/game/GunGameMode";
+import { ProtectTheVIPMode } from "@/components/game/ProtectTheVIPMode";
+import { LastManStandingMode } from "@/components/game/LastManStandingMode";
+import { DodgeballMode } from "@/components/game/DodgeballMode";
 import { Lobby } from "@/components/game/Lobby";
 import { TimedLobby } from "@/components/game/TimedLobby";
 import { TimedGameCanvas } from "@/components/game/TimedGameCanvas";
@@ -506,8 +513,8 @@ const Index = () => {
         />
       )}
 
-      {/* Standard Game - Solo, Offline, or standard multiplayer, or new modes */}
-      {(isInGame || gameMode === "solo" || gameMode === "offline" || gameMode === "infection" || gameMode === "ctf" || gameMode === "koth" || gameMode === "gungame" || gameMode === "vip" || gameMode === "lms" || gameMode === "dodgeball") && gameMode !== "boss" && gameMode !== "timed-host" && gameMode !== "survival" && gameMode !== "zombie" && gameMode !== "arena" && (
+      {/* Standard Game - Solo, Offline, or standard multiplayer */}
+      {(isInGame || gameMode === "solo" || gameMode === "offline") && gameMode !== "boss" && gameMode !== "timed-host" && gameMode !== "survival" && gameMode !== "zombie" && gameMode !== "arena" && gameMode !== "infection" && gameMode !== "ctf" && gameMode !== "koth" && gameMode !== "gungame" && gameMode !== "vip" && gameMode !== "lms" && gameMode !== "dodgeball" && (
         <GameCanvas 
           mode={gameMode as Exclude<GameMode, null | "boss" | "timed-host" | "timed-join">} 
           username={username} 
@@ -527,6 +534,27 @@ const Index = () => {
       )}
       {gameMode === "arena" && (
         <ArenaDeathmatch username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
+      )}
+      {gameMode === "infection" && (
+        <InfectionMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
+      )}
+      {gameMode === "ctf" && (
+        <CaptureTheFlagMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
+      )}
+      {gameMode === "koth" && (
+        <KingOfTheHillMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
+      )}
+      {gameMode === "gungame" && (
+        <GunGameMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
+      )}
+      {gameMode === "vip" && (
+        <ProtectTheVIPMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
+      )}
+      {gameMode === "lms" && (
+        <LastManStandingMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
+      )}
+      {gameMode === "dodgeball" && (
+        <DodgeballMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
       )}
 
       {/* Timed Match Game */}

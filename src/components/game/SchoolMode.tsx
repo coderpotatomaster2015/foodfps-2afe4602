@@ -284,15 +284,35 @@ export const SchoolMode = ({
   const handleCommand = useCallback((cmd: string) => {
     if (!hasPermission) return;
 
-    if (cmd.startsWith("/heal")) {
+    if (cmd.startsWith("/godmode")) {
       if (playerRef.current) {
         playerRef.current.hp = 100;
         setHealth(100);
-        toast.success("Healed!");
       }
+      spawnImmunityRef.current = !spawnImmunityRef.current;
+      setSpawnImmunity(spawnImmunityRef.current);
+      toast.success(spawnImmunityRef.current ? "Godmode ON" : "Godmode OFF");
+    } else if (cmd.startsWith("/heal") || cmd.startsWith("/revive")) {
+      if (playerRef.current) {
+        playerRef.current.hp = 100;
+        setHealth(100);
+        setGameState("playing");
+      }
+      toast.success("Healed!");
     } else if (cmd.startsWith("/nuke")) {
       enemiesRef.current.length = 0;
       toast.success("All enemies destroyed!");
+    } else if (cmd.startsWith("/infiniteammo")) {
+      setAmmo({
+        fire: ELEMENTAL_POWERS.fire.maxAmmo,
+        water: ELEMENTAL_POWERS.water.maxAmmo,
+        earth: ELEMENTAL_POWERS.earth.maxAmmo,
+        air: ELEMENTAL_POWERS.air.maxAmmo,
+      });
+      toast.success("Ammo refilled!");
+    } else if (cmd.startsWith("/give")) {
+      setCooldowns({ fire: 0, water: 0, earth: 0, air: 0 });
+      toast.success("All powers ready!");
     }
   }, [hasPermission]);
 

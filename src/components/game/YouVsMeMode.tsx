@@ -172,14 +172,41 @@ export const YouVsMeMode = ({ username, onBack, touchscreenMode = false, playerS
   }, []);
 
   const handleCommand = useCallback((cmd: string) => {
-    if (cmd.startsWith("/heal")) {
+    if (!hasPermission) return;
+
+    if (cmd.startsWith("/godmode")) {
+      spawnImmunityRef.current = !spawnImmunityRef.current;
+      setSpawnImmunity(spawnImmunityRef.current);
       if (playerRef.current) {
         playerRef.current.hp = 100;
         setHealth(100);
-        toast.success("Healed!");
       }
+      toast.success(spawnImmunityRef.current ? "Godmode ON" : "Godmode OFF");
+    } else if (cmd.startsWith("/heal") || cmd.startsWith("/revive")) {
+      if (playerRef.current) {
+        playerRef.current.hp = 100;
+        setHealth(100);
+      }
+      toast.success("Healed!");
+    } else if (cmd.startsWith("/infiniteammo")) {
+      if (playerRef.current) {
+        playerRef.current.ammo = 999;
+        playerRef.current.maxAmmo = 999;
+      }
+      setAmmo(999);
+      setMaxAmmo(999);
+      toast.success("Infinite ammo applied!");
+    } else if (cmd.startsWith("/nuke")) {
+      if (botRef.current) {
+        botRef.current.hp = 0;
+        setBotHealth(0);
+      }
+      setGameState("victory");
+      toast.success("Bot eliminated!");
+    } else if (cmd.startsWith("/give")) {
+      toast.success("All weapons are already available in You vs Me mode.");
     }
-  }, []);
+  }, [hasPermission]);
 
   // Main game loop
   useEffect(() => {

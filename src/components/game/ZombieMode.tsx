@@ -122,6 +122,8 @@ export const ZombieMode = ({ username, onBack, adminAbuseEvents = [], touchscree
     else if (cmd.startsWith("/nuke")) { gameStateRef.current.enemies.length = 0; }
     else if (cmd.startsWith("/revive")) { revivePlayer(); }
     else if (cmd.startsWith("/give")) { setUnlockedWeapons([...WEAPON_ORDER]); }
+    else if (cmd.startsWith("/heal")) { if (playerRef.current) { playerRef.current.hp = 100; setHealth(100); } }
+    else if (cmd.startsWith("/infiniteammo")) { adminStateRef.current.infiniteAmmo = !adminStateRef.current.infiniteAmmo; }
   }, [hasPermission, revivePlayer]);
 
   const handleTouchMove = useCallback((dx: number, dy: number) => { touchMoveRef.current = { x: dx, y: dy }; }, []);

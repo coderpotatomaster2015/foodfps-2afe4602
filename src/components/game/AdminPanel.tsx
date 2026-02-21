@@ -960,6 +960,27 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
               </div>
             </Card>
 
+
+            <Card className="p-4 bg-secondary/50">
+              <div className="flex items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <Label className="font-semibold flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    Private Stuff Page
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Open the password-protected credentials page in a new tab
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => window.open("https://foodfps.lovable.app/privatestuffpasswordsandmore", "_blank", "noopener,noreferrer")}
+                >
+                  Open Page
+                </Button>
+              </div>
+            </Card>
+
             <Card className="p-4 bg-secondary/50">
               <h3 className="font-semibold mb-3">Quick Stats</h3>
               <div className="grid grid-cols-3 gap-3">

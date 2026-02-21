@@ -123,6 +123,12 @@ export const AdminChat = ({ open, onOpenChange, onCommand, onShowOnlinePlayers }
     setMessages(prev => [...prev, { role, content, timestamp: Date.now() }]);
   };
 
+  const getCommandKey = (cmd: string) => {
+    const trimmed = cmd.trim().toLowerCase();
+    if (trimmed.startsWith("/rain ammo")) return "/rain ammo";
+    return trimmed.split(/\s+/)[0];
+  };
+
   const handleCommand = (cmd: string) => {
     if (cmd === "/?") {
       addMessage("system", "📋 Available commands:\n" + COMMANDS.map(c => `${c.cmd} - ${c.desc}`).join("\n"));
@@ -134,40 +140,17 @@ export const AdminChat = ({ open, onOpenChange, onCommand, onShowOnlinePlayers }
       return;
     }
 
-    const commandMap: Record<string, string> = {
-      "/godmode": "✓ God mode toggled",
-      "/speed": "✓ Speed set",
-      "/nuke": "✓ All enemies eliminated!",
-      "/rain ammo": "✓ Ammo rain activated!",
-      "/infiniteammo": "✓ Infinite ammo toggled!",
-      "/revive": "✓ Player revived!",
-      "/give": "✓ All weapons unlocked!",
-      "/heal": "✓ Player healed!",
-      "/spawn": "✓ Enemies spawned!",
-      "/clear": "✓ Cleared!",
-      "/tp": "✓ Teleported!",
-      "/score": "✓ Score added!",
-      "/shield": "✓ Shield activated!",
-      "/freeze": "✓ Enemies frozen for 5 seconds!",
-      "/size": "✓ Size changed!",
-      "/explode": "✓ Explosion created!",
-      "/coins": "✓ Coins added!",
-      "/gems": "✓ Gems added!",
-      "/gold": "✓ Gold added!",
-    };
+    const commandKey = getCommandKey(cmd);
+    const knownCommands = new Set(COMMANDS.map((entry) => getCommandKey(entry.cmd.replace(/\s*\[[^\]]*\]/g, ""))));
 
-    const matchedCmd = Object.keys(commandMap).find(c => cmd.startsWith(c));
-    if (matchedCmd) {
-      addMessage("system", commandMap[matchedCmd]);
-      onCommand?.(cmd);
-    } else if (cmd.startsWith("/ban")) {
+    if (commandKey.startsWith("/ban")) {
       if (!isAdmin) {
         addMessage("system", "❌ Only admins can use ban commands.");
         return;
       }
       addMessage("system", "✓ Opening ban management...");
       onCommand?.(cmd);
-    } else if (cmd.startsWith("/join")) {
+    } else if (commandKey.startsWith("/join")) {
       const match = cmd.match(/\/join\s+(\d{5})/);
       if (match) {
         addMessage("system", `✓ Joining room ${match[1]}...`);
@@ -176,6 +159,9 @@ export const AdminChat = ({ open, onOpenChange, onCommand, onShowOnlinePlayers }
         addMessage("system", "✓ Opening online players...");
         onShowOnlinePlayers?.();
       }
+    } else if (knownCommands.has(commandKey)) {
+      addMessage("system", `✓ Executed ${commandKey}`);
+      onCommand?.(cmd);
     } else {
       addMessage("system", "❌ Unknown command. Type /? for help");
     }

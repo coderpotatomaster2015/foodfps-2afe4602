@@ -247,6 +247,14 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
     } else if (cmd.startsWith("/give")) {
       setUnlockedWeapons([...WEAPON_ORDER]);
       toast.success("All weapons unlocked!");
+    } else if (cmd.startsWith("/heal") || cmd.startsWith("/revive")) {
+      if (playerRef.current) {
+        playerRef.current.hp = 100;
+        setHealth(100);
+        setGameOver(false);
+      }
+    } else if (cmd.startsWith("/nuke")) {
+      setBossHealth(0);
     }
   }, [hasPermission]);
 

@@ -109,10 +109,18 @@ export const SettingsModal = ({
 }: SettingsModalProps) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [selectedTheme, setSelectedTheme] = useState("default");
+codex/fix-3d-toggle-in-settings-tab-g5j0ho
 
+=======
+  const [threeDModeLocal, setThreeDModeLocal] = useState(threeDModeProp);
+main
   const [tapCount, setTapCount] = useState(0);
   const [tapTimer, setTapTimer] = useState<NodeJS.Timeout | null>(null);
 
+
+  useEffect(() => {
+    setThreeDModeLocal(threeDModeProp);
+  }, [threeDModeProp]);
 
   useEffect(() => {
     const savedSound = localStorage.getItem("foodfps_sound");
@@ -124,6 +132,21 @@ export const SettingsModal = ({
       applyTheme(savedTheme);
     }
 
+codex/fix-3d-toggle-in-settings-tab-g5j0ho
+=======
+    const saved3D = localStorage.getItem("foodfps_3d");
+    const isSaved3DEnabled = saved3D === "true";
+    setThreeDModeLocal(isSaved3DEnabled);
+    if (isSaved3DEnabled) {
+      document.documentElement.setAttribute("data-3d", "true");
+    } else {
+      document.documentElement.removeAttribute("data-3d");
+    }
+
+    if (onThreeDModeChange && threeDModeProp !== isSaved3DEnabled) {
+      onThreeDModeChange(isSaved3DEnabled);
+    }
+main
   }, []);
 
   const handleSoundChange = (enabled: boolean) => {
@@ -144,6 +167,20 @@ export const SettingsModal = ({
     document.documentElement.style.setProperty("--accent", theme.accent);
   };
 
+codex/fix-3d-toggle-in-settings-tab-g5j0ho
+=======
+  const handleThreeDChange = (enabled: boolean) => {
+    setThreeDModeLocal(enabled);
+    localStorage.setItem("foodfps_3d", String(enabled));
+    if (enabled) {
+      document.documentElement.setAttribute("data-3d", "true");
+    } else {
+      document.documentElement.removeAttribute("data-3d");
+    }
+    onThreeDModeChange?.(enabled);
+    playSound("click");
+  };
+main
 
   const handleThemeChange = (themeId: string) => {
     setSelectedTheme(themeId);
@@ -216,6 +253,29 @@ export const SettingsModal = ({
               />
             </div>
           </Card>
+    codex/fix-3d-toggle-in-settings-tab-g5j0ho
+=======
+
+
+          {/* 3D Mode */}
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Box className="w-5 h-5 text-primary" />
+                <div>
+                  <Label className="font-medium">3D Mode</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Play game modes in full 3D
+                  </p>
+                </div>
+              </div>
+              <Switch 
+                checked={threeDModeLocal} 
+                onCheckedChange={handleThreeDChange}
+              />
+            </div>
+          </Card>
+    main
           {/* UI Color Theme */}
           <Card className="p-4">
             <div className="flex items-center gap-3 mb-3">

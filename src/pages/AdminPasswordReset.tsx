@@ -27,10 +27,8 @@ const getErrorMessage = (error: unknown, fallback: string) => {
     if (error.message.includes("Failed to fetch")) {
       return SERVICE_UNREACHABLE_MESSAGE;
     }
-
     return error.message || fallback;
   }
-
   return fallback;
 };
 
@@ -48,10 +46,7 @@ const AdminPasswordReset = () => {
       body: payload,
     });
 
-    if (error) {
-      throw new Error(error.message || "Request failed");
-    }
-
+    if (error) throw new Error(error.message || "Request failed");
     return data;
   };
 
@@ -68,7 +63,6 @@ const AdminPasswordReset = () => {
         adminUsername: adminUsername.trim(),
         adminPassword,
       });
-
       setStep("reset-password");
       toast.success("Admin verified. You can now reset a player's password.");
     } catch (error) {

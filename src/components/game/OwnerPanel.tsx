@@ -679,6 +679,18 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
     { name: "Shield Generator", cost: 100, type: "shield" },
   ];
 
+  const AI_BIOS = [
+    "🔥 Top ranked player | Fear the food! 🍔",
+    "Arena champion since day one 💪🏆",
+    "Sniper main. One shot, one kill. 🎯",
+    "Grinding to Mythic rank! Almost there... ⭐",
+    "Boss slayer extraordinaire 🐉💀",
+    "I eat bullets for breakfast 🥣🔫",
+    "The one and only food legend 🍕👑",
+  ];
+
+  const AI_RANK_NAMES = ["Rookie", "Iron", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master", "Grandmaster", "Pro", "Legend", "Mythic"];
+
   const AI_ACTIONS = [
     "play_game",
     "play_game",
@@ -690,6 +702,10 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
     "claim_reward",
     "switch_weapon",
     "play_game",
+    "ranked_match",
+    "ranked_match",
+    "edit_bio",
+    "claim_food_pass",
   ];
 
   const startAiPlay = async () => {
@@ -901,6 +917,113 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
             setAiLog(prev => [...prev.slice(-25), `🔫 Switching to ${weapon}...`]);
             await new Promise(r => setTimeout(r, 500));
             setAiLog(prev => [...prev.slice(-25), `✅ Now using ${weapon}`]);
+            break;
+          }
+
+
+          case "ranked_match": {
+            const waves = Math.floor(Math.random() * 7) + 1;
+            const kills = Math.floor(Math.random() * 25) + 5;
+            const victory = waves >= 6;
+            const rankIndex = Math.min(Math.floor(waves * 1.5), AI_RANK_NAMES.length - 1);
+            const rank = AI_RANK_NAMES[rankIndex];
+            const tier = Math.floor(Math.random() * 5) + 1;
+
+            setAiLog(prev => [...prev.slice(-25), `🏅 Entering RANKED match...`]);
+            await new Promise(r => setTimeout(r, 2000));
+            setAiLog(prev => [...prev.slice(-25), `⚔️ Ranked: ${waves}/7 waves, ${kills} kills${victory ? " — VICTORY!" : ""}`]);
+
+            await supabase.from("ranked_matches").insert({
+              user_id: currentUser.id,
+              waves_completed: waves,
+              enemies_killed: kills,
+              victory,
+              rank_earned: rank,
+              tier_earned: tier,
+            });
+
+            // Update profile rank
+            await supabase
+              .from("profiles")
+              .update({ ranked_rank: rank, ranked_tier: tier })
+              .eq("user_id", currentUser.id);
+
+            const scoreGain = waves * 30 + kills * 5;
+            const { data: prof2 } = await supabase
+              .from("profiles")
+              .select("total_score")
+              .eq("user_id", currentUser.id)
+              .single();
+            if (prof2) {
+              await supabase
+                .from("profiles")
+                .update({ total_score: prof2.total_score + scoreGain })
+                .eq("user_id", currentUser.id);
+            }
+            await supabase.rpc("add_player_currency", {
+              _user_id: currentUser.id,
+              _coins: kills * 3,
+              _gems: waves * 2,
+              _gold: victory ? 10 : 0,
+            });
+
+            setAiLog(prev => [...prev.slice(-25), `✅ Ranked complete! Rank: ${rank} ${tier} | +${scoreGain} score`]);
+            break;
+          }
+
+          case "edit_bio": {
+            const newBio = AI_BIOS[Math.floor(Math.random() * AI_BIOS.length)];
+            setAiLog(prev => [...prev.slice(-25), `✏️ Updating profile bio...`]);
+            await new Promise(r => setTimeout(r, 800));
+
+            await supabase
+              .from("profiles")
+              .update({ bio: newBio })
+              .eq("user_id", currentUser.id);
+
+            setAiLog(prev => [...prev.slice(-25), `✅ Bio updated: "${newBio}"`]);
+            break;
+          }
+
+          case "claim_food_pass": {
+            setAiLog(prev => [...prev.slice(-25), `🎖️ Checking Food Pass progress...`]);
+
+            const { data: fpProgress } = await supabase
+              .from("food_pass_progress")
+              .select("*")
+              .eq("user_id", currentUser.id)
+              .maybeSingle();
+
+            const currentTier = fpProgress?.current_tier || 0;
+            const claimedTiers: number[] = (fpProgress?.claimed_tiers as number[]) || [];
+            const nextTier = currentTier + 1;
+
+            if (nextTier <= 500) {
+              const newClaimed = [...claimedTiers, nextTier];
+
+              if (fpProgress) {
+                await supabase
+                  .from("food_pass_progress")
+                  .update({ current_tier: nextTier, claimed_tiers: newClaimed })
+                  .eq("user_id", currentUser.id);
+              } else {
+                await supabase
+                  .from("food_pass_progress")
+                  .insert({ user_id: currentUser.id, current_tier: nextTier, claimed_tiers: newClaimed });
+              }
+
+              const rewardCoins = nextTier * 5;
+              await supabase.rpc("add_player_currency", {
+                _user_id: currentUser.id,
+                _coins: rewardCoins,
+                _gems: Math.floor(nextTier / 5),
+                _gold: Math.floor(nextTier / 10),
+              });
+
+              setAiLog(prev => [...prev.slice(-25), `🎉 Claimed Food Pass Tier ${nextTier}! +${rewardCoins} coins`]);
+            } else {
+              setAiLog(prev => [...prev.slice(-25), `⚠️ Food Pass already maxed at Tier 500`]);
+            }
             break;
           }
         }

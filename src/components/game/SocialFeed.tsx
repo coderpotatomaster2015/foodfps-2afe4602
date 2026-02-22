@@ -60,7 +60,9 @@ export const SocialFeed = ({ open, onOpenChange }: SocialFeedProps) => {
   };
 
   const loadPendingCount = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     const { count } = await supabase
@@ -107,20 +109,18 @@ export const SocialFeed = ({ open, onOpenChange }: SocialFeedProps) => {
 
     setSending(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("username")
-        .eq("user_id", user.id)
-        .single();
+      const { data: profile } = await supabase.from("profiles").select("username").eq("user_id", user.id).single();
 
       // Call AI moderation
       toast.info("🤖 AI is reviewing your post...");
-      
+
       const { data: moderationResult, error: modError } = await supabase.functions.invoke("moderate-post", {
-        body: { content, image_url: imageUrl || null }
+        body: { content, image_url: imageUrl || null },
       });
 
       if (modError) {
@@ -157,7 +157,7 @@ export const SocialFeed = ({ open, onOpenChange }: SocialFeedProps) => {
       } else {
         toast.success("Post submitted for manual review!");
       }
-      
+
       setComposing(false);
       setContent("");
       setImageUrl("");
@@ -224,7 +224,7 @@ export const SocialFeed = ({ open, onOpenChange }: SocialFeedProps) => {
                     Cancel
                   </Button>
                 </div>
-                
+
                 <Textarea
                   placeholder="What's cooking? Share your gaming moments..."
                   value={content}
@@ -251,7 +251,7 @@ export const SocialFeed = ({ open, onOpenChange }: SocialFeedProps) => {
                     />
                   </TabsContent>
                   <TabsContent value="file" className="mt-4">
-                    <div 
+                    <div
                       className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:bg-secondary/50 transition-colors"
                       onClick={() => fileInputRef.current?.click()}
                     >
@@ -291,13 +291,6 @@ export const SocialFeed = ({ open, onOpenChange }: SocialFeedProps) => {
                   </div>
                 )}
 
-                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                  <p className="text-sm text-green-500">
-                    <Clock className="w-4 h-4 inline mr-2" />
-                    Your post will be reviewed by AI. Appropriate posts are auto-approved instantly!
-                  </p>
-                </div>
-
                 <Button onClick={submitPost} disabled={sending} size="lg" className="w-full">
                   <Send className="w-5 h-5 mr-2" />
                   {sending ? "Submitting..." : "Submit for Review"}
@@ -309,10 +302,7 @@ export const SocialFeed = ({ open, onOpenChange }: SocialFeedProps) => {
               {/* Create Post Bar */}
               <div className="p-4 border-b border-border">
                 <Card className="max-w-2xl mx-auto p-4">
-                  <div 
-                    className="flex items-center gap-4 cursor-pointer"
-                    onClick={() => setComposing(true)}
-                  >
+                  <div className="flex items-center gap-4 cursor-pointer" onClick={() => setComposing(true)}>
                     <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
                       <User className="w-5 h-5" />
                     </div>
@@ -358,11 +348,11 @@ export const SocialFeed = ({ open, onOpenChange }: SocialFeedProps) => {
                               <p className="font-semibold">{post.username}</p>
                               <p className="text-xs text-muted-foreground">
                                 {new Date(post.created_at).toLocaleDateString(undefined, {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
                                 })}
                               </p>
                             </div>
@@ -375,7 +365,7 @@ export const SocialFeed = ({ open, onOpenChange }: SocialFeedProps) => {
                             alt="Post image"
                             className="w-full max-h-[500px] object-cover"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
+                              (e.target as HTMLImageElement).style.display = "none";
                             }}
                           />
                         )}
@@ -400,11 +390,11 @@ export const SocialFeed = ({ open, onOpenChange }: SocialFeedProps) => {
             <Card className="p-4 mt-4 bg-yellow-500/10 border-yellow-500/20">
               <div className="flex items-center gap-2 text-yellow-500">
                 <Clock className="w-4 h-4" />
-                <span className="font-semibold">{pendingCount} post{pendingCount > 1 ? 's' : ''} pending</span>
+                <span className="font-semibold">
+                  {pendingCount} post{pendingCount > 1 ? "s" : ""} pending
+                </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Waiting for admin approval
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Waiting for admin approval</p>
             </Card>
           )}
         </div>

@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, Smartphone, Volume2, Palette, Check, Box } from "lucide-react";
+import { Settings, Smartphone, Volume2, Palette, Check } from "lucide-react";
 
 interface SettingsModalProps {
   open: boolean;
@@ -12,8 +12,6 @@ interface SettingsModalProps {
   touchscreenMode: boolean;
   onTouchscreenModeChange: (enabled: boolean) => void;
   onOpenServicePanel?: () => void;
-  threeDMode?: boolean;
-  onThreeDModeChange?: (enabled: boolean) => void;
 }
 
 // Predefined UI color themes
@@ -107,14 +105,14 @@ export const SettingsModal = ({
   onOpenChange, 
   touchscreenMode, 
   onTouchscreenModeChange,
-  onOpenServicePanel,
-  threeDMode: threeDModeProp = false,
-  onThreeDModeChange 
+  onOpenServicePanel
 }: SettingsModalProps) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [selectedTheme, setSelectedTheme] = useState("default");
+
   const [tapCount, setTapCount] = useState(0);
   const [tapTimer, setTapTimer] = useState<NodeJS.Timeout | null>(null);
+
 
   useEffect(() => {
     const savedSound = localStorage.getItem("foodfps_sound");
@@ -126,10 +124,6 @@ export const SettingsModal = ({
       applyTheme(savedTheme);
     }
 
-    const saved3D = localStorage.getItem("foodfps_3d");
-    if (saved3D === "true") {
-      document.documentElement.setAttribute("data-3d", "true");
-    }
   }, []);
 
   const handleSoundChange = (enabled: boolean) => {
@@ -150,16 +144,6 @@ export const SettingsModal = ({
     document.documentElement.style.setProperty("--accent", theme.accent);
   };
 
-  const handleThreeDChange = (enabled: boolean) => {
-    localStorage.setItem("foodfps_3d", String(enabled));
-    if (enabled) {
-      document.documentElement.setAttribute("data-3d", "true");
-    } else {
-      document.documentElement.removeAttribute("data-3d");
-    }
-    onThreeDModeChange?.(enabled);
-    playSound("click");
-  };
 
   const handleThemeChange = (themeId: string) => {
     setSelectedTheme(themeId);
@@ -232,27 +216,6 @@ export const SettingsModal = ({
               />
             </div>
           </Card>
-
-
-          {/* 3D Mode */}
-          <Card className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Box className="w-5 h-5 text-primary" />
-                <div>
-                  <Label className="font-medium">3D Mode</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Play game modes in full 3D
-                  </p>
-                </div>
-              </div>
-              <Switch 
-                checked={threeDModeProp} 
-                onCheckedChange={handleThreeDChange}
-              />
-            </div>
-          </Card>
-
           {/* UI Color Theme */}
           <Card className="p-4">
             <div className="flex items-center gap-3 mb-3">

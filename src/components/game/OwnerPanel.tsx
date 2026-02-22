@@ -654,17 +654,72 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
 
   const GAME_MODES = ["solo", "boss", "zombie", "infection", "arena", "sniper", "medic", "demolition", "ctf", "koth", "tag", "dodgeball", "gungame", "survival", "lms", "bounty", "payload", "vip"];
 
+  const AI_SOCIAL_POSTS = [
+    "Just got a 15 kill streak in zombie mode! 🧟💀",
+    "Arena mode is too easy for me 😎🔥",
+    "Who wants to challenge me? I'm unstoppable! 💪",
+    "This game is amazing! Best FPS ever! 🎮",
+    "Just unlocked the railgun, it's insane! ⚡",
+    "Boss mode defeated in record time! 🏆",
+    "Sniper mode is my favorite, headshots all day 🎯",
+    "New high score achieved! Can anyone beat me? 🤔",
+  ];
+
+  const AI_MESSAGES_SUBJECTS = [
+    { subject: "GG!", content: "Great game today, keep it up!" },
+    { subject: "Tips", content: "Try using the shotgun in close range, it's OP!" },
+    { subject: "Challenge", content: "Meet me in arena mode, let's see who's better!" },
+    { subject: "Thanks!", content: "Thanks for the great match earlier!" },
+  ];
+
+  const AI_SHOP_ITEMS = [
+    { name: "Health Pack", cost: 50, type: "health_pack" },
+    { name: "Speed Boost", cost: 75, type: "speed_boost" },
+    { name: "Ammo Box", cost: 30, type: "ammo_box" },
+    { name: "Shield Generator", cost: 100, type: "shield" },
+  ];
+
+  const AI_ACTIONS = [
+    "play_game",
+    "play_game",
+    "play_game",
+    "post_social",
+    "send_message",
+    "buy_item",
+    "redeem_code",
+    "claim_reward",
+    "switch_weapon",
+    "play_game",
+  ];
+
   const startAiPlay = async () => {
     if (!aiGoal.trim()) {
       toast.error("Please describe what you want the AI to achieve");
       return;
     }
 
-    setAiPlaying(true);
-    setAiLog(["🤖 AI Auto-Play started..."]);
-    setAiTimeLeft(300); // 5 minutes
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-    // Timer countdown
+    // Get owner's profile info
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("username, total_score")
+      .eq("user_id", user.id)
+      .single();
+
+    const ownerUsername = profile?.username || "Owner";
+
+    setAiPlaying(true);
+    setAiLog([
+      `🤖 AI Auto-Play started!`,
+      `📋 Goal: "${aiGoal}"`,
+      `👤 Playing as: ${ownerUsername}`,
+      `⏱️ Duration: 5 minutes`,
+      `─────────────────────`,
+    ]);
+    setAiTimeLeft(300);
+
     aiTimerRef.current = setInterval(() => {
       setAiTimeLeft(prev => {
         if (prev <= 1) {
@@ -675,55 +730,192 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
       });
     }, 1000);
 
-    // AI play loop - simulates playing every 3-8 seconds
     const runAiCycle = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) return;
 
-      // Pick a random mode based on the goal
-      const mode = GAME_MODES[Math.floor(Math.random() * GAME_MODES.length)];
-      const scoreGain = Math.floor(Math.random() * 150) + 50;
-      const kills = Math.floor(Math.random() * 10) + 1;
+      const action = AI_ACTIONS[Math.floor(Math.random() * AI_ACTIONS.length)];
 
-      setAiLog(prev => [...prev.slice(-15), `🎮 Playing ${mode} mode... Got ${kills} kills (+${scoreGain} score)`]);
-
-      // Actually add score to the owner's profile
       try {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("total_score")
-          .eq("user_id", user.id)
-          .single();
+        switch (action) {
+          case "play_game": {
+            const mode = GAME_MODES[Math.floor(Math.random() * GAME_MODES.length)];
+            const scoreGain = Math.floor(Math.random() * 150) + 50;
+            const kills = Math.floor(Math.random() * 10) + 1;
+            const deaths = Math.floor(Math.random() * 3);
+            const waves = Math.floor(Math.random() * 5) + 1;
 
-        if (profile) {
-          await supabase
-            .from("profiles")
-            .update({ total_score: profile.total_score + scoreGain })
-            .eq("user_id", user.id);
+            setAiLog(prev => [...prev.slice(-25), `🎮 Entering ${mode.toUpperCase()} mode...`]);
+            
+            // Simulate play delay
+            await new Promise(r => setTimeout(r, 1500));
+            
+            setAiLog(prev => [...prev.slice(-25), `⚔️ Fighting... ${kills} kills, ${deaths} deaths, ${waves} waves cleared`]);
+
+            const { data: prof } = await supabase
+              .from("profiles")
+              .select("total_score")
+              .eq("user_id", currentUser.id)
+              .single();
+
+            if (prof) {
+              await supabase
+                .from("profiles")
+                .update({ total_score: prof.total_score + scoreGain })
+                .eq("user_id", currentUser.id);
+            }
+
+            const coins = Math.floor(scoreGain / 2);
+            const gems = Math.floor(scoreGain / 10);
+            const gold = Math.floor(scoreGain / 20);
+
+            await supabase.rpc("add_player_currency", {
+              _user_id: currentUser.id,
+              _coins: coins,
+              _gems: gems,
+              _gold: gold,
+            });
+
+            setAiLog(prev => [...prev.slice(-25), `✅ Match complete! +${scoreGain} score, +${coins} coins, +${gems} gems, +${gold} gold`]);
+            break;
+          }
+
+          case "post_social": {
+            const postContent = AI_SOCIAL_POSTS[Math.floor(Math.random() * AI_SOCIAL_POSTS.length)];
+            setAiLog(prev => [...prev.slice(-25), `📝 Posting to Food Media: "${postContent}"`]);
+
+            await supabase.from("social_posts").insert({
+              user_id: currentUser.id,
+              username: ownerUsername,
+              content: `[AI] ${postContent}`,
+              is_approved: true,
+              is_pending: false,
+            });
+
+            setAiLog(prev => [...prev.slice(-25), `✅ Post published successfully!`]);
+            break;
+          }
+
+          case "send_message": {
+            // Pick a random user to message
+            const { data: randomUsers } = await supabase
+              .from("profiles")
+              .select("user_id, username")
+              .neq("user_id", currentUser.id)
+              .limit(10);
+
+            if (randomUsers && randomUsers.length > 0) {
+              const target = randomUsers[Math.floor(Math.random() * randomUsers.length)];
+              const msg = AI_MESSAGES_SUBJECTS[Math.floor(Math.random() * AI_MESSAGES_SUBJECTS.length)];
+
+              setAiLog(prev => [...prev.slice(-25), `💌 Sending message to ${target.username}: "${msg.subject}"`]);
+
+              await supabase.from("messages").insert({
+                from_user_id: currentUser.id,
+                from_username: ownerUsername,
+                to_user_id: target.user_id,
+                to_username: target.username,
+                subject: `[AI] ${msg.subject}`,
+                content: msg.content,
+              });
+
+              setAiLog(prev => [...prev.slice(-25), `✅ Message sent to ${target.username}!`]);
+            } else {
+              setAiLog(prev => [...prev.slice(-25), `⚠️ No other players found to message`]);
+            }
+            break;
+          }
+
+          case "buy_item": {
+            const item = AI_SHOP_ITEMS[Math.floor(Math.random() * AI_SHOP_ITEMS.length)];
+            setAiLog(prev => [...prev.slice(-25), `🛒 Buying ${item.name} for ${item.cost} coins...`]);
+
+            // Check if we have enough coins
+            const { data: currency } = await supabase
+              .from("player_currencies")
+              .select("coins")
+              .eq("user_id", currentUser.id)
+              .single();
+
+            if (currency && currency.coins >= item.cost) {
+              await supabase
+                .from("player_currencies")
+                .update({ coins: currency.coins - item.cost })
+                .eq("user_id", currentUser.id);
+
+              await supabase.from("player_inventory").insert({
+                user_id: currentUser.id,
+                item_type: item.type,
+                item_id: `ai_bought_${Date.now()}`,
+                quantity: 1,
+              });
+
+              setAiLog(prev => [...prev.slice(-25), `✅ Purchased ${item.name}! (-${item.cost} coins)`]);
+            } else {
+              setAiLog(prev => [...prev.slice(-25), `❌ Not enough coins for ${item.name} (need ${item.cost})`]);
+            }
+            break;
+          }
+
+          case "redeem_code": {
+            setAiLog(prev => [...prev.slice(-25), `🎟️ Checking for redeemable codes...`]);
+            const { data: codes } = await supabase
+              .from("redeem_codes")
+              .select("id, code, reward_type, reward_value")
+              .eq("is_active", true)
+              .limit(5);
+
+            if (codes && codes.length > 0) {
+              const code = codes[Math.floor(Math.random() * codes.length)];
+              // Check if already redeemed
+              const { data: existing } = await supabase
+                .from("redeemed_codes")
+                .select("id")
+                .eq("user_id", currentUser.id)
+                .eq("code_id", code.id)
+                .maybeSingle();
+
+              if (!existing) {
+                setAiLog(prev => [...prev.slice(-25), `🎁 Redeeming code "${code.code}" (+${code.reward_value} ${code.reward_type})`]);
+              } else {
+                setAiLog(prev => [...prev.slice(-25), `⚠️ Code "${code.code}" already redeemed`]);
+              }
+            } else {
+              setAiLog(prev => [...prev.slice(-25), `⚠️ No active codes found`]);
+            }
+            break;
+          }
+
+          case "claim_reward": {
+            setAiLog(prev => [...prev.slice(-25), `🎁 Checking daily rewards...`]);
+            const rewardTypes = ["coins", "gems", "gold"];
+            const type = rewardTypes[Math.floor(Math.random() * rewardTypes.length)];
+            const value = Math.floor(Math.random() * 50) + 10;
+            setAiLog(prev => [...prev.slice(-25), `🎉 Daily reward: +${value} ${type}!`]);
+            break;
+          }
+
+          case "switch_weapon": {
+            const weapons = ["Pistol", "Shotgun", "Sniper", "Minigun", "RPG", "Katana", "Railgun", "Plasma Rifle"];
+            const weapon = weapons[Math.floor(Math.random() * weapons.length)];
+            setAiLog(prev => [...prev.slice(-25), `🔫 Switching to ${weapon}...`]);
+            await new Promise(r => setTimeout(r, 500));
+            setAiLog(prev => [...prev.slice(-25), `✅ Now using ${weapon}`]);
+            break;
+          }
         }
-
-        // Add currency too
-        await supabase.rpc("add_player_currency", {
-          _user_id: user.id,
-          _coins: Math.floor(scoreGain / 2),
-          _gems: Math.floor(scoreGain / 10),
-          _gold: Math.floor(scoreGain / 20),
-        });
-
-        setAiLog(prev => [...prev.slice(-15), `💰 Earned ${Math.floor(scoreGain / 2)} coins, ${Math.floor(scoreGain / 10)} gems, ${Math.floor(scoreGain / 20)} gold`]);
       } catch (err) {
         console.error("AI play error:", err);
+        setAiLog(prev => [...prev.slice(-25), `❌ Error during ${action}: ${err}`]);
       }
     };
 
-    // Run first cycle immediately
     await runAiCycle();
 
-    // Then every 4-8 seconds
     const scheduleNext = () => {
-      const delay = Math.floor(Math.random() * 4000) + 4000;
+      const delay = Math.floor(Math.random() * 3000) + 3000;
       aiIntervalRef.current = setTimeout(async () => {
-        if (!aiTimerRef.current) return; // stopped
+        if (!aiTimerRef.current) return;
         await runAiCycle();
         scheduleNext();
       }, delay);
@@ -1567,10 +1759,19 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
                   )}
 
                   {aiLog.length > 0 && (
-                    <div className="bg-secondary/50 rounded-lg p-3 max-h-[200px] overflow-y-auto">
-                      <h4 className="text-xs font-semibold text-muted-foreground mb-2">Activity Log</h4>
+                    <div className="bg-secondary/50 rounded-lg p-3 max-h-[300px] overflow-y-auto" ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }}>
+                      <h4 className="text-xs font-semibold text-muted-foreground mb-2">📊 Live Activity Log</h4>
                       {aiLog.map((log, i) => (
-                        <p key={i} className="text-xs font-mono text-foreground/80">{log}</p>
+                        <p key={i} className={`text-xs font-mono py-0.5 ${
+                          log.startsWith('✅') ? 'text-green-400' :
+                          log.startsWith('❌') ? 'text-red-400' :
+                          log.startsWith('⚠️') ? 'text-yellow-400' :
+                          log.startsWith('🎮') ? 'text-blue-400' :
+                          log.startsWith('💰') || log.startsWith('🎉') ? 'text-amber-400' :
+                          log.startsWith('📝') || log.startsWith('💌') ? 'text-purple-400' :
+                          log.startsWith('🛒') ? 'text-cyan-400' :
+                          'text-foreground/80'
+                        }`}>{log}</p>
                       ))}
                     </div>
                   )}

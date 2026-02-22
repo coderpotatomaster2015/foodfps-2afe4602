@@ -1515,6 +1515,7 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
   const [isOwner, setIsOwner] = useState(false);
   const [aimbotActive, setAimbotActive] = useState(false);
   const [totalScore, setTotalScore] = useState(0);
+  const [ctrlHeld, setCtrlHeld] = useState(false);
   const [, setForceUpdate] = useState(0);
 
   const MODE_NAMES: Record<string, string> = {
@@ -1732,13 +1733,29 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
     onBack();
   };
 
+  // Ctrl key listener for crosshair cursor
+  useEffect(() => {
+    const handleCtrlDown = (e: KeyboardEvent) => {
+      if (e.key === "Control") setCtrlHeld(true);
+    };
+    const handleCtrlUp = (e: KeyboardEvent) => {
+      if (e.key === "Control") setCtrlHeld(false);
+    };
+    window.addEventListener("keydown", handleCtrlDown);
+    window.addEventListener("keyup", handleCtrlUp);
+    return () => {
+      window.removeEventListener("keydown", handleCtrlDown);
+      window.removeEventListener("keyup", handleCtrlUp);
+    };
+  }, []);
+
   return (
-    <div className="relative w-full h-screen" style={{ cursor: "none" }}>
-      <div className="w-full h-full" style={{ pointerEvents: "auto", cursor: "none" }}>
+    <div className="relative w-full h-screen" style={{ cursor: ctrlHeld ? "crosshair" : "default" }}>
+      <div className="w-full h-full" style={{ pointerEvents: "auto", cursor: ctrlHeld ? "crosshair" : "default" }}>
         <Canvas
           camera={{ fov: 50, near: 0.1, far: 500, position: [0, 35, 15] }}
           shadows
-          style={{ background: theme.skyColor, cursor: "none" }}
+          style={{ background: theme.skyColor, cursor: ctrlHeld ? "crosshair" : "default" }}
         >
           <GameScene gs={gsRef} onStateChange={handleStateChange} theme={theme} mode={mode || "solo"} />
         </Canvas>

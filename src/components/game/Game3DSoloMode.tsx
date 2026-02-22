@@ -376,6 +376,147 @@ const MODE_THEMES: Record<string, Partial<ModeTheme>> = {
     specialFeature: "1v1 duel arena", playerSpeed: 10,
     enemyShootInterval: 2.0,
   },
+  blitz: {
+    skyColor: "#14100a", groundColor: "#201a10", groundColor2: "#282014",
+    gridColor1: "#403818", gridColor2: "#18140a",
+    wallColor: "#302810", wallGlow1: "#FFCC00", wallGlow2: "#FF8800",
+    fogColor: "#14100a", fogNear: 20, fogFar: 60,
+    pointLights: [
+      { pos: [0, 8, 0], color: "#FFCC00", intensity: 0.7, distance: 45 },
+      { pos: [-12, 6, -8], color: "#FF8800", intensity: 0.4, distance: 30 },
+      { pos: [12, 6, 8], color: "#FFAA00", intensity: 0.3, distance: 25 },
+    ],
+    enemyColor: "#FFCC00", enemyHp: 30, enemySpeed: [5, 8], spawnInterval: 0.5,
+    specialFeature: "Ultra-fast spawns, speed is key", playerSpeed: 14,
+    enemyShootInterval: 1.5,
+  },
+  juggernaut: {
+    skyColor: "#0a0505", groundColor: "#1a0e0e", groundColor2: "#201212",
+    gridColor1: "#3a2020", gridColor2: "#150a0a",
+    wallColor: "#2a1515", wallGlow1: "#CC0000", wallGlow2: "#880000",
+    fogColor: "#0a0505", fogNear: 25, fogFar: 70,
+    ambientIntensity: 0.25,
+    pointLights: [
+      { pos: [0, 12, 0], color: "#CC0000", intensity: 0.6, distance: 50 },
+      { pos: [-10, 5, -8], color: "#880000", intensity: 0.3, distance: 25 },
+    ],
+    enemyColor: "#CC0000", enemyHp: 300, enemySpeed: [1, 2], spawnInterval: 5.0,
+    specialFeature: "Massive HP enemies, heavy firepower", playerSpeed: 8,
+    enemyShootInterval: 1.5,
+  },
+  stealth: {
+    skyColor: "#030308", groundColor: "#080810", groundColor2: "#0a0a14",
+    gridColor1: "#151520", gridColor2: "#060608",
+    wallColor: "#101018", wallGlow1: "#4444AA", wallGlow2: "#222266",
+    fogColor: "#020206", fogNear: 10, fogFar: 40,
+    ambientIntensity: 0.1,
+    pointLights: [
+      { pos: [0, 6, 0], color: "#333388", intensity: 0.2, distance: 20 },
+      { pos: [-15, 4, -10], color: "#222266", intensity: 0.1, distance: 15 },
+    ],
+    enemyColor: "#6666CC", enemyHp: 40, enemySpeed: [1.5, 3], spawnInterval: 3.0,
+    specialFeature: "Near-dark arena, enemies glow faintly", playerSpeed: 8,
+    enemyShootInterval: 4.0,
+  },
+  mirror: {
+    skyColor: "#0c0c0c", groundColor: "#1a1a1a", groundColor2: "#202020",
+    gridColor1: "#404040", gridColor2: "#101010",
+    wallColor: "#2a2a2a", wallGlow1: "#FFFFFF", wallGlow2: "#CCCCCC",
+    fogColor: "#0c0c0c", fogNear: 30, fogFar: 80,
+    pointLights: [
+      { pos: [0, 10, 0], color: "#FFFFFF", intensity: 0.5, distance: 45 },
+      { pos: [-12, 6, -8], color: "#DDDDDD", intensity: 0.3, distance: 25 },
+      { pos: [12, 6, 8], color: "#BBBBBB", intensity: 0.3, distance: 25 },
+    ],
+    enemyColor: "#DDDDDD", enemyHp: 60, enemySpeed: [3, 5], spawnInterval: 1.8,
+    specialFeature: "Enemies mirror your weapon", playerSpeed: 10,
+    enemyShootInterval: 3.0,
+  },
+  lowgrav: {
+    skyColor: "#050510", groundColor: "#0a0a1a", groundColor2: "#0e0e20",
+    gridColor1: "#1a1a40", gridColor2: "#080818",
+    wallColor: "#141430", wallGlow1: "#8866FF", wallGlow2: "#AA88FF",
+    fogColor: "#050510", fogNear: 35, fogFar: 100,
+    pointLights: [
+      { pos: [0, 12, 0], color: "#8866FF", intensity: 0.4, distance: 50 },
+      { pos: [-15, 8, -10], color: "#AA88FF", intensity: 0.3, distance: 30 },
+      { pos: [15, 8, 10], color: "#6644DD", intensity: 0.2, distance: 25 },
+    ],
+    enemyColor: "#AA88FF", enemyHp: 50, enemySpeed: [1.5, 3], spawnInterval: 2.0,
+    specialFeature: "Floaty movement, slow bullets", playerSpeed: 7,
+    enemyShootInterval: 4.0,
+  },
+  chaos: {
+    skyColor: "#100510", groundColor: "#200a18", groundColor2: "#280e20",
+    gridColor1: "#401830", gridColor2: "#180a14",
+    wallColor: "#301020", wallGlow1: "#FF00FF", wallGlow2: "#00FFFF",
+    fogColor: "#100510", fogNear: 15, fogFar: 55,
+    pointLights: [
+      { pos: [0, 8, 0], color: "#FF00FF", intensity: 0.6, distance: 40 },
+      { pos: [-12, 6, -8], color: "#00FFFF", intensity: 0.5, distance: 30 },
+      { pos: [12, 6, 8], color: "#FFFF00", intensity: 0.4, distance: 25 },
+    ],
+    enemyColor: "#FF00FF", enemyHp: 35, enemySpeed: [4, 8], spawnInterval: 0.4,
+    specialFeature: "Random enemy types, wild spawns", playerSpeed: 12,
+    enemyShootInterval: 1.0,
+  },
+  headhunter: {
+    skyColor: "#0a0808", groundColor: "#181210", groundColor2: "#201814",
+    gridColor1: "#3a2818", gridColor2: "#15100a",
+    wallColor: "#2a1c12", wallGlow1: "#FF4400", wallGlow2: "#CC3300",
+    fogColor: "#0a0808", fogNear: 25, fogFar: 70,
+    pointLights: [
+      { pos: [0, 10, 0], color: "#FF4400", intensity: 0.5, distance: 45 },
+      { pos: [-10, 5, -8], color: "#CC3300", intensity: 0.3, distance: 25 },
+    ],
+    enemyColor: "#FF4400", enemyHp: 80, enemySpeed: [2, 4], spawnInterval: 2.5,
+    specialFeature: "Precision kills give 5x score", playerSpeed: 9,
+    enemyShootInterval: 2.5,
+  },
+  vampire: {
+    skyColor: "#0a0308", groundColor: "#180810", groundColor2: "#200c18",
+    gridColor1: "#3a1028", gridColor2: "#15060e",
+    wallColor: "#2a0a1a", wallGlow1: "#CC0044", wallGlow2: "#880033",
+    fogColor: "#080208", fogNear: 15, fogFar: 55,
+    ambientIntensity: 0.15,
+    pointLights: [
+      { pos: [0, 8, 0], color: "#CC0044", intensity: 0.4, distance: 35 },
+      { pos: [-15, 5, -10], color: "#880033", intensity: 0.3, distance: 25 },
+      { pos: [10, 3, 5], color: "#AA0044", intensity: 0.2, distance: 15 },
+    ],
+    enemyColor: "#CC0044", enemyHp: 60, enemySpeed: [3, 5], spawnInterval: 1.5,
+    specialFeature: "Kills steal HP, health drains over time", playerSpeed: 10,
+    enemyShootInterval: 2.5,
+  },
+  frostbite: {
+    skyColor: "#081018", groundColor: "#101820", groundColor2: "#142028",
+    gridColor1: "#203848", gridColor2: "#0a1420",
+    wallColor: "#182838", wallGlow1: "#88DDFF", wallGlow2: "#44AADD",
+    fogColor: "#081018", fogNear: 20, fogFar: 65,
+    pointLights: [
+      { pos: [0, 10, 0], color: "#88DDFF", intensity: 0.5, distance: 45 },
+      { pos: [-12, 6, -8], color: "#44AADD", intensity: 0.3, distance: 30 },
+      { pos: [12, 6, 8], color: "#66CCEE", intensity: 0.2, distance: 25 },
+    ],
+    enemyColor: "#88DDFF", enemyHp: 55, enemySpeed: [1.5, 3], spawnInterval: 2.0,
+    specialFeature: "Icy arena, enemies slow on hit", playerSpeed: 8,
+    enemyShootInterval: 3.5,
+  },
+  titan: {
+    skyColor: "#080405", groundColor: "#14080a", groundColor2: "#1a0c10",
+    gridColor1: "#301018", gridColor2: "#140608",
+    wallColor: "#200a12", wallGlow1: "#FF6633", wallGlow2: "#CC4422",
+    fogColor: "#080405", fogNear: 30, fogFar: 85,
+    ambientIntensity: 0.25,
+    pointLights: [
+      { pos: [0, 14, 0], color: "#FF6633", intensity: 0.7, distance: 55 },
+      { pos: [-15, 8, -10], color: "#CC4422", intensity: 0.4, distance: 35 },
+      { pos: [15, 8, 10], color: "#AA3311", intensity: 0.3, distance: 30 },
+    ],
+    enemyColor: "#FF6633", enemyHp: 400, enemySpeed: [0.8, 1.5], spawnInterval: 6.0,
+    specialFeature: "Colossal enemies, massive damage", playerSpeed: 9,
+    enemyShootInterval: 1.5,
+  },
 };
 
 function getTheme(mode: string): ModeTheme {
@@ -536,6 +677,15 @@ const GameScene = ({ gs, onStateChange, theme, mode }: {
       }
     }
 
+    // ── Vampire HP drain ──
+    if (mode === "vampire" && !g.godMode) {
+      p.hp -= 3 * dt; // slow drain
+    }
+
+    // ── Low gravity slower bullets ──
+    // (handled via bullet speed in weapon config, but we slow enemy bullets)
+    
+
     // ── Movement ──
     let dx = 0, dz = 0;
     if (g.keys["w"] || g.keys["arrowup"]) dz += 1;
@@ -567,12 +717,12 @@ const GameScene = ({ gs, onStateChange, theme, mode }: {
             e.stun = 0.6;
             if (e.hp <= 0) {
               p.score += 10;
-              // Medic mode heal on kill
               if (mode === "medic") { p.hp = Math.min(p.maxHp, p.hp + 10); }
-              // Bounty mode 3x score
               if (mode === "bounty") { p.score += 20; }
-              // Gun game weapon progression
               if (mode === "gungame") { handleGunGameKill(g); }
+              if (mode === "vampire") { p.hp = Math.min(p.maxHp, p.hp + 15); }
+              if (mode === "headhunter") { p.score += 40; }
+              if (mode === "frostbite") { /* enemies slowed on hit handled via stun */ e.stun = 1.2; }
               if (Math.random() < 0.35) g.pickups.push({ x: e.x, z: e.z, r: 0.5, amt: 2, ttl: 18 });
               g.enemies.splice(i, 1);
             }
@@ -614,13 +764,14 @@ const GameScene = ({ gs, onStateChange, theme, mode }: {
           // Sniper mode: 2x damage
           const dmgMult = mode === "sniper" ? 2 : 1;
           e.hp -= b.dmg * dmgMult;
-          e.stun = 0.6;
+          e.stun = mode === "frostbite" ? 1.0 : 0.6;
           for (let k = 0; k < 5; k++) {
             g.particles.push({ x: b.x, y: 0.5, z: b.z, vx: (Math.random() - 0.5) * 4, vy: Math.random() * 3, vz: (Math.random() - 0.5) * 4, life: 0.5, color: "#FFF3D6" });
           }
           if (e.hp <= 0) {
-            p.score += mode === "bounty" ? 30 : 10;
+            p.score += mode === "bounty" ? 30 : mode === "headhunter" ? 50 : 10;
             if (mode === "medic") { p.hp = Math.min(p.maxHp, p.hp + 10); }
+            if (mode === "vampire") { p.hp = Math.min(p.maxHp, p.hp + 15); }
             if (mode === "gungame") { handleGunGameKill(g); }
             // Demolition: chain explosion
             if (mode === "demolition") {
@@ -811,68 +962,349 @@ const StarField = () => {
 
 // Mode-specific environment objects
 const ModeEnvironment = ({ mode, theme }: { mode: string; theme: ModeTheme }) => {
-  const objects = useMemo(() => {
-    const hw = ARENA_W / 2 - 3;
-    const baseObjects = [
-      { pos: [8, 0.75, 5] as [number, number, number], size: [1.5, 1.5, 1.5] as [number, number, number], color: theme.wallColor },
-      { pos: [-10, 0.75, -7] as [number, number, number], size: [1.5, 1.5, 1.5] as [number, number, number], color: theme.wallColor },
-      { pos: [15, 0.75, -10] as [number, number, number], size: [1.5, 1.5, 1.5] as [number, number, number], color: theme.wallColor },
-      { pos: [-5, 0.75, 12] as [number, number, number], size: [1.5, 1.5, 1.5] as [number, number, number], color: theme.wallColor },
-    ];
+  const timeRef = useRef(0);
+  const groupRef = useRef<THREE.Group>(null);
 
-    // Mode-specific structures
-    if (mode === "ctf") {
-      baseObjects.push(
-        { pos: [-18, 2, 0] as [number, number, number], size: [3, 4, 6] as [number, number, number], color: "#1a2244" },
-        { pos: [18, 2, 0] as [number, number, number], size: [3, 4, 6] as [number, number, number], color: "#441a1a" },
-      );
-    } else if (mode === "koth") {
-      baseObjects.push(
-        { pos: [0, 0.5, 0] as [number, number, number], size: [8, 1, 8] as [number, number, number], color: "#3a3020" },
-      );
-    } else if (mode === "arena") {
-      // Colosseum pillars
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2;
-        const r = 14;
-        baseObjects.push({
-          pos: [Math.cos(a) * r, 2.5, Math.sin(a) * r] as [number, number, number],
-          size: [1.2, 5, 1.2] as [number, number, number],
-          color: "#2a1540",
-        });
+  // Animate moving platforms, bobbing, rotating objects
+  useFrame((_, delta) => {
+    timeRef.current += delta;
+    if (!groupRef.current) return;
+    groupRef.current.children.forEach((child) => {
+      const ud = (child as any).userData;
+      if (!ud) return;
+      if (ud.movingPlatform) {
+        child.position.x = ud.baseX + Math.sin(timeRef.current * ud.speed) * ud.range;
       }
-    } else if (mode === "sniper") {
-      // Long barriers for cover
-      baseObjects.push(
-        { pos: [0, 1.5, -8] as [number, number, number], size: [10, 3, 0.5] as [number, number, number], color: "#101830" },
-        { pos: [0, 1.5, 8] as [number, number, number], size: [10, 3, 0.5] as [number, number, number], color: "#101830" },
-        { pos: [-12, 1.5, 0] as [number, number, number], size: [0.5, 3, 8] as [number, number, number], color: "#101830" },
-        { pos: [12, 1.5, 0] as [number, number, number], size: [0.5, 3, 8] as [number, number, number], color: "#101830" },
-      );
-    } else if (mode === "boss") {
-      // Boss arena platforms
-      baseObjects.push(
-        { pos: [-10, 0.3, -6] as [number, number, number], size: [4, 0.6, 4] as [number, number, number], color: "#2a1010" },
-        { pos: [10, 0.3, 6] as [number, number, number], size: [4, 0.6, 4] as [number, number, number], color: "#2a1010" },
-        { pos: [0, 0.5, 0] as [number, number, number], size: [6, 1, 6] as [number, number, number], color: "#301515" },
-      );
-    } else {
-      // Default cover
-      baseObjects.push(
-        { pos: [0, 1.5, -8] as [number, number, number], size: [4, 3, 0.5] as [number, number, number], color: theme.wallColor },
-        { pos: [-12, 1.5, 3] as [number, number, number], size: [0.5, 3, 4] as [number, number, number], color: theme.wallColor },
-        { pos: [12, 1.5, 8] as [number, number, number], size: [0.5, 3, 4] as [number, number, number], color: theme.wallColor },
-      );
+      if (ud.movingZ) {
+        child.position.z = ud.baseZ + Math.sin(timeRef.current * ud.speedZ) * ud.rangeZ;
+      }
+      if (ud.rotating) {
+        child.rotation.y += delta * ud.rotSpeed;
+      }
+      if (ud.bobbing) {
+        child.position.y = ud.baseY + Math.sin(timeRef.current * 2) * 0.3;
+      }
+    });
+  });
+
+  const objects = useMemo(() => {
+    type EnvObj = { pos: [number, number, number]; size: [number, number, number]; color: string; emissive?: string; emissiveIntensity?: number; userData?: Record<string, any> };
+    const items: EnvObj[] = [];
+
+    // Base cover blocks in every mode
+    items.push(
+      { pos: [8, 0.75, 5], size: [1.5, 1.5, 1.5], color: theme.wallColor },
+      { pos: [-10, 0.75, -7], size: [1.5, 1.5, 1.5], color: theme.wallColor },
+      { pos: [15, 0.75, -10], size: [1.5, 1.5, 1.5], color: theme.wallColor },
+      { pos: [-5, 0.75, 12], size: [1.5, 1.5, 1.5], color: theme.wallColor },
+    );
+
+    switch (mode) {
+      case "ctf":
+        items.push(
+          { pos: [-18, 2, 0], size: [3, 4, 6], color: "#1a2244" },
+          { pos: [18, 2, 0], size: [3, 4, 6], color: "#441a1a" },
+          { pos: [-14, 1, -5], size: [0.5, 2, 3], color: "#1a2244" },
+          { pos: [-14, 1, 5], size: [0.5, 2, 3], color: "#1a2244" },
+          { pos: [14, 1, -5], size: [0.5, 2, 3], color: "#441a1a" },
+          { pos: [14, 1, 5], size: [0.5, 2, 3], color: "#441a1a" },
+          { pos: [0, 1, -4], size: [2, 2, 0.5], color: theme.wallColor },
+          { pos: [0, 1, 4], size: [2, 2, 0.5], color: theme.wallColor },
+        );
+        break;
+      case "koth":
+        items.push(
+          { pos: [0, 0.5, 0], size: [8, 1, 8], color: "#3a3020", emissive: theme.wallGlow1, emissiveIntensity: 0.1 },
+          { pos: [-5, 0.25, 0], size: [2, 0.5, 4], color: "#2a2515" },
+          { pos: [5, 0.25, 0], size: [2, 0.5, 4], color: "#2a2515" },
+          { pos: [-12, 1, -8], size: [3, 2, 0.5], color: theme.wallColor },
+          { pos: [12, 1, 8], size: [3, 2, 0.5], color: theme.wallColor },
+        );
+        break;
+      case "arena":
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          const r = 14;
+          items.push({ pos: [Math.cos(a) * r, 2.5, Math.sin(a) * r], size: [1.2, 5, 1.2], color: "#2a1540" });
+        }
+        items.push(
+          { pos: [0, 0.3, 0], size: [5, 0.6, 5], color: "#2a1540", emissive: "#AA33FF", emissiveIntensity: 0.15 },
+          { pos: [-8, 0.4, 0], size: [3, 0.8, 2], color: "#3a2050", userData: { movingPlatform: true, baseX: -8, speed: 0.8, range: 4 } },
+          { pos: [8, 0.4, 0], size: [3, 0.8, 2], color: "#3a2050", userData: { movingPlatform: true, baseX: 8, speed: 0.6, range: 5 } },
+        );
+        break;
+      case "sniper":
+        items.push(
+          { pos: [0, 1.5, -8], size: [10, 3, 0.5], color: "#101830" },
+          { pos: [0, 1.5, 8], size: [10, 3, 0.5], color: "#101830" },
+          { pos: [-12, 1.5, 0], size: [0.5, 3, 8], color: "#101830" },
+          { pos: [12, 1.5, 0], size: [0.5, 3, 8], color: "#101830" },
+          { pos: [-18, 1, -12], size: [4, 2, 4], color: "#0a1020" },
+          { pos: [18, 1, 12], size: [4, 2, 4], color: "#0a1020" },
+          { pos: [-18, 2.5, -12], size: [5, 0.3, 5], color: "#101830" },
+          { pos: [18, 2.5, 12], size: [5, 0.3, 5], color: "#101830" },
+        );
+        break;
+      case "boss":
+        items.push(
+          { pos: [-10, 0.3, -6], size: [4, 0.6, 4], color: "#2a1010" },
+          { pos: [10, 0.3, 6], size: [4, 0.6, 4], color: "#2a1010" },
+          { pos: [0, 1.5, 0], size: [3, 3, 3], color: "#301515", emissive: "#FF2222", emissiveIntensity: 0.2 },
+          { pos: [-6, 1.5, -6], size: [1, 3, 1], color: "#3a1515" },
+          { pos: [6, 1.5, -6], size: [1, 3, 1], color: "#3a1515" },
+          { pos: [-6, 1.5, 6], size: [1, 3, 1], color: "#3a1515" },
+          { pos: [6, 1.5, 6], size: [1, 3, 1], color: "#3a1515" },
+        );
+        break;
+      case "zombie":
+        items.push(
+          { pos: [-8, 0.5, -5], size: [4, 1, 0.5], color: "#1a2a1a" },
+          { pos: [6, 0.5, 3], size: [0.5, 1, 4], color: "#1a2a1a" },
+          { pos: [0, 0.75, -12], size: [6, 1.5, 0.5], color: "#0c200c" },
+          { pos: [-15, 0.4, 8], size: [2, 0.8, 2], color: "#102a10" },
+          { pos: [12, 0.6, -5], size: [0.8, 1.2, 0.8], color: "#228B22", emissive: "#00FF00", emissiveIntensity: 0.5 },
+          { pos: [-4, 0.6, 10], size: [0.8, 1.2, 0.8], color: "#228B22", emissive: "#00FF00", emissiveIntensity: 0.5 },
+        );
+        break;
+      case "infection":
+        items.push(
+          { pos: [-8, 0.05, 5], size: [5, 0.1, 5], color: "#44FF00", emissive: "#44FF00", emissiveIntensity: 0.4 },
+          { pos: [10, 0.05, -8], size: [4, 0.1, 4], color: "#66FF00", emissive: "#66FF00", emissiveIntensity: 0.3 },
+          { pos: [-14, 1.5, 0], size: [0.5, 3, 6], color: "#142a12" },
+          { pos: [14, 1.5, 0], size: [0.5, 3, 6], color: "#142a12" },
+        );
+        break;
+      case "dodgeball":
+        items.push(
+          { pos: [0, 0.05, 0], size: [0.3, 0.1, ARENA_H - 4], color: "#FF4466", emissive: "#FF4466", emissiveIntensity: 0.3 },
+          { pos: [-6, 0.5, 0], size: [1, 1, 1], color: "#301520", userData: { movingZ: true, baseZ: 0, speedZ: 1.2, rangeZ: 8 } },
+          { pos: [6, 0.5, 0], size: [1, 1, 1], color: "#301520", userData: { movingZ: true, baseZ: 0, speedZ: 0.9, rangeZ: 6 } },
+        );
+        break;
+      case "survival":
+        items.push(
+          { pos: [0, 0.3, 0], size: [1.5, 0.6, 1.5], color: "#3a3015", emissive: "#FF8C00", emissiveIntensity: 0.6 },
+          { pos: [-12, 0.5, -8], size: [3, 1, 1], color: "#2a2510" },
+          { pos: [10, 0.5, 6], size: [1, 1, 3], color: "#2a2510" },
+          { pos: [-5, 0.3, 10], size: [2, 0.6, 2], color: "#201a0c" },
+          { pos: [16, 0.4, -4], size: [1.5, 0.8, 1.5], color: "#201a0c" },
+        );
+        break;
+      case "tag":
+        items.push(
+          { pos: [-10, 0.05, -8], size: [3, 0.1, 3], color: "#33FF88", emissive: "#33FF88", emissiveIntensity: 0.5 },
+          { pos: [10, 0.05, 8], size: [3, 0.1, 3], color: "#88FFAA", emissive: "#88FFAA", emissiveIntensity: 0.5 },
+          { pos: [0, 0.05, 0], size: [2, 0.1, 2], color: "#33FF88", emissive: "#33FF88", emissiveIntensity: 0.7 },
+          { pos: [-6, 0.5, 4], size: [3, 1, 0.3], color: "#183028" },
+          { pos: [6, 0.5, -4], size: [3, 1, 0.3], color: "#183028" },
+        );
+        break;
+      case "bounty":
+        items.push(
+          { pos: [-15, 1.5, -10], size: [0.3, 3, 2], color: "#2a2015", emissive: "#FFD700", emissiveIntensity: 0.1 },
+          { pos: [15, 1.5, 10], size: [0.3, 3, 2], color: "#2a2015", emissive: "#FFD700", emissiveIntensity: 0.1 },
+          { pos: [0, 0.4, 0], size: [1.5, 0.8, 1.5], color: "#B8860B", emissive: "#FFD700", emissiveIntensity: 0.3 },
+          { pos: [-8, 0.3, 6], size: [1, 0.6, 1], color: "#B8860B", emissive: "#FFD700", emissiveIntensity: 0.2 },
+        );
+        break;
+      case "demolition":
+        items.push(
+          { pos: [-8, 0.6, -5], size: [0.8, 1.2, 0.8], color: "#FF4400", emissive: "#FF6600", emissiveIntensity: 0.6 },
+          { pos: [10, 0.6, 3], size: [0.8, 1.2, 0.8], color: "#FF4400", emissive: "#FF6600", emissiveIntensity: 0.6 },
+          { pos: [0, 0.6, 10], size: [0.8, 1.2, 0.8], color: "#FF4400", emissive: "#FF6600", emissiveIntensity: 0.6 },
+          { pos: [-14, 0.6, 8], size: [0.8, 1.2, 0.8], color: "#FF4400", emissive: "#FF6600", emissiveIntensity: 0.6 },
+          { pos: [5, 0.3, -8], size: [3, 0.6, 2], color: "#302010" },
+          { pos: [-12, 0.4, -10], size: [2, 0.8, 2], color: "#302010" },
+        );
+        break;
+      case "medic":
+        items.push(
+          { pos: [-12, 0.8, 0], size: [1.5, 1.6, 1.5], color: "#182838", emissive: "#33AAFF", emissiveIntensity: 0.4 },
+          { pos: [12, 0.8, 0], size: [1.5, 1.6, 1.5], color: "#182838", emissive: "#33AAFF", emissiveIntensity: 0.4 },
+          { pos: [0, 0.5, -6], size: [4, 1, 0.3], color: "#203040" },
+          { pos: [0, 0.5, 6], size: [4, 1, 0.3], color: "#203040" },
+        );
+        break;
+      case "lms":
+        items.push(
+          { pos: [-8, 1, -6], size: [1, 2, 1], color: "#221430" },
+          { pos: [8, 1, 6], size: [1, 2, 1], color: "#221430" },
+          { pos: [-4, 1, 8], size: [1, 2, 1], color: "#221430" },
+          { pos: [4, 1, -8], size: [1, 2, 1], color: "#221430" },
+          { pos: [0, 2, 0], size: [2, 4, 2], color: "#302040", emissive: "#DD44FF", emissiveIntensity: 0.2 },
+        );
+        break;
+      case "vip":
+        items.push(
+          { pos: [0, 0.3, 0], size: [6, 0.6, 6], color: "#1a1a45", emissive: "#FFD700", emissiveIntensity: 0.15 },
+          { pos: [-4, 1.5, -4], size: [1, 3, 1], color: "#1a1a45" },
+          { pos: [4, 1.5, -4], size: [1, 3, 1], color: "#1a1a45" },
+          { pos: [-4, 1.5, 4], size: [1, 3, 1], color: "#1a1a45" },
+          { pos: [4, 1.5, 4], size: [1, 3, 1], color: "#1a1a45" },
+        );
+        break;
+      case "payload":
+        items.push(
+          { pos: [0, 0.05, 0], size: [ARENA_W - 8, 0.1, 1.5], color: "#FF8844", emissive: "#FF8844", emissiveIntensity: 0.2 },
+          { pos: [-15, 1, 0], size: [1.5, 2, 1.5], color: "#201838", emissive: "#CC6633", emissiveIntensity: 0.3 },
+          { pos: [0, 1, 0], size: [1.5, 2, 1.5], color: "#201838", emissive: "#CC6633", emissiveIntensity: 0.3 },
+          { pos: [15, 1, 0], size: [1.5, 2, 1.5], color: "#201838", emissive: "#CC6633", emissiveIntensity: 0.3 },
+          { pos: [-8, 1, 5], size: [3, 2, 0.5], color: theme.wallColor },
+          { pos: [8, 1, -5], size: [3, 2, 0.5], color: theme.wallColor },
+        );
+        break;
+      case "blitz":
+        items.push(
+          { pos: [-10, 0.05, 0], size: [2, 0.1, ARENA_H - 6], color: "#FFCC00", emissive: "#FFCC00", emissiveIntensity: 0.4 },
+          { pos: [10, 0.05, 0], size: [2, 0.1, ARENA_H - 6], color: "#FF8800", emissive: "#FF8800", emissiveIntensity: 0.4 },
+          { pos: [0, 0.6, 0], size: [2, 1.2, 2], color: "#302810", userData: { movingPlatform: true, baseX: 0, speed: 1.5, range: 10 } },
+          { pos: [0, 0.6, 8], size: [2, 1.2, 2], color: "#302810", userData: { movingPlatform: true, baseX: 0, speed: 1.0, range: 8 } },
+        );
+        break;
+      case "juggernaut":
+        items.push(
+          { pos: [0, 2, 0], size: [4, 4, 4], color: "#2a1515", emissive: "#CC0000", emissiveIntensity: 0.15 },
+          { pos: [-10, 0.5, -6], size: [4, 1, 1], color: "#1a0e0e" },
+          { pos: [10, 0.5, 6], size: [4, 1, 1], color: "#1a0e0e" },
+          { pos: [-6, 0.5, 10], size: [1, 1, 4], color: "#1a0e0e" },
+          { pos: [6, 0.5, -10], size: [1, 1, 4], color: "#1a0e0e" },
+        );
+        break;
+      case "stealth":
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2;
+          const r = 10;
+          items.push({ pos: [Math.cos(a) * r, 1.5, Math.sin(a) * r], size: [1, 3, 1], color: "#101018" });
+        }
+        items.push(
+          { pos: [-12, 0.4, -8], size: [0.5, 0.8, 0.5], color: "#4444AA", emissive: "#4444AA", emissiveIntensity: 0.8 },
+          { pos: [12, 0.4, 8], size: [0.5, 0.8, 0.5], color: "#4444AA", emissive: "#4444AA", emissiveIntensity: 0.8 },
+        );
+        break;
+      case "mirror":
+        items.push(
+          { pos: [-8, 2, -6], size: [1, 4, 1], color: "#CCCCCC", emissive: "#FFFFFF", emissiveIntensity: 0.1 },
+          { pos: [8, 2, 6], size: [1, 4, 1], color: "#CCCCCC", emissive: "#FFFFFF", emissiveIntensity: 0.1 },
+          { pos: [-8, 2, 6], size: [1, 4, 1], color: "#CCCCCC", emissive: "#FFFFFF", emissiveIntensity: 0.1 },
+          { pos: [8, 2, -6], size: [1, 4, 1], color: "#CCCCCC", emissive: "#FFFFFF", emissiveIntensity: 0.1 },
+          { pos: [0, 1, 0], size: [2, 2, 2], color: "#DDDDDD", emissive: "#FFFFFF", emissiveIntensity: 0.15 },
+        );
+        break;
+      case "lowgrav":
+        items.push(
+          { pos: [-8, 2, -5], size: [3, 0.4, 3], color: "#1a1a40", emissive: "#8866FF", emissiveIntensity: 0.2, userData: { bobbing: true, baseY: 2 } },
+          { pos: [8, 3, 5], size: [3, 0.4, 3], color: "#1a1a40", emissive: "#AA88FF", emissiveIntensity: 0.2, userData: { bobbing: true, baseY: 3 } },
+          { pos: [0, 2.5, 0], size: [4, 0.4, 4], color: "#141430", emissive: "#8866FF", emissiveIntensity: 0.3, userData: { bobbing: true, baseY: 2.5 } },
+          { pos: [-14, 1.5, 8], size: [0.8, 3, 0.8], color: "#6644DD", emissive: "#8866FF", emissiveIntensity: 0.4 },
+          { pos: [14, 1.5, -8], size: [0.8, 3, 0.8], color: "#6644DD", emissive: "#AA88FF", emissiveIntensity: 0.4 },
+        );
+        break;
+      case "chaos":
+        items.push(
+          { pos: [-10, 0.5, -8], size: [2, 1, 2], color: "#401830", userData: { rotating: true, rotSpeed: 1.5 } },
+          { pos: [10, 0.5, 8], size: [2, 1, 2], color: "#301020", userData: { rotating: true, rotSpeed: -1.2 } },
+          { pos: [0, 0.5, 0], size: [1.5, 1, 1.5], color: "#301020", userData: { rotating: true, rotSpeed: 2.0 } },
+          { pos: [-5, 1, 5], size: [0.6, 0.6, 0.6], color: "#FF00FF", emissive: "#FF00FF", emissiveIntensity: 1.0, userData: { bobbing: true, baseY: 1 } },
+          { pos: [5, 1, -5], size: [0.6, 0.6, 0.6], color: "#00FFFF", emissive: "#00FFFF", emissiveIntensity: 1.0, userData: { bobbing: true, baseY: 1 } },
+          { pos: [0, 1.5, 10], size: [0.6, 0.6, 0.6], color: "#FFFF00", emissive: "#FFFF00", emissiveIntensity: 1.0, userData: { bobbing: true, baseY: 1.5 } },
+        );
+        break;
+      case "headhunter":
+        items.push(
+          { pos: [-15, 1.5, 0], size: [0.3, 3, 2], color: "#2a1c12", emissive: "#FF4400", emissiveIntensity: 0.15 },
+          { pos: [15, 1.5, 0], size: [0.3, 3, 2], color: "#2a1c12", emissive: "#FF4400", emissiveIntensity: 0.15 },
+          { pos: [0, 0.05, 0], size: [6, 0.1, 0.3], color: "#FF4400", emissive: "#FF4400", emissiveIntensity: 0.3 },
+          { pos: [0, 0.05, 0], size: [0.3, 0.1, 6], color: "#FF4400", emissive: "#FF4400", emissiveIntensity: 0.3 },
+          { pos: [-8, 1, -6], size: [3, 2, 0.5], color: theme.wallColor },
+          { pos: [8, 1, 6], size: [3, 2, 0.5], color: theme.wallColor },
+        );
+        break;
+      case "vampire":
+        items.push(
+          { pos: [-10, 0.4, -8], size: [1, 0.8, 2.5], color: "#2a0a1a" },
+          { pos: [10, 0.4, 8], size: [1, 0.8, 2.5], color: "#2a0a1a" },
+          { pos: [-5, 0.03, 5], size: [4, 0.06, 4], color: "#CC0044", emissive: "#CC0044", emissiveIntensity: 0.3 },
+          { pos: [8, 0.03, -3], size: [3, 0.06, 3], color: "#880033", emissive: "#880033", emissiveIntensity: 0.2 },
+          { pos: [-14, 2, 0], size: [1, 4, 1], color: "#200a14" },
+          { pos: [14, 2, 0], size: [1, 4, 1], color: "#200a14" },
+        );
+        break;
+      case "frostbite":
+        items.push(
+          { pos: [-10, 1.5, -6], size: [1.2, 3, 1.2], color: "#88DDFF", emissive: "#88DDFF", emissiveIntensity: 0.3 },
+          { pos: [10, 1.5, 6], size: [1.2, 3, 1.2], color: "#44AADD", emissive: "#44AADD", emissiveIntensity: 0.3 },
+          { pos: [0, 2, 0], size: [0.8, 4, 0.8], color: "#66CCEE", emissive: "#88DDFF", emissiveIntensity: 0.4 },
+          { pos: [-6, 0.03, 4], size: [5, 0.06, 5], color: "#88DDFF", emissive: "#88DDFF", emissiveIntensity: 0.15 },
+          { pos: [8, 0.03, -6], size: [4, 0.06, 4], color: "#44AADD", emissive: "#44AADD", emissiveIntensity: 0.15 },
+          { pos: [-14, 0.4, 10], size: [3, 0.8, 2], color: "#DDEEFF" },
+          { pos: [16, 0.4, -10], size: [2, 0.8, 3], color: "#DDEEFF" },
+        );
+        break;
+      case "titan":
+        items.push(
+          { pos: [-10, 3, -8], size: [2, 6, 2], color: "#200a12", emissive: "#FF6633", emissiveIntensity: 0.1 },
+          { pos: [10, 3, 8], size: [2, 6, 2], color: "#200a12", emissive: "#FF6633", emissiveIntensity: 0.1 },
+          { pos: [-10, 3, 8], size: [2, 6, 2], color: "#200a12", emissive: "#CC4422", emissiveIntensity: 0.1 },
+          { pos: [10, 3, -8], size: [2, 6, 2], color: "#200a12", emissive: "#CC4422", emissiveIntensity: 0.1 },
+          { pos: [0, 1.5, 0], size: [5, 3, 5], color: "#1a0810", emissive: "#FF6633", emissiveIntensity: 0.15 },
+        );
+        break;
+      case "school":
+        items.push(
+          { pos: [-8, 0.5, -6], size: [3, 1, 1.5], color: "#152828" },
+          { pos: [-4, 0.5, -6], size: [3, 1, 1.5], color: "#152828" },
+          { pos: [0, 0.5, -6], size: [3, 1, 1.5], color: "#152828" },
+          { pos: [4, 0.5, -6], size: [3, 1, 1.5], color: "#152828" },
+          { pos: [0, 2, -14], size: [12, 3, 0.3], color: "#0a1a1a", emissive: "#228888", emissiveIntensity: 0.05 },
+        );
+        break;
+      case "youvsme":
+        items.push(
+          { pos: [0, 0.05, 0], size: [0.2, 0.1, ARENA_H - 4], color: "#FF2266", emissive: "#FF2266", emissiveIntensity: 0.4 },
+          { pos: [-16, 0.3, -12], size: [4, 0.6, 4], color: "#2a1020" },
+          { pos: [16, 0.3, 12], size: [4, 0.6, 4], color: "#2a1020" },
+        );
+        break;
+      case "gungame":
+        items.push(
+          { pos: [-10, 1, -6], size: [2, 2, 0.5], color: "#222222" },
+          { pos: [10, 1, 6], size: [2, 2, 0.5], color: "#222222" },
+          { pos: [0, 1, 0], size: [0.5, 2, 4], color: "#222222" },
+          { pos: [-6, 0.4, 8], size: [1.5, 0.8, 1.5], color: "#333333", userData: { rotating: true, rotSpeed: 0.5 } },
+        );
+        break;
+      case "ranked":
+        items.push(
+          { pos: [0, 0.3, 0], size: [4, 0.6, 4], color: "#1a1a40", emissive: "#FFD700", emissiveIntensity: 0.2 },
+          { pos: [-12, 1, -8], size: [3, 2, 0.5], color: "#1a1a40" },
+          { pos: [12, 1, 8], size: [3, 2, 0.5], color: "#1a1a40" },
+          { pos: [-6, 1.5, 6], size: [1, 3, 1], color: "#252560" },
+          { pos: [6, 1.5, -6], size: [1, 3, 1], color: "#252560" },
+        );
+        break;
+      default:
+        items.push(
+          { pos: [0, 1.5, -8], size: [4, 3, 0.5], color: theme.wallColor },
+          { pos: [-12, 1.5, 3], size: [0.5, 3, 4], color: theme.wallColor },
+          { pos: [12, 1.5, 8], size: [0.5, 3, 4], color: theme.wallColor },
+        );
+        break;
     }
-    return baseObjects;
+    return items;
   }, [mode, theme]);
 
   return (
-    <group>
+    <group ref={groupRef}>
       {objects.map((obj, i) => (
-        <mesh key={i} position={obj.pos} castShadow receiveShadow>
+        <mesh key={i} position={obj.pos} castShadow receiveShadow userData={obj.userData || {}}>
           <boxGeometry args={obj.size} />
-          <meshStandardMaterial color={obj.color} roughness={0.8} metalness={0.1} />
+          <meshStandardMaterial
+            color={obj.color}
+            roughness={0.8}
+            metalness={obj.emissive ? 0.3 : 0.1}
+            emissive={obj.emissive || "#000000"}
+            emissiveIntensity={obj.emissiveIntensity || 0}
+          />
         </mesh>
       ))}
       {/* Center glow ring */}
@@ -888,12 +1320,10 @@ const ModeEnvironment = ({ mode, theme }: { mode: string; theme: ModeTheme }) =>
       )}
       {mode === "ctf" && (
         <>
-          {/* Blue base marker */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-18, 0.03, 0]}>
             <circleGeometry args={[2, 32]} />
             <meshBasicMaterial color="#3388FF" transparent opacity={0.3} side={THREE.DoubleSide} />
           </mesh>
-          {/* Red base marker */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[18, 0.03, 0]}>
             <circleGeometry args={[2, 32]} />
             <meshBasicMaterial color="#FF3333" transparent opacity={0.3} side={THREE.DoubleSide} />

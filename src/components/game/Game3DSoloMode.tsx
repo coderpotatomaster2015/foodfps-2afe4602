@@ -121,15 +121,15 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
       // First person: camera at player position, looking forward
       const eyeHeight = 1.6;
       camera.position.set(p.x, eyeHeight, p.z);
-      const lookX = p.x + Math.cos(p.angle) * 10;
-      const lookZ = p.z + Math.sin(p.angle) * 10;
+      const lookX = p.x + Math.sin(p.angle) * 10;
+      const lookZ = p.z + Math.cos(p.angle) * 10;
       camera.lookAt(lookX, eyeHeight * 0.9, lookZ);
       (camera as THREE.PerspectiveCamera).fov = 75;
       (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
     } else {
       // Top-down isometric
       const height = 35;
-      camera.position.set(p.x, height, p.z + 15);
+      camera.position.set(p.x, height, p.z - 15);
       camera.lookAt(p.x, 0, p.z);
       (camera as THREE.PerspectiveCamera).fov = 50;
       (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
@@ -143,18 +143,24 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
       // Skip mouse aim when aimbot is active
       if (gs.current.aimbot) return;
       
-      const rect = canvas.getBoundingClientRect();
-      gs.current.mouseNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      gs.current.mouseNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      if (gs.current.cameraMode === "fps") {
+        // FPS mode: use mouse delta for rotation
+        const sensitivity = 0.003;
+        gs.current.player.angle += e.movementX * sensitivity;
+      } else {
+        // Top-down mode: raycast to ground plane
+        const rect = canvas.getBoundingClientRect();
+        gs.current.mouseNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        gs.current.mouseNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
-      // Raycast to ground plane to get aim point
-      mouseVec.set(gs.current.mouseNDC.x, gs.current.mouseNDC.y);
-      raycaster.setFromCamera(mouseVec, camera);
-      const hit = new THREE.Vector3();
-      raycaster.ray.intersectPlane(groundPlane, hit);
-      if (hit) {
-        const p = gs.current.player;
-        p.angle = Math.atan2(hit.z - p.z, hit.x - p.x);
+        mouseVec.set(gs.current.mouseNDC.x, gs.current.mouseNDC.y);
+        raycaster.setFromCamera(mouseVec, camera);
+        const hit = new THREE.Vector3();
+        raycaster.ray.intersectPlane(groundPlane, hit);
+        if (hit) {
+          const p = gs.current.player;
+          p.angle = Math.atan2(hit.x - p.x, hit.z - p.z);
+        }
       }
     };
     const handleMouseDown = (e: MouseEvent) => { if (e.button === 0) gs.current.mouseDown = true; };
@@ -198,15 +204,15 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
         if (d < nearestDist) { nearestDist = d; nearest = e; }
       }
       if (nearest) {
-        p.angle = Math.atan2(nearest.z - p.z, nearest.x - p.x);
+        p.angle = Math.atan2(nearest.x - p.x, nearest.z - p.z);
         g.mouseDown = true; // auto-shoot
       }
     }
 
     // ── Movement ──
     let dx = 0, dz = 0;
-    if (g.keys["w"] || g.keys["arrowup"]) dz -= 1;
-    if (g.keys["s"] || g.keys["arrowdown"]) dz += 1;
+    if (g.keys["w"] || g.keys["arrowup"]) dz += 1;
+    if (g.keys["s"] || g.keys["arrowdown"]) dz -= 1;
     if (g.keys["a"] || g.keys["arrowleft"]) dx -= 1;
     if (g.keys["d"] || g.keys["arrowright"]) dx += 1;
 
@@ -227,8 +233,8 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
         for (let i = g.enemies.length - 1; i >= 0; i--) {
           const e = g.enemies[i];
           const d = Math.hypot(e.x - p.x, e.z - p.z);
-          const angleToEnemy = Math.atan2(e.z - p.z, e.x - p.x);
-          const angleDiff = Math.abs(angleToEnemy - p.angle);
+          const angleToEnemy = Math.atan2(e.x - p.x, e.z - p.z);
+          const angleDiff = Math.abs(((angleToEnemy - p.angle + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
           if (d <= meleeRange && angleDiff < 0.5) {
             e.hp -= weapon.damage;
             e.stun = 0.6;
@@ -254,10 +260,10 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
           const finalAngle = p.angle + (Math.random() - 0.5) * spread * 2;
           const speed = weapon.bulletSpeed * SCALE;
           g.bullets.push({
-            x: p.x + Math.cos(p.angle) * 0.8,
-            z: p.z + Math.sin(p.angle) * 0.8,
-            vx: Math.cos(finalAngle) * speed,
-            vz: Math.sin(finalAngle) * speed,
+            x: p.x + Math.sin(p.angle) * 0.8,
+            z: p.z + Math.cos(p.angle) * 0.8,
+            vx: Math.sin(finalAngle) * speed,
+            vz: Math.cos(finalAngle) * speed,
             r: 0.15,
             life: 2.5,
             dmg: weapon.damage,
@@ -328,9 +334,9 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
       // Enemy shooting
       if (d < 17.5 && g.time - e.lastShot >= 3.5) {
         e.lastShot = g.time;
-        const ang = Math.atan2(p.z - e.z, p.x - e.x);
+        const ang = Math.atan2(p.x - e.x, p.z - e.z);
         const spd = 10 * SCALE;
-        g.enemyBullets.push({ x: e.x, z: e.z, vx: Math.cos(ang) * spd, vz: Math.sin(ang) * spd, r: 0.3, life: 3, dmg: 10, color: "#FF4444" });
+        g.enemyBullets.push({ x: e.x, z: e.z, vx: Math.sin(ang) * spd, vz: Math.cos(ang) * spd, r: 0.3, life: 3, dmg: 10, color: "#FF4444" });
       }
     }
 
@@ -573,7 +579,7 @@ const PlayerMesh = ({ gs }: { gs: React.MutableRefObject<GameState> }) => {
     if (!meshRef.current) return;
     const p = gs.current.player;
     meshRef.current.position.set(p.x, 0.7, p.z);
-    meshRef.current.rotation.y = -p.angle + Math.PI / 2;
+    meshRef.current.rotation.y = -p.angle;
   });
   return (
     <group>

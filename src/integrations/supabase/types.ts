@@ -1339,6 +1339,27 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_log: {
+        Row: {
+          action_type: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       redeem_codes: {
         Row: {
           code: string
@@ -1579,6 +1600,10 @@ export type Database = {
           _gold?: number
           _user_id: string
         }
+        Returns: boolean
+      }
+      check_rate_limit_and_ban: {
+        Args: { _action_type: string; _user_id: string }
         Returns: boolean
       }
       get_ban_info: {

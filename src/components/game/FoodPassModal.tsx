@@ -46,7 +46,7 @@ export const FoodPassModal = ({ open, onOpenChange }: FoodPassModalProps) => {
         .from("food_pass_tiers")
         .select("*")
         .order("tier", { ascending: true })
-        .limit(100);
+        .limit(600);
 
       if (tiersData) setTiers(tiersData);
 

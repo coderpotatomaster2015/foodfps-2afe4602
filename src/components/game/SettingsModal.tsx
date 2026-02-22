@@ -231,24 +231,6 @@ export const SettingsModal = ({
             </div>
           </Card>
 
-          {/* 3D Mode */}
-          <Card className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Box className="w-5 h-5 text-primary" />
-                <div>
-                  <Label className="font-medium">3D Mode</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Play with a 3D perspective effect
-                  </p>
-                </div>
-              </div>
-              <Switch 
-                checked={threeDMode} 
-                onCheckedChange={handleThreeDChange}
-              />
-            </div>
-          </Card>
 
           {/* UI Color Theme */}
           <Card className="p-4">

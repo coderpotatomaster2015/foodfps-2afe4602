@@ -23,6 +23,7 @@ import { TagMode } from "@/components/game/TagMode";
 import { BountyHunterMode } from "@/components/game/BountyHunterMode";
 import { DemolitionMode } from "@/components/game/DemolitionMode";
 import { MedicMode } from "@/components/game/MedicMode";
+import { Game3DSoloMode } from "@/components/game/Game3DSoloMode";
 import { Lobby } from "@/components/game/Lobby";
 import { TimedLobby } from "@/components/game/TimedLobby";
 import { TimedGameCanvas } from "@/components/game/TimedGameCanvas";
@@ -64,7 +65,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { applyRainbowToDocument, removeRainbowFromDocument } from "@/utils/rainbowEffect";
 
-export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | "youvsme" | "school" | "survival" | "zombie" | "arena" | "infection" | "ctf" | "koth" | "gungame" | "vip" | "lms" | "dodgeball" | "payload" | "sniper" | "tag" | "bounty" | "demolition" | "medic" | "blitz" | "juggernaut" | "stealth" | "mirror" | "lowgrav" | "chaos" | "headhunter" | "vampire" | "frostbite" | "titan" | null;
+export type GameMode = "solo" | "3d-solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | "youvsme" | "school" | "survival" | "zombie" | "arena" | "infection" | "ctf" | "koth" | "gungame" | "vip" | "lms" | "dodgeball" | "payload" | "sniper" | "tag" | "bounty" | "demolition" | "medic" | "blitz" | "juggernaut" | "stealth" | "mirror" | "lowgrav" | "chaos" | "headhunter" | "vampire" | "frostbite" | "titan" | null;
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -298,7 +299,7 @@ const Index = () => {
       {gameMode && !isInGame && (gameMode === "host" || gameMode === "join") && <Lobby mode={gameMode} username={username} roomCode={roomCode} onStartGame={handleStartGame} onBack={handleBackToMenu} />}
       {gameMode === "timed-host" && !isInGame && <TimedLobby mode="host" username={username} roomCode={roomCode} timedMinutes={timedMinutes} onStartGame={handleTimedStartGame} onBack={handleBackToMenu} />}
 
-      {((isInGame && !soloBasedModes.includes(gameMode)) || (!!gameMode && soloBasedModes.includes(gameMode))) && !["boss","timed-host","survival","zombie","arena","infection","ctf","koth","gungame","vip","lms","dodgeball","payload","sniper","tag","bounty","demolition","medic"].includes(gameMode as string) && (
+      {((isInGame && !soloBasedModes.includes(gameMode)) || (!!gameMode && soloBasedModes.includes(gameMode))) && !["boss","timed-host","survival","zombie","arena","infection","ctf","koth","gungame","vip","lms","dodgeball","payload","sniper","tag","bounty","demolition","medic","3d-solo"].includes(gameMode as string) && (
         <GameCanvas mode={gameMode as Exclude<GameMode, null | "boss" | "timed-host" | "timed-join">} username={username} roomCode={roomCode} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
       )}
 
@@ -318,6 +319,7 @@ const Index = () => {
       {gameMode === "bounty" && <BountyHunterMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
       {gameMode === "demolition" && <DemolitionMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
       {gameMode === "medic" && <MedicMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "3d-solo" && <Game3DSoloMode mode="3d-solo" username={username} roomCode={roomCode} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
 
       {gameMode === "timed-host" && isInGame && <TimedGameCanvas username={username} roomCode={roomCode} timedMinutes={timedMinutes} onBack={handleBackToMenu} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
       {gameMode === "boss" && <BossMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}

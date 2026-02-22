@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Text, Plane } from "@react-three/drei";
 import * as THREE from "three";
@@ -517,6 +517,20 @@ const MODE_THEMES: Record<string, Partial<ModeTheme>> = {
     specialFeature: "Colossal enemies, massive damage", playerSpeed: 9,
     enemyShootInterval: 1.5,
   },
+  quickplay: {
+    skyColor: "#081410", groundColor: "#0c1a14", groundColor2: "#102018",
+    gridColor1: "#1a3828", gridColor2: "#0a1810",
+    wallColor: "#142a1c", wallGlow1: "#44FF88", wallGlow2: "#88FFCC",
+    fogColor: "#081410", fogNear: 30, fogFar: 80,
+    pointLights: [
+      { pos: [0, 10, 0], color: "#44FF88", intensity: 0.5, distance: 45 },
+      { pos: [-15, 6, -10], color: "#88FFCC", intensity: 0.3, distance: 30 },
+      { pos: [15, 6, 10], color: "#22CC66", intensity: 0.2, distance: 25 },
+    ],
+    enemyColor: "#FF4444", enemyHp: 50, enemySpeed: [2, 4], spawnInterval: 1.5,
+    specialFeature: "Team vs Team! 3 ally bots fight with you", playerSpeed: 9,
+    enemyShootInterval: 3.0,
+  },
 };
 
 function getTheme(mode: string): ModeTheme {
@@ -539,6 +553,10 @@ interface Pickup3D {
 interface Particle3D {
   x: number; y: number; z: number; vx: number; vy: number; vz: number;
   life: number; color: string;
+}
+interface AllyBot3D {
+  id: string; x: number; z: number; r: number; speed: number;
+  hp: number; maxHp: number; color: string; lastShot: number; targetId: string | null;
 }
 interface PlayerState {
   x: number; z: number; r: number; speed: number; angle: number;
@@ -570,6 +588,9 @@ interface GameState {
   lastDash: number;
   gunGameKills: number;
   gunGameWeaponIndex: number;
+  touchMove: { x: number; y: number };
+  touchShooting: boolean;
+  allyBots: AllyBot3D[];
 }
 
 // ── 3D Scene ──────────────────────────────────────────────────────────
@@ -692,6 +713,11 @@ const GameScene = ({ gs, onStateChange, theme, mode }: {
     if (g.keys["s"] || g.keys["arrowdown"]) dz -= 1;
     if (g.keys["a"] || g.keys["arrowleft"]) dx -= 1;
     if (g.keys["d"] || g.keys["arrowright"]) dx += 1;
+    // Touch input
+    if (g.touchMove.x !== 0 || g.touchMove.y !== 0) {
+      dx += g.touchMove.x;
+      dz -= g.touchMove.y;
+    }
 
     if (dx !== 0 || dz !== 0) {
       const len = Math.hypot(dx, dz);
@@ -703,8 +729,9 @@ const GameScene = ({ gs, onStateChange, theme, mode }: {
 
     // ── Shooting ──
     const weapon = WEAPONS[p.weapon];
+    const isShooting = g.mouseDown || g.touchShooting;
     if (weapon.isMelee) {
-      if (g.mouseDown && g.time - p.lastMelee >= weapon.fireRate) {
+      if (isShooting && g.time - p.lastMelee >= weapon.fireRate) {
         p.lastMelee = g.time;
         const meleeRange = 2.5;
         for (let i = g.enemies.length - 1; i >= 0; i--) {
@@ -733,7 +760,7 @@ const GameScene = ({ gs, onStateChange, theme, mode }: {
     } else {
       const fireRate = g.godMode ? 0 : weapon.fireRate;
       const hasInfiniteAmmo = g.godMode || g.infiniteAmmo;
-      if (g.mouseDown && g.time - p.lastShot >= fireRate && (hasInfiniteAmmo || p.ammo > 0)) {
+      if (isShooting && g.time - p.lastShot >= fireRate && (hasInfiniteAmmo || p.ammo > 0)) {
         p.lastShot = g.time;
         if (!hasInfiniteAmmo) p.ammo--;
         const bulletsToFire = p.weapon === "shotgun" ? 5 : 1;
@@ -867,6 +894,52 @@ const GameScene = ({ gs, onStateChange, theme, mode }: {
       if (g.spawnInterval > 0.4) g.spawnInterval *= 0.993;
     }
 
+    // ── Ally Bot AI (quickplay) ──
+    for (const ally of g.allyBots) {
+      if (ally.hp <= 0) continue;
+      let nearestEnemy: Enemy3D | null = null;
+      let nearestDist = Infinity;
+      for (const e of g.enemies) {
+        const d = Math.hypot(e.x - ally.x, e.z - ally.z);
+        if (d < nearestDist) { nearestDist = d; nearestEnemy = e; }
+      }
+      if (nearestEnemy) {
+        const vx = nearestEnemy.x - ally.x, vz = nearestEnemy.z - ally.z;
+        const d = Math.hypot(vx, vz);
+        if (d > 3) {
+          ally.x += (vx / d) * ally.speed * dt;
+          ally.z += (vz / d) * ally.speed * dt;
+          ally.x = Math.max(-ARENA_W / 2 + 1, Math.min(ARENA_W / 2 - 1, ally.x));
+          ally.z = Math.max(-ARENA_H / 2 + 1, Math.min(ARENA_H / 2 - 1, ally.z));
+        }
+        if (g.time - ally.lastShot > 0.5 && d < 15) {
+          ally.lastShot = g.time;
+          const ang = Math.atan2(nearestEnemy.x - ally.x, nearestEnemy.z - ally.z);
+          const spd = 15 * SCALE;
+          g.bullets.push({ x: ally.x, z: ally.z, vx: Math.sin(ang) * spd, vz: Math.cos(ang) * spd, r: 0.15, life: 2.5, dmg: 25, color: "#44FF88" });
+        }
+      }
+      // Take damage from enemy bullets
+      for (let i = g.enemyBullets.length - 1; i >= 0; i--) {
+        const b = g.enemyBullets[i];
+        if (Math.hypot(b.x - ally.x, b.z - ally.z) < ally.r + b.r) {
+          ally.hp -= b.dmg;
+          g.enemyBullets.splice(i, 1);
+          if (ally.hp <= 0) {
+            for (let k = 0; k < 8; k++) {
+              g.particles.push({ x: ally.x, y: 0.5, z: ally.z, vx: (Math.random() - 0.5) * 5, vy: Math.random() * 3, vz: (Math.random() - 0.5) * 5, life: 0.6, color: "#44FF88" });
+            }
+          }
+        }
+      }
+      // Take melee damage from enemies
+      for (const e of g.enemies) {
+        if (Math.hypot(e.x - ally.x, e.z - ally.z) < ally.r + e.r) {
+          ally.hp -= 5 * dt;
+        }
+      }
+    }
+
     updateCamera();
   });
 
@@ -903,15 +976,8 @@ const GameScene = ({ gs, onStateChange, theme, mode }: {
 
       <StarField />
 
-      {/* Ground */}
-      <mesh ref={groundRef} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[ARENA_W, ARENA_H]} />
-        <meshStandardMaterial color={theme.groundColor} roughness={0.9} metalness={0.1} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
-        <planeGeometry args={[ARENA_W - 0.5, ARENA_H - 0.5]} />
-        <meshStandardMaterial color={theme.groundColor2} roughness={0.85} metalness={0.05} transparent opacity={0.8} />
-      </mesh>
+      {/* Textured Ground */}
+      <TexturedGround ref={groundRef} theme={theme} />
 
       <gridHelper args={[Math.max(ARENA_W, ARENA_H), 32, theme.gridColor1, theme.gridColor2]} position={[0, 0.01, 0]} />
 
@@ -923,6 +989,7 @@ const GameScene = ({ gs, onStateChange, theme, mode }: {
       {gs.current.cameraMode === "fps" && <FPSWeaponModel gs={gs} />}
 
       {gs.current.enemies.map((e) => <EnemyMesh key={e.id} enemy={e} />)}
+      {gs.current.allyBots.map((bot) => <AllyBotMesh key={bot.id} bot={bot} />)}
       {gs.current.bullets.map((b, i) => <BulletMesh key={`pb_${i}`} bullet={b} />)}
       {gs.current.enemyBullets.map((b, i) => <BulletMesh key={`eb_${i}`} bullet={b} />)}
       {gs.current.pickups.map((pk, i) => <PickupMesh key={`pk_${i}`} pickup={pk} theme={theme} />)}
@@ -957,6 +1024,92 @@ const StarField = () => {
       </bufferGeometry>
       <pointsMaterial color="#ffffff" size={0.4} sizeAttenuation transparent opacity={0.7} />
     </points>
+  );
+};
+
+// Textured ground with procedural canvas texture
+const TexturedGround = React.forwardRef<THREE.Mesh, { theme: ModeTheme }>(({ theme }, ref) => {
+  const texture = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d")!;
+    // Base fill
+    ctx.fillStyle = theme.groundColor;
+    ctx.fillRect(0, 0, 512, 512);
+    // Tile pattern
+    for (let i = 0; i < 512; i += 32) {
+      for (let j = 0; j < 512; j += 32) {
+        const brightness = Math.random() * 15 - 7;
+        ctx.fillStyle = `rgba(${128 + brightness}, ${128 + brightness}, ${128 + brightness}, 0.04)`;
+        ctx.fillRect(i, j, 32, 32);
+        // Subtle tile edges
+        ctx.strokeStyle = theme.gridColor1;
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(i + 0.5, j + 0.5, 31, 31);
+      }
+    }
+    // Scatter dark spots for wear
+    for (let n = 0; n < 40; n++) {
+      const sx = Math.random() * 512, sy = Math.random() * 512;
+      ctx.fillStyle = `rgba(0,0,0,0.06)`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 3 + Math.random() * 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(4, 3);
+    return tex;
+  }, [theme]);
+
+  return (
+    <group>
+      <mesh ref={ref} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[ARENA_W, ARENA_H]} />
+        <meshStandardMaterial map={texture} roughness={0.85} metalness={0.1} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
+        <planeGeometry args={[ARENA_W - 0.5, ARENA_H - 0.5]} />
+        <meshStandardMaterial color={theme.groundColor2} roughness={0.85} metalness={0.05} transparent opacity={0.3} />
+      </mesh>
+    </group>
+  );
+});
+TexturedGround.displayName = "TexturedGround";
+
+// Ally bot mesh for quickplay mode
+const AllyBotMesh = ({ bot }: { bot: AllyBot3D }) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const color = useMemo(() => new THREE.Color(bot.color), [bot.color]);
+  useFrame(() => {
+    if (!meshRef.current || bot.hp <= 0) return;
+    meshRef.current.position.set(bot.x, 0.7, bot.z);
+  });
+  if (bot.hp <= 0) return null;
+  return (
+    <group>
+      <mesh ref={meshRef} castShadow>
+        <capsuleGeometry args={[0.5, 0.8, 8, 16]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.15} />
+      </mesh>
+      {/* Team marker */}
+      <mesh position={[bot.x, 2.0, bot.z]}>
+        <sphereGeometry args={[0.15, 8, 8]} />
+        <meshBasicMaterial color="#44FF88" />
+      </mesh>
+      {/* Health bar bg */}
+      <mesh position={[bot.x, 1.8, bot.z]}>
+        <planeGeometry args={[1.2, 0.12]} />
+        <meshBasicMaterial color="#333" />
+      </mesh>
+      {/* Health bar fill */}
+      <mesh position={[bot.x - 0.6 * (1 - bot.hp / bot.maxHp) / 2, 1.8, bot.z + 0.01]}>
+        <planeGeometry args={[1.2 * Math.max(0, bot.hp / bot.maxHp), 0.1]} />
+        <meshBasicMaterial color="#44FF88" />
+      </mesh>
+    </group>
   );
 };
 
@@ -1530,6 +1683,7 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
     "mirror": "Mirror Match", "lowgrav": "Low Gravity", "chaos": "Chaos",
     "headhunter": "Headhunter", "vampire": "Vampire", "frostbite": "Frostbite",
     "titan": "Titan Arena", "offline": "Offline", "host": "Host", "join": "Join",
+    "quickplay": "Quick Play",
   };
   const modeName = MODE_NAMES[mode || ""] || "Solo";
 
@@ -1547,6 +1701,8 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
     spawnImmune: true, aimbot: false,
     dashCooldown: 2.0, lastDash: -10,
     gunGameKills: 0, gunGameWeaponIndex: 0,
+    touchMove: { x: 0, y: 0 }, touchShooting: false,
+    allyBots: [],
   });
 
   const handleStateChange = useCallback(() => {
@@ -1674,6 +1830,16 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
         color: theme.enemyColor, stun: 0, lastShot: -1,
       });
     }
+    // Spawn ally bots for quickplay
+    if (mode === "quickplay") {
+      const ALLY_COLORS = ["#44FF88", "#88FF44", "#44FFCC"];
+      for (let i = 0; i < 3; i++) {
+        g.allyBots.push({
+          id: `ally_${i}`, x: -5 + i * 5, z: -3, r: 0.7, speed: 6,
+          hp: 80, maxHp: 80, color: ALLY_COLORS[i], lastShot: -1, targetId: null,
+        });
+      }
+    }
   }, []);
 
   const checkPermissions = async () => {
@@ -1749,6 +1915,25 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
     };
   }, []);
 
+  const handleTouchMove = useCallback((tdx: number, tdy: number) => {
+    gsRef.current.touchMove = { x: tdx, y: tdy };
+  }, []);
+  const handleTouchAim = useCallback((_x: number, _y: number) => {
+    // In 3D top-down, touch aim adjusts player angle
+    // For simplicity, angle is based on joystick direction
+  }, []);
+  const handleTouchShoot = useCallback((shooting: boolean) => {
+    gsRef.current.touchShooting = shooting;
+  }, []);
+  const handleTouchReload = useCallback(() => {
+    const p = gsRef.current.player;
+    const wc = WEAPONS[p.weapon];
+    if (!wc.isMelee) {
+      p.ammo = wc.maxAmmo;
+      setAmmo(wc.maxAmmo);
+    }
+  }, []);
+
   return (
     <div className="relative w-full h-screen" style={{ cursor: ctrlHeld ? "crosshair" : "default" }}>
       <div className="w-full h-full" style={{ pointerEvents: "auto", cursor: ctrlHeld ? "crosshair" : "default" }}>
@@ -1760,6 +1945,17 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
           <GameScene gs={gsRef} onStateChange={handleStateChange} theme={theme} mode={mode || "solo"} />
         </Canvas>
       </div>
+
+      {touchscreenMode && (
+        <TouchControls
+          onMove={handleTouchMove}
+          onAim={handleTouchAim}
+          onShoot={handleTouchShoot}
+          onReload={handleTouchReload}
+          canvasWidth={960}
+          canvasHeight={640}
+        />
+      )}
 
       {gameOver && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">

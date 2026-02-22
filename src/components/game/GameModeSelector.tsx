@@ -65,6 +65,7 @@ const ALL_MODES: ModeCard[] = [
   { mode: "vampire", title: "Vampire", description: "Drain health on kills", difficulty: "Medium", estMinutes: "6-9m", colorClass: "group-hover:bg-rose-600", icon: Droplets },
   { mode: "frostbite", title: "Frostbite", description: "Slow enemies", difficulty: "Medium", estMinutes: "6-10m", colorClass: "group-hover:bg-blue-300", icon: Snowflake },
   { mode: "titan", title: "Titan Arena", description: "Big units, big hits", difficulty: "Hard", estMinutes: "9-14m", colorClass: "group-hover:bg-slate-500", icon: Dumbbell },
+  { mode: "quickplay" as any, title: "Quick Play", description: "Team vs Team bots", difficulty: "Medium", estMinutes: "5-10m", colorClass: "group-hover:bg-teal-500", icon: Users },
 ];
 
 const FAVORITES_KEY = "foodfps_mode_favorites";

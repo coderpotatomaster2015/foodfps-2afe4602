@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, Smartphone, Volume2, Palette, Check } from "lucide-react";
+import { Settings, Smartphone, Volume2, Palette, Check, Box } from "lucide-react";
 
 interface SettingsModalProps {
   open: boolean;
@@ -108,6 +108,7 @@ export const SettingsModal = ({
   onOpenServicePanel 
 }: SettingsModalProps) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [threeDMode, setThreeDMode] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState("default");
   const [tapCount, setTapCount] = useState(0);
   const [tapTimer, setTapTimer] = useState<NodeJS.Timeout | null>(null);
@@ -120,6 +121,12 @@ export const SettingsModal = ({
     if (savedTheme) {
       setSelectedTheme(savedTheme);
       applyTheme(savedTheme);
+    }
+
+    const saved3D = localStorage.getItem("foodfps_3d");
+    if (saved3D === "true") {
+      setThreeDMode(true);
+      document.documentElement.setAttribute("data-3d", "true");
     }
   }, []);
 
@@ -139,6 +146,17 @@ export const SettingsModal = ({
 
     document.documentElement.style.setProperty("--primary", theme.primary);
     document.documentElement.style.setProperty("--accent", theme.accent);
+  };
+
+  const handleThreeDChange = (enabled: boolean) => {
+    setThreeDMode(enabled);
+    localStorage.setItem("foodfps_3d", String(enabled));
+    if (enabled) {
+      document.documentElement.setAttribute("data-3d", "true");
+    } else {
+      document.documentElement.removeAttribute("data-3d");
+    }
+    playSound("click");
   };
 
   const handleThemeChange = (themeId: string) => {
@@ -209,6 +227,25 @@ export const SettingsModal = ({
               <Switch 
                 checked={soundEnabled} 
                 onCheckedChange={handleSoundChange}
+              />
+            </div>
+          </Card>
+
+          {/* 3D Mode */}
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Box className="w-5 h-5 text-primary" />
+                <div>
+                  <Label className="font-medium">3D Mode</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Play with a 3D perspective effect
+                  </p>
+                </div>
+              </div>
+              <Switch 
+                checked={threeDMode} 
+                onCheckedChange={handleThreeDChange}
               />
             </div>
           </Card>

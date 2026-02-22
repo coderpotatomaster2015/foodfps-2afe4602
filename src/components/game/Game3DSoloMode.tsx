@@ -716,7 +716,7 @@ const GameScene = ({ gs, onStateChange, theme, mode }: {
     // Touch input
     if (g.touchMove.x !== 0 || g.touchMove.y !== 0) {
       dx += g.touchMove.x;
-      dz -= g.touchMove.y;
+      dz += g.touchMove.y;
     }
 
     if (dx !== 0 || dz !== 0) {
@@ -773,7 +773,7 @@ const GameScene = ({ gs, onStateChange, theme, mode }: {
             z: p.z + Math.cos(p.angle) * 0.8,
             vx: Math.sin(finalAngle) * speed,
             vz: Math.cos(finalAngle) * speed,
-            r: 0.15, life: 2.5, dmg: weapon.damage, color: weapon.color,
+            r: 0.4, life: 2.5, dmg: weapon.damage, color: weapon.color,
           });
         }
         onStateChange();
@@ -916,7 +916,7 @@ const GameScene = ({ gs, onStateChange, theme, mode }: {
           ally.lastShot = g.time;
           const ang = Math.atan2(nearestEnemy.x - ally.x, nearestEnemy.z - ally.z);
           const spd = 15 * SCALE;
-          g.bullets.push({ x: ally.x, z: ally.z, vx: Math.sin(ang) * spd, vz: Math.cos(ang) * spd, r: 0.15, life: 2.5, dmg: 25, color: "#44FF88" });
+          g.bullets.push({ x: ally.x, z: ally.z, vx: Math.sin(ang) * spd, vz: Math.cos(ang) * spd, r: 0.4, life: 2.5, dmg: 25, color: "#44FF88" });
         }
       }
       // Take damage from enemy bullets

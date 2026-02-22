@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, MessageCircle, AlertTriangle, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { rateLimitedAction, RATE_LIMITS } from "@/utils/rateLimiter";
 
 interface ChatMessage {
   id: string;
@@ -166,6 +167,10 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
 
   const handleSend = async () => {
     if (!input.trim() || isChatBanned) return;
+
+    // Rate limit check
+    const allowed = await rateLimitedAction(userId, "chat_message", RATE_LIMITS.CHAT_MESSAGE);
+    if (!allowed) return;
 
     const messageText = input.trim();
     setInput("");

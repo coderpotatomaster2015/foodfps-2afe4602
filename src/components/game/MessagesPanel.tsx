@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X, Send, Mail, Inbox, Reply, Check, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { rateLimitedAction, RATE_LIMITS } from "@/utils/rateLimiter";
 
 interface MessagesPanelProps {
   open: boolean;
@@ -86,6 +87,13 @@ export const MessagesPanel = ({ open, onOpenChange }: MessagesPanelProps) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+
+      // Rate limit check
+      const allowed = await rateLimitedAction(user.id, "send_message", RATE_LIMITS.SEND_MESSAGE);
+      if (!allowed) {
+        setSending(false);
+        return;
+      }
 
       const { data: profile } = await supabase
         .from("profiles")

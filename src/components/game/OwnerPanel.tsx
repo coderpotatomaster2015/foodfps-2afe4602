@@ -780,8 +780,15 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
             const deaths = Math.floor(Math.random() * 3);
             const waves = Math.floor(Math.random() * 5) + 1;
 
-            setAiScreen(prev => ({ ...prev, scene: "playing", title: `Playing ${mode.toUpperCase()}`, details: ["Loading map...", "Spawning..."], progress: 10, avatar: "🎮" }));
+            setAiScreen(prev => ({ ...prev, scene: "playing", title: `Playing ${mode.toUpperCase()}`, details: ["🔄 Loading map...", "📍 Spawning in..."], progress: 10, avatar: "🎮" }));
             setAiLog(prev => [...prev.slice(-40), `🎮 Entering ${mode.toUpperCase()} mode...`]);
+
+            // Post to global chat like a real player
+            await supabase.from("global_chat").insert({
+              user_id: currentUser.id,
+              username: ownerUsername,
+              message: `Just joined ${mode} mode! Let's go! 🎮`,
+            });
             
             await new Promise(r => setTimeout(r, 1000));
             setAiScreen(prev => ({ ...prev, progress: 30, details: [...prev.details, `Wave ${waves} — Fighting enemies...`] }));
@@ -789,6 +796,14 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
             await new Promise(r => setTimeout(r, 1000));
             setAiScreen(prev => ({ ...prev, progress: 70, details: [...prev.details, `${kills} kills, ${deaths} deaths`] }));
             setAiLog(prev => [...prev.slice(-40), `⚔️ Fighting... ${kills} kills, ${deaths} deaths, ${waves} waves cleared`]);
+
+            // Register as active player so others can see
+            await supabase.from("active_players").upsert({
+              user_id: currentUser.id,
+              username: ownerUsername,
+              mode: mode,
+              last_seen: new Date().toISOString(),
+            }, { onConflict: "user_id" });
 
             const { data: prof } = await supabase
               .from("profiles")
@@ -815,10 +830,23 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
             });
 
             setAiScreen(prev => ({
-              ...prev, progress: 100, details: [...prev.details, `✅ +${scoreGain} score`],
+              ...prev, progress: 100, details: [...prev.details, `✅ +${scoreGain} score, ${kills} kills`],
               stats: { ...prev.stats, score: prev.stats.score + scoreGain, kills: prev.stats.kills + kills, coins: prev.stats.coins + coins, gems: prev.stats.gems + gems, gold: prev.stats.gold + gold }
             }));
             setAiLog(prev => [...prev.slice(-40), `✅ Match complete! +${scoreGain} score, +${coins} coins, +${gems} gems, +${gold} gold`]);
+
+            // Chat about the result like a real player
+            const chatMessages = [
+              `${kills} kills in ${mode} mode! 💀🔥`,
+              `Just dropped ${scoreGain} score in ${mode}! Who can beat that? 😤`,
+              `${mode} mode is too easy for me 😎`,
+              `GG! ${waves} waves cleared in ${mode} 🏆`,
+            ];
+            await supabase.from("global_chat").insert({
+              user_id: currentUser.id,
+              username: ownerUsername,
+              message: chatMessages[Math.floor(Math.random() * chatMessages.length)],
+            });
             break;
           }
 
@@ -2087,50 +2115,136 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
                     </div>
                   )}
 
-                  {/* Visual AI Screen — "Screen Recording" style */}
+                  {/* Visual AI Screen — Immersive Player View */}
                   {aiPlaying && (
-                    <div className="rounded-xl border-2 border-primary/40 bg-black/80 overflow-hidden shadow-lg shadow-primary/10">
-                      {/* Screen header bar */}
-                      <div className="flex items-center justify-between px-3 py-1.5 bg-primary/20 border-b border-primary/30">
+                    <div className="rounded-xl border-2 border-primary/40 bg-black overflow-hidden shadow-lg shadow-primary/10">
+                      {/* Screen header bar - looks like a game HUD */}
+                      <div className="flex items-center justify-between px-3 py-1.5 bg-gradient-to-r from-primary/30 via-primary/10 to-primary/30 border-b border-primary/30">
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                          <span className="text-[10px] font-mono text-red-400 uppercase tracking-wider">● REC</span>
+                          <span className="text-[10px] font-mono text-red-400 uppercase tracking-wider">● LIVE</span>
                         </div>
-                        <span className="text-[10px] font-mono text-muted-foreground">AI Player — Live View</span>
-                        <span className="text-[10px] font-mono text-primary">{Math.floor(aiTimeLeft / 60)}:{(aiTimeLeft % 60).toString().padStart(2, '0')}</span>
+                        <span className="text-[10px] font-mono text-primary font-bold tracking-wider">
+                          {aiScreen.title}
+                        </span>
+                        <span className="text-[10px] font-mono text-primary">
+                          {Math.floor(aiTimeLeft / 60)}:{(aiTimeLeft % 60).toString().padStart(2, '0')}
+                        </span>
                       </div>
 
-                      {/* Main screen area */}
-                      <div className="p-4 min-h-[180px] flex flex-col justify-between">
-                        <div className="flex items-start gap-3">
-                          <div className="text-4xl animate-bounce">{aiScreen.avatar}</div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-bold text-primary truncate">{aiScreen.title}</h4>
-                            <div className="mt-1 space-y-0.5">
-                              {aiScreen.details.slice(-4).map((d, i) => (
-                                <p key={i} className="text-xs font-mono text-foreground/70 truncate">{d}</p>
+                      {/* Game-like viewport */}
+                      <div className="relative min-h-[220px] bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 overflow-hidden">
+                        {/* Animated background grid */}
+                        <div className="absolute inset-0 opacity-10" style={{
+                          backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+                          backgroundSize: '20px 20px',
+                          animation: 'pulse 2s ease-in-out infinite'
+                        }} />
+
+                        {/* Crosshair overlay when playing */}
+                        {(aiScreen.scene === "playing" || aiScreen.scene === "ranked" || aiScreen.scene === "multiplayer") && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="relative w-12 h-12">
+                              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-red-500/60" />
+                              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-red-500/60" />
+                              <div className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 w-3 bg-red-500/60" />
+                              <div className="absolute right-0 top-1/2 -translate-y-1/2 h-0.5 w-3 bg-red-500/60" />
+                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-1 bg-red-500 rounded-full" />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Main content */}
+                        <div className="relative z-10 p-4 flex flex-col h-full min-h-[220px]">
+                          {/* Top HUD bar */}
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2 bg-black/60 rounded-lg px-3 py-1.5 border border-primary/20">
+                              <span className="text-2xl">{aiScreen.avatar}</span>
+                              <div>
+                                <p className="text-xs font-bold text-primary">{aiScreen.title}</p>
+                                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{aiScreen.scene}</p>
+                              </div>
+                            </div>
+                            
+                            {/* Health/ammo style indicators */}
+                            <div className="flex items-center gap-3">
+                              <div className="bg-black/60 rounded px-2 py-1 border border-green-500/30">
+                                <p className="text-[9px] text-green-400 font-mono">HP 100</p>
+                              </div>
+                              <div className="bg-black/60 rounded px-2 py-1 border border-yellow-500/30">
+                                <p className="text-[9px] text-yellow-400 font-mono">AMMO ∞</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action feed - scrolling activity */}
+                          <div className="flex-1 flex flex-col justify-center">
+                            <div className="space-y-1">
+                              {aiScreen.details.slice(-5).map((d, i) => (
+                                <div 
+                                  key={i} 
+                                  className={`flex items-center gap-2 px-2 py-0.5 rounded ${
+                                    i === aiScreen.details.slice(-5).length - 1 
+                                      ? 'bg-primary/20 border border-primary/30' 
+                                      : 'opacity-60'
+                                  }`}
+                                  style={{ 
+                                    animation: i === aiScreen.details.slice(-5).length - 1 
+                                      ? 'fadeIn 0.3s ease-out' 
+                                      : undefined 
+                                  }}
+                                >
+                                  <div className={`w-1.5 h-1.5 rounded-full ${
+                                    d.includes('✅') ? 'bg-green-500' :
+                                    d.includes('❌') ? 'bg-red-500' :
+                                    d.includes('⚠️') ? 'bg-yellow-500' :
+                                    'bg-primary animate-pulse'
+                                  }`} />
+                                  <p className="text-xs font-mono text-foreground/80 truncate">{d}</p>
+                                </div>
                               ))}
                             </div>
                           </div>
-                        </div>
 
-                        {/* Progress bar */}
-                        <div className="mt-3">
-                          <div className="h-1.5 w-full bg-secondary/50 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
-                              style={{ width: `${aiScreen.progress}%` }}
-                            />
+                          {/* Progress bar styled as loading bar */}
+                          <div className="mt-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[9px] font-mono text-muted-foreground">PROGRESS</span>
+                              <span className="text-[9px] font-mono text-primary">{aiScreen.progress}%</span>
+                            </div>
+                            <div className="h-2 w-full bg-black/60 rounded-full overflow-hidden border border-primary/20">
+                              <div
+                                className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full transition-all duration-700 ease-out"
+                                style={{ width: `${aiScreen.progress}%` }}
+                              />
+                            </div>
                           </div>
-                        </div>
 
-                        {/* Session stats */}
-                        <div className="mt-3 flex items-center gap-3 text-[10px] font-mono text-muted-foreground flex-wrap">
-                          <span>⭐ {aiScreen.stats.score}</span>
-                          <span>💀 {aiScreen.stats.kills}</span>
-                          <span>🪙 {aiScreen.stats.coins}</span>
-                          <span>💎 {aiScreen.stats.gems}</span>
-                          <span>🥇 {aiScreen.stats.gold}</span>
+                          {/* Bottom stats bar - game HUD style */}
+                          <div className="mt-3 flex items-center justify-between bg-black/60 rounded-lg px-3 py-2 border border-primary/20">
+                            <div className="flex items-center gap-4 text-xs font-mono">
+                              <div className="text-center">
+                                <p className="text-[9px] text-muted-foreground">SCORE</p>
+                                <p className="text-primary font-bold">{aiScreen.stats.score.toLocaleString()}</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-[9px] text-muted-foreground">KILLS</p>
+                                <p className="text-red-400 font-bold">{aiScreen.stats.kills}</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-[9px] text-muted-foreground">COINS</p>
+                                <p className="text-yellow-400 font-bold">{aiScreen.stats.coins.toLocaleString()}</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-[9px] text-muted-foreground">GEMS</p>
+                                <p className="text-cyan-400 font-bold">{aiScreen.stats.gems}</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-[9px] text-muted-foreground">GOLD</p>
+                                <p className="text-amber-400 font-bold">{aiScreen.stats.gold}</p>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>

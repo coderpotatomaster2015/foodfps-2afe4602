@@ -137,6 +137,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const [deaths, setDeaths] = useState(0);
   const [hasPermission, setHasPermission] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [ctrlHeld, setCtrlHeld] = useState(false);
   const [deviceProfile, setDeviceProfile] = useState(getDeviceProfile());
   const touchMoveRef = useRef({ x: 0, y: 0 });
   const touchAimRef = useRef({ x: 480, y: 320 });
@@ -191,6 +192,22 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   // Check command permissions
   useEffect(() => {
     checkPermissions();
+  }, []);
+
+  // Ctrl key listener for crosshair cursor
+  useEffect(() => {
+    const handleCtrlDown = (e: KeyboardEvent) => {
+      if (e.key === "Control") setCtrlHeld(true);
+    };
+    const handleCtrlUp = (e: KeyboardEvent) => {
+      if (e.key === "Control") setCtrlHeld(false);
+    };
+    window.addEventListener("keydown", handleCtrlDown);
+    window.addEventListener("keyup", handleCtrlUp);
+    return () => {
+      window.removeEventListener("keydown", handleCtrlDown);
+      window.removeEventListener("keyup", handleCtrlUp);
+    };
   }, []);
 
   // Mobile + device profile detection
@@ -1617,18 +1634,20 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         ctx.restore();
       }
 
-      // Draw crosshair
-      ctx.save();
-      ctx.strokeStyle = "#fff";
-      ctx.globalAlpha = 0.9;
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(mouse.x - 8, mouse.y);
-      ctx.lineTo(mouse.x + 8, mouse.y);
-      ctx.moveTo(mouse.x, mouse.y - 8);
-      ctx.lineTo(mouse.x, mouse.y + 8);
-      ctx.stroke();
-      ctx.restore();
+      // Draw crosshair only when Control is held
+      if (keys["control"]) {
+        ctx.save();
+        ctx.strokeStyle = "#fff";
+        ctx.globalAlpha = 0.9;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(mouse.x - 8, mouse.y);
+        ctx.lineTo(mouse.x + 8, mouse.y);
+        ctx.moveTo(mouse.x, mouse.y - 8);
+        ctx.lineTo(mouse.x, mouse.y + 8);
+        ctx.stroke();
+        ctx.restore();
+      }
 
       gameLoopRef.current = requestAnimationFrame(loop);
     };
@@ -1780,6 +1799,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         width={deviceProfile.canvasWidth} 
         height={deviceProfile.canvasHeight} 
         className="border-2 border-border rounded-lg shadow-2xl"
+        style={{ cursor: ctrlHeld ? 'crosshair' : 'default' }}
       />
 
       <div className="mt-4 flex gap-2">

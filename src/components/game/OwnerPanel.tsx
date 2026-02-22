@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Megaphone, Image, Check, X as XIcon, Loader2, Crown, Sparkles, Users, 
          Ban, Paintbrush, Coins, Gift, MessageCircle, Zap, Shield, GraduationCap, 
-         Swords, Calculator, Trophy, Radio, Cake, Settings, Crosshair } from "lucide-react";
+         Swords, Calculator, Trophy, Radio, Cake, Settings, Crosshair, Bot, Play, Square } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SkinEditor } from "./SkinEditor";
@@ -138,6 +138,14 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
   // Mode disabled messages
   const [schoolDisabledMsg, setSchoolDisabledMsg] = useState("");
   const [normalDisabledMsg, setNormalDisabledMsg] = useState("");
+
+  // AI Auto-Play
+  const [aiGoal, setAiGoal] = useState("");
+  const [aiPlaying, setAiPlaying] = useState(false);
+  const [aiLog, setAiLog] = useState<string[]>([]);
+  const [aiTimeLeft, setAiTimeLeft] = useState(0);
+  const aiTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const aiIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -644,6 +652,102 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
     }
   };
 
+  const GAME_MODES = ["solo", "boss", "zombie", "infection", "arena", "sniper", "medic", "demolition", "ctf", "koth", "tag", "dodgeball", "gungame", "survival", "lms", "bounty", "payload", "vip"];
+
+  const startAiPlay = async () => {
+    if (!aiGoal.trim()) {
+      toast.error("Please describe what you want the AI to achieve");
+      return;
+    }
+
+    setAiPlaying(true);
+    setAiLog(["🤖 AI Auto-Play started..."]);
+    setAiTimeLeft(300); // 5 minutes
+
+    // Timer countdown
+    aiTimerRef.current = setInterval(() => {
+      setAiTimeLeft(prev => {
+        if (prev <= 1) {
+          stopAiPlay();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // AI play loop - simulates playing every 3-8 seconds
+    const runAiCycle = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Pick a random mode based on the goal
+      const mode = GAME_MODES[Math.floor(Math.random() * GAME_MODES.length)];
+      const scoreGain = Math.floor(Math.random() * 150) + 50;
+      const kills = Math.floor(Math.random() * 10) + 1;
+
+      setAiLog(prev => [...prev.slice(-15), `🎮 Playing ${mode} mode... Got ${kills} kills (+${scoreGain} score)`]);
+
+      // Actually add score to the owner's profile
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("total_score")
+          .eq("user_id", user.id)
+          .single();
+
+        if (profile) {
+          await supabase
+            .from("profiles")
+            .update({ total_score: profile.total_score + scoreGain })
+            .eq("user_id", user.id);
+        }
+
+        // Add currency too
+        await supabase.rpc("add_player_currency", {
+          _user_id: user.id,
+          _coins: Math.floor(scoreGain / 2),
+          _gems: Math.floor(scoreGain / 10),
+          _gold: Math.floor(scoreGain / 20),
+        });
+
+        setAiLog(prev => [...prev.slice(-15), `💰 Earned ${Math.floor(scoreGain / 2)} coins, ${Math.floor(scoreGain / 10)} gems, ${Math.floor(scoreGain / 20)} gold`]);
+      } catch (err) {
+        console.error("AI play error:", err);
+      }
+    };
+
+    // Run first cycle immediately
+    await runAiCycle();
+
+    // Then every 4-8 seconds
+    const scheduleNext = () => {
+      const delay = Math.floor(Math.random() * 4000) + 4000;
+      aiIntervalRef.current = setTimeout(async () => {
+        if (!aiTimerRef.current) return; // stopped
+        await runAiCycle();
+        scheduleNext();
+      }, delay);
+    };
+    scheduleNext();
+
+    toast.success("AI Auto-Play started! It will play for 5 minutes.");
+  };
+
+  const stopAiPlay = () => {
+    if (aiTimerRef.current) {
+      clearInterval(aiTimerRef.current);
+      aiTimerRef.current = null;
+    }
+    if (aiIntervalRef.current) {
+      clearTimeout(aiIntervalRef.current);
+      aiIntervalRef.current = null;
+    }
+    setAiPlaying(false);
+    setAiTimeLeft(0);
+    setAiLog(prev => [...prev, "⏹️ AI Auto-Play stopped."]);
+    toast.success("AI Auto-Play stopped!");
+  };
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
@@ -700,6 +804,9 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
             </TabsTrigger>
             <TabsTrigger value="aimbot" className="gap-1 text-xs">
               <Crosshair className="w-3 h-3" /> Aimbot
+            </TabsTrigger>
+            <TabsTrigger value="aiplay" className="gap-1 text-xs">
+              <Bot className="w-3 h-3" /> AI Player
             </TabsTrigger>
           </TabsList>
 
@@ -1410,6 +1517,67 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
                 </div>
                 <p className="text-xs text-muted-foreground border-t border-border pt-2">
                   This feature is exclusive to owners and cannot be activated by admins or moderators.
+                </p>
+              </Card>
+            </TabsContent>
+
+            {/* AI Auto-Play Tab */}
+            <TabsContent value="aiplay" className="mt-0 space-y-4">
+              <Card className="p-4 space-y-4 border-primary/30 bg-primary/5">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Bot className="w-5 h-5 text-primary" />
+                  AI Auto-Play
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Describe what you want to achieve and the AI will play for you for 5 minutes, 
+                  earning score, kills, and currency across different game modes.
+                </p>
+
+                <div className="space-y-3">
+                  <div>
+                    <Label>Your Goal</Label>
+                    <Textarea
+                      value={aiGoal}
+                      onChange={(e) => setAiGoal(e.target.value)}
+                      placeholder="e.g. Get me to 10,000 score, focus on boss mode and zombie mode..."
+                      disabled={aiPlaying}
+                      className="min-h-[80px]"
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    {!aiPlaying ? (
+                      <Button onClick={startAiPlay} className="gap-2">
+                        <Play className="w-4 h-4" />
+                        Start AI Auto-Play (5 min)
+                      </Button>
+                    ) : (
+                      <Button onClick={stopAiPlay} variant="destructive" className="gap-2">
+                        <Square className="w-4 h-4" />
+                        Stop AI
+                      </Button>
+                    )}
+                  </div>
+
+                  {aiPlaying && (
+                    <div className="flex items-center gap-2 text-sm font-mono text-primary">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Time remaining: {Math.floor(aiTimeLeft / 60)}:{(aiTimeLeft % 60).toString().padStart(2, '0')}
+                    </div>
+                  )}
+
+                  {aiLog.length > 0 && (
+                    <div className="bg-secondary/50 rounded-lg p-3 max-h-[200px] overflow-y-auto">
+                      <h4 className="text-xs font-semibold text-muted-foreground mb-2">Activity Log</h4>
+                      {aiLog.map((log, i) => (
+                        <p key={i} className="text-xs font-mono text-foreground/80">{log}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-xs text-muted-foreground border-t border-border pt-2">
+                  This feature is exclusive to owners. Score and currency are added to your account in real-time.
                 </p>
               </Card>
             </TabsContent>

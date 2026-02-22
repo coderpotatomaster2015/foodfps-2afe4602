@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { UsernameModal } from "@/components/game/UsernameModal";
 import { GameModeSelector } from "@/components/game/GameModeSelector";
 import { GameCanvas } from "@/components/game/GameCanvas";
+import { Game3DSoloMode } from "@/components/game/Game3DSoloMode";
 import { BossMode } from "@/components/game/BossMode";
 import { RankedMode } from "@/components/game/RankedMode";
 import { YouVsMeMode } from "@/components/game/YouVsMeMode";
@@ -64,7 +65,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { applyRainbowToDocument, removeRainbowFromDocument } from "@/utils/rainbowEffect";
 
-export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | "youvsme" | "school" | "survival" | "zombie" | "arena" | "infection" | "ctf" | "koth" | "gungame" | "vip" | "lms" | "dodgeball" | "payload" | "sniper" | "tag" | "bounty" | "demolition" | "medic" | "blitz" | "juggernaut" | "stealth" | "mirror" | "lowgrav" | "chaos" | "headhunter" | "vampire" | "frostbite" | "titan" | "quickplay" | null;
+export type GameMode = "solo" | "3d-solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | "youvsme" | "school" | "survival" | "zombie" | "arena" | "infection" | "ctf" | "koth" | "gungame" | "vip" | "lms" | "dodgeball" | "payload" | "sniper" | "tag" | "bounty" | "demolition" | "medic" | "blitz" | "juggernaut" | "stealth" | "mirror" | "lowgrav" | "chaos" | "headhunter" | "vampire" | "frostbite" | "titan" | "quickplay" | null;
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -101,6 +102,7 @@ const Index = () => {
   const [showItemShop, setShowItemShop] = useState(false);
   const [showServicePanel, setShowServicePanel] = useState(false);
   const [touchscreenMode, setTouchscreenMode] = useState(false);
+  const [threeDMode, setThreeDMode] = useState(false);
   const [websiteEnabled, setWebsiteEnabled] = useState(true);
   const [disabledMessage, setDisabledMessage] = useState("");
   const [checkingStatus, setCheckingStatus] = useState(true);
@@ -128,6 +130,8 @@ const Index = () => {
     if (savedPower) setEquippedPower(savedPower);
     const classMode = localStorage.getItem("isClassMode") === "true";
     setIsClassMode(classMode);
+    const saved3D = localStorage.getItem("foodfps_3d");
+    setThreeDMode(saved3D === "true");
   }, []);
 
   useEffect(() => {
@@ -246,12 +250,10 @@ const Index = () => {
 
   const handleTouchscreenChange = (enabled: boolean) => { setTouchscreenMode(enabled); localStorage.setItem("foodfps_touchscreen", String(enabled)); };
   const soloBasedModes: GameMode[] = ["solo", "offline", "blitz", "juggernaut", "stealth", "mirror", "lowgrav", "chaos", "headhunter", "vampire", "frostbite", "titan"];
- codex/fix-3d-toggle-in-settings-tab-g5j0ho
-  const twoDModeComponents: GameMode[] = [...soloBasedModes, "boss", "survival", "zombie", "arena", "infection", "ctf", "koth", "gungame", "vip", "lms", "dodgeball", "payload", "sniper", "tag", "bounty", "demolition", "medic", "ranked", "youvsme", "school", "quickplay"];
-=======
   // All non-lobby modes that can be 3D
   const all3DModes: GameMode[] = [...soloBasedModes, "boss", "survival", "zombie", "arena", "infection", "ctf", "koth", "gungame", "vip", "lms", "dodgeball", "payload", "sniper", "tag", "bounty", "demolition", "medic", "ranked", "youvsme", "school", "3d-solo", "quickplay"];
-main
+  // Modes that use 2D GameCanvas (solo-based modes when 3D is off)
+  const twoDCanvasModes: GameMode[] = [...soloBasedModes];
   const render2DMode = () => {
     if (!gameMode) return null;
 
@@ -351,10 +353,6 @@ main
 
       {gameMode && !isInGame && (gameMode === "host" || gameMode === "join") && <Lobby mode={gameMode} username={username} roomCode={roomCode} onStartGame={handleStartGame} onBack={handleBackToMenu} />}
       {gameMode === "timed-host" && !isInGame && <TimedLobby mode="host" username={username} roomCode={roomCode} timedMinutes={timedMinutes} onStartGame={handleTimedStartGame} onBack={handleBackToMenu} />}
-codex/fix-3d-toggle-in-settings-tab-g5j0ho
-      {/* Gameplay modes: always render 2D implementations */}
-      {gameMode && twoDModeComponents.includes(gameMode) && !(gameMode === "host" || gameMode === "join" || gameMode === "timed-host" || gameMode === "timed-join") && render2DMode()}
-=======
       {/* 2D mode: render every playable mode in 2D when 3D toggle is off */}
       {gameMode && !threeDMode && all3DModes.includes(gameMode) && !(gameMode === "host" || gameMode === "join" || gameMode === "timed-host" || gameMode === "timed-join") && render2DMode()}
 
@@ -362,7 +360,6 @@ codex/fix-3d-toggle-in-settings-tab-g5j0ho
       {gameMode && threeDMode && all3DModes.includes(gameMode) && !(gameMode === "host" || gameMode === "join" || gameMode === "timed-host" || gameMode === "timed-join") && (
         <Game3DSoloMode mode={gameMode} username={username} roomCode={roomCode} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
       )}
-main
 
       <AdminCodeModal open={showAdminCode} onOpenChange={setShowAdminCode} onSuccess={() => setShowAdminPanel(true)} />
       <AdminPanel open={showAdminPanel} onClose={() => setShowAdminPanel(false)} />
@@ -375,7 +372,7 @@ main
       <SkinsShop open={showSkinsShop} onOpenChange={setShowSkinsShop} currentSkin={currentSkin} onSkinSelect={(color) => { setCurrentSkin(color); localStorage.setItem("foodfps_skin", color); }} />
       <PublicLeaderboard open={showLeaderboard} onOpenChange={setShowLeaderboard} />
       <DailyRewards open={showDailyRewards} onOpenChange={setShowDailyRewards} />
-      <SettingsModal open={showSettings} onOpenChange={setShowSettings} touchscreenMode={touchscreenMode} onTouchscreenModeChange={handleTouchscreenChange} onOpenServicePanel={() => setShowServicePanel(true)} />
+      <SettingsModal open={showSettings} onOpenChange={setShowSettings} touchscreenMode={touchscreenMode} onTouchscreenModeChange={handleTouchscreenChange} onOpenServicePanel={() => setShowServicePanel(true)} threeDMode={threeDMode} onThreeDModeChange={setThreeDMode} />
       <AdSignupModal open={showAdSignup} onOpenChange={setShowAdSignup} />
       <RedeemCodeModal open={showRedeemCodes} onOpenChange={setShowRedeemCodes} />
       <FoodPassModal open={showFoodPass} onOpenChange={setShowFoodPass} />

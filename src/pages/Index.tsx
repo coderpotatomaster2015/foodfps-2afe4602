@@ -102,6 +102,7 @@ const Index = () => {
   const [showItemShop, setShowItemShop] = useState(false);
   const [showServicePanel, setShowServicePanel] = useState(false);
   const [touchscreenMode, setTouchscreenMode] = useState(false);
+  const [threeDMode, setThreeDMode] = useState(false);
   const [websiteEnabled, setWebsiteEnabled] = useState(true);
   const [disabledMessage, setDisabledMessage] = useState("");
   const [checkingStatus, setCheckingStatus] = useState(true);
@@ -129,6 +130,8 @@ const Index = () => {
     if (savedPower) setEquippedPower(savedPower);
     const classMode = localStorage.getItem("isClassMode") === "true";
     setIsClassMode(classMode);
+    const saved3D = localStorage.getItem("foodfps_3d");
+    setThreeDMode(saved3D === "true");
   }, []);
 
   useEffect(() => {
@@ -247,8 +250,10 @@ const Index = () => {
 
   const handleTouchscreenChange = (enabled: boolean) => { setTouchscreenMode(enabled); localStorage.setItem("foodfps_touchscreen", String(enabled)); };
   const soloBasedModes: GameMode[] = ["solo", "offline", "blitz", "juggernaut", "stealth", "mirror", "lowgrav", "chaos", "headhunter", "vampire", "frostbite", "titan"];
-  // All non-lobby modes are now routed through 3D engine
+  // All non-lobby modes that can be 3D
   const all3DModes: GameMode[] = [...soloBasedModes, "boss", "survival", "zombie", "arena", "infection", "ctf", "koth", "gungame", "vip", "lms", "dodgeball", "payload", "sniper", "tag", "bounty", "demolition", "medic", "ranked", "youvsme", "school", "3d-solo"];
+  // Modes that use 2D GameCanvas (solo-based modes when 3D is off)
+  const twoDCanvasModes: GameMode[] = [...soloBasedModes];
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -301,8 +306,13 @@ const Index = () => {
       {gameMode && !isInGame && (gameMode === "host" || gameMode === "join") && <Lobby mode={gameMode} username={username} roomCode={roomCode} onStartGame={handleStartGame} onBack={handleBackToMenu} />}
       {gameMode === "timed-host" && !isInGame && <TimedLobby mode="host" username={username} roomCode={roomCode} timedMinutes={timedMinutes} onStartGame={handleTimedStartGame} onBack={handleBackToMenu} />}
 
-      {/* All game modes now use the 3D engine */}
-      {gameMode && all3DModes.includes(gameMode) && !(gameMode === "host" || gameMode === "join" || gameMode === "timed-host" || gameMode === "timed-join") && (
+      {/* 2D mode: solo-based modes when 3D is off */}
+      {gameMode && !threeDMode && twoDCanvasModes.includes(gameMode) && !(gameMode === "host" || gameMode === "join" || gameMode === "timed-host" || gameMode === "timed-join") && (
+        <GameCanvas mode={gameMode as Exclude<GameMode, null | "boss">} username={username} roomCode={roomCode} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
+      )}
+
+      {/* 3D mode: all modes when 3D is on, or non-solo modes always */}
+      {gameMode && (threeDMode || !twoDCanvasModes.includes(gameMode)) && all3DModes.includes(gameMode) && !(gameMode === "host" || gameMode === "join" || gameMode === "timed-host" || gameMode === "timed-join") && (
         <Game3DSoloMode mode={gameMode} username={username} roomCode={roomCode} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
       )}
 

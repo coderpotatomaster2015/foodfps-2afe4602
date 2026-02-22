@@ -252,8 +252,54 @@ const Index = () => {
   const soloBasedModes: GameMode[] = ["solo", "offline", "blitz", "juggernaut", "stealth", "mirror", "lowgrav", "chaos", "headhunter", "vampire", "frostbite", "titan"];
   // All non-lobby modes that can be 3D
   const all3DModes: GameMode[] = [...soloBasedModes, "boss", "survival", "zombie", "arena", "infection", "ctf", "koth", "gungame", "vip", "lms", "dodgeball", "payload", "sniper", "tag", "bounty", "demolition", "medic", "ranked", "youvsme", "school", "3d-solo", "quickplay"];
-  // Modes that use 2D GameCanvas (solo-based modes when 3D is off)
-  const twoDCanvasModes: GameMode[] = [...soloBasedModes];
+  const render2DMode = () => {
+    if (!gameMode) return null;
+
+    switch (gameMode) {
+      case "boss":
+        return <BossMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "ranked":
+        return <RankedMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "youvsme":
+        return <YouVsMeMode username={username} onBack={handleBackToMenu} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "school":
+        return <SchoolMode username={username} onBack={handleBackToMenu} touchscreenMode={touchscreenMode} playerSkin={currentSkin} isClassMode={isClassMode} classCodeId={classCodeId} />;
+      case "survival":
+        return <SurvivalMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "zombie":
+        return <ZombieMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "arena":
+        return <ArenaDeathmatch username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "infection":
+        return <InfectionMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "ctf":
+        return <CaptureTheFlagMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "koth":
+        return <KingOfTheHillMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "gungame":
+        return <GunGameMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "vip":
+        return <ProtectTheVIPMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "lms":
+        return <LastManStandingMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "dodgeball":
+        return <DodgeballMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "payload":
+        return <PayloadMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "sniper":
+        return <SniperEliteMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "tag":
+        return <TagMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "bounty":
+        return <BountyHunterMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "demolition":
+        return <DemolitionMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      case "medic":
+        return <MedicMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+      default:
+        return <GameCanvas mode={gameMode as Exclude<GameMode, null | "boss">} username={username} roomCode={roomCode} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -306,13 +352,11 @@ const Index = () => {
       {gameMode && !isInGame && (gameMode === "host" || gameMode === "join") && <Lobby mode={gameMode} username={username} roomCode={roomCode} onStartGame={handleStartGame} onBack={handleBackToMenu} />}
       {gameMode === "timed-host" && !isInGame && <TimedLobby mode="host" username={username} roomCode={roomCode} timedMinutes={timedMinutes} onStartGame={handleTimedStartGame} onBack={handleBackToMenu} />}
 
-      {/* 2D mode: solo-based modes when 3D is off */}
-      {gameMode && !threeDMode && twoDCanvasModes.includes(gameMode) && !(gameMode === "host" || gameMode === "join" || gameMode === "timed-host" || gameMode === "timed-join") && (
-        <GameCanvas mode={gameMode as Exclude<GameMode, null | "boss">} username={username} roomCode={roomCode} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
-      )}
+      {/* 2D mode: render every playable mode in 2D when 3D toggle is off */}
+      {gameMode && !threeDMode && all3DModes.includes(gameMode) && !(gameMode === "host" || gameMode === "join" || gameMode === "timed-host" || gameMode === "timed-join") && render2DMode()}
 
-      {/* 3D mode: all modes when 3D is on, or non-solo modes always */}
-      {gameMode && (threeDMode || !twoDCanvasModes.includes(gameMode)) && all3DModes.includes(gameMode) && !(gameMode === "host" || gameMode === "join" || gameMode === "timed-host" || gameMode === "timed-join") && (
+      {/* 3D mode: all playable modes when 3D is on */}
+      {gameMode && threeDMode && all3DModes.includes(gameMode) && !(gameMode === "host" || gameMode === "join" || gameMode === "timed-host" || gameMode === "timed-join") && (
         <Game3DSoloMode mode={gameMode} username={username} roomCode={roomCode} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
       )}
 

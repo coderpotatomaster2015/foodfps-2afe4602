@@ -113,8 +113,13 @@ export const SettingsModal = ({
 }: SettingsModalProps) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [selectedTheme, setSelectedTheme] = useState("default");
+  const [threeDModeLocal, setThreeDModeLocal] = useState(threeDModeProp);
   const [tapCount, setTapCount] = useState(0);
   const [tapTimer, setTapTimer] = useState<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    setThreeDModeLocal(threeDModeProp);
+  }, [threeDModeProp]);
 
   useEffect(() => {
     const savedSound = localStorage.getItem("foodfps_sound");
@@ -127,8 +132,16 @@ export const SettingsModal = ({
     }
 
     const saved3D = localStorage.getItem("foodfps_3d");
-    if (saved3D === "true") {
+    const isSaved3DEnabled = saved3D === "true";
+    setThreeDModeLocal(isSaved3DEnabled);
+    if (isSaved3DEnabled) {
       document.documentElement.setAttribute("data-3d", "true");
+    } else {
+      document.documentElement.removeAttribute("data-3d");
+    }
+
+    if (onThreeDModeChange && threeDModeProp !== isSaved3DEnabled) {
+      onThreeDModeChange(isSaved3DEnabled);
     }
   }, []);
 
@@ -151,6 +164,7 @@ export const SettingsModal = ({
   };
 
   const handleThreeDChange = (enabled: boolean) => {
+    setThreeDModeLocal(enabled);
     localStorage.setItem("foodfps_3d", String(enabled));
     if (enabled) {
       document.documentElement.setAttribute("data-3d", "true");
@@ -247,7 +261,7 @@ export const SettingsModal = ({
                 </div>
               </div>
               <Switch 
-                checked={threeDModeProp} 
+                checked={threeDModeLocal} 
                 onCheckedChange={handleThreeDChange}
               />
             </div>

@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Megaphone, Image, Check, X as XIcon, Loader2, Crown, Sparkles, Users, 
          Ban, Paintbrush, Coins, Gift, MessageCircle, Zap, Shield, GraduationCap, 
-         Swords, Calculator, Trophy, Radio, Cake, Settings } from "lucide-react";
+         Swords, Calculator, Trophy, Radio, Cake, Settings, Crosshair } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SkinEditor } from "./SkinEditor";
@@ -698,6 +698,9 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
             <TabsTrigger value="abuse" className="gap-1 text-xs">
               <Zap className="w-3 h-3" /> Admin Abuse
             </TabsTrigger>
+            <TabsTrigger value="aimbot" className="gap-1 text-xs">
+              <Crosshair className="w-3 h-3" /> Aimbot
+            </TabsTrigger>
           </TabsList>
 
           <ScrollArea className="flex-1 p-4">
@@ -1378,6 +1381,37 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
             {/* Pre-Made Updates Tab */}
             <TabsContent value="updates" className="mt-0">
               <PreMadeUpdatesPanel />
+            </TabsContent>
+
+            {/* Aimbot Tab */}
+            <TabsContent value="aimbot" className="mt-0 space-y-4">
+              <Card className="p-4 space-y-4 border-destructive/30 bg-destructive/5">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Crosshair className="w-5 h-5 text-destructive" />
+                  Owner Aimbot (F9)
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Press <span className="font-mono text-primary">F9</span> during any 3D game mode to toggle the aimbot. 
+                  The AI will automatically aim at the nearest enemy and fire for you.
+                </p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Crosshair className="w-4 h-4 text-destructive" />
+                    <span>Auto-aims at nearest enemy</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-primary" />
+                    <span>Auto-fires when locked on</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-accent" />
+                    <span>Owner-only feature (not visible to other players)</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground border-t border-border pt-2">
+                  This feature is exclusive to owners and cannot be activated by admins or moderators.
+                </p>
+              </Card>
             </TabsContent>
           </ScrollArea>
         </Tabs>

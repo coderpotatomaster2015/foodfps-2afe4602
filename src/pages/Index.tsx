@@ -247,6 +247,8 @@ const Index = () => {
 
   const handleTouchscreenChange = (enabled: boolean) => { setTouchscreenMode(enabled); localStorage.setItem("foodfps_touchscreen", String(enabled)); };
   const soloBasedModes: GameMode[] = ["solo", "offline", "blitz", "juggernaut", "stealth", "mirror", "lowgrav", "chaos", "headhunter", "vampire", "frostbite", "titan"];
+  // All non-lobby modes are now routed through 3D engine
+  const all3DModes: GameMode[] = [...soloBasedModes, "boss", "survival", "zombie", "arena", "infection", "ctf", "koth", "gungame", "vip", "lms", "dodgeball", "payload", "sniper", "tag", "bounty", "demolition", "medic", "ranked", "youvsme", "school", "3d-solo"];
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -299,33 +301,10 @@ const Index = () => {
       {gameMode && !isInGame && (gameMode === "host" || gameMode === "join") && <Lobby mode={gameMode} username={username} roomCode={roomCode} onStartGame={handleStartGame} onBack={handleBackToMenu} />}
       {gameMode === "timed-host" && !isInGame && <TimedLobby mode="host" username={username} roomCode={roomCode} timedMinutes={timedMinutes} onStartGame={handleTimedStartGame} onBack={handleBackToMenu} />}
 
-      {((isInGame && !soloBasedModes.includes(gameMode)) || (!!gameMode && soloBasedModes.includes(gameMode))) && !["boss","timed-host","survival","zombie","arena","infection","ctf","koth","gungame","vip","lms","dodgeball","payload","sniper","tag","bounty","demolition","medic","3d-solo"].includes(gameMode as string) && (
-        <GameCanvas mode={gameMode as Exclude<GameMode, null | "boss" | "timed-host" | "timed-join">} username={username} roomCode={roomCode} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
+      {/* All game modes now use the 3D engine */}
+      {gameMode && all3DModes.includes(gameMode) && !(gameMode === "host" || gameMode === "join" || gameMode === "timed-host" || gameMode === "timed-join") && (
+        <Game3DSoloMode mode={gameMode} username={username} roomCode={roomCode} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
       )}
-
-      {gameMode === "survival" && <SurvivalMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "zombie" && <ZombieMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "arena" && <ArenaDeathmatch username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "infection" && <InfectionMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "ctf" && <CaptureTheFlagMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "koth" && <KingOfTheHillMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "gungame" && <GunGameMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "vip" && <ProtectTheVIPMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "lms" && <LastManStandingMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "dodgeball" && <DodgeballMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "payload" && <PayloadMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "sniper" && <SniperEliteMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "tag" && <TagMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "bounty" && <BountyHunterMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "demolition" && <DemolitionMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "medic" && <MedicMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "3d-solo" && <Game3DSoloMode mode="3d-solo" username={username} roomCode={roomCode} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-
-      {gameMode === "timed-host" && isInGame && <TimedGameCanvas username={username} roomCode={roomCode} timedMinutes={timedMinutes} onBack={handleBackToMenu} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "boss" && <BossMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "ranked" && <RankedMode username={username} onBack={handleBackToMenu} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "youvsme" && <YouVsMeMode username={username} onBack={handleBackToMenu} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
-      {gameMode === "school" && <SchoolMode username={username} onBack={handleBackToMenu} touchscreenMode={touchscreenMode} playerSkin={currentSkin} isClassMode={isClassMode} classCodeId={classCodeId} />}
 
       <AdminCodeModal open={showAdminCode} onOpenChange={setShowAdminCode} onSuccess={() => setShowAdminPanel(true)} />
       <AdminPanel open={showAdminPanel} onClose={() => setShowAdminPanel(false)} />

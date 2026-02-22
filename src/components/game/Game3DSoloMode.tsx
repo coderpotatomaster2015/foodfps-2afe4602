@@ -103,6 +103,7 @@ interface GameState {
   infiniteAmmo: boolean;
   speedMultiplier: number;
   spawnImmune: boolean;
+  aimbot: boolean;
 }
 
 // ── 3D Scene (runs inside Canvas) ─────────────────────────────────────
@@ -139,6 +140,9 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
   useEffect(() => {
     const canvas = gl.domElement;
     const handleMouseMove = (e: MouseEvent) => {
+      // Skip mouse aim when aimbot is active
+      if (gs.current.aimbot) return;
+      
       const rect = canvas.getBoundingClientRect();
       gs.current.mouseNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       gs.current.mouseNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -183,6 +187,20 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
       }
       updateCamera();
       return;
+    }
+
+    // ── Aimbot: auto-aim at nearest enemy ──
+    if (g.aimbot && g.enemies.length > 0) {
+      let nearest: Enemy3D | null = null;
+      let nearestDist = Infinity;
+      for (const e of g.enemies) {
+        const d = Math.hypot(e.x - p.x, e.z - p.z);
+        if (d < nearestDist) { nearestDist = d; nearest = e; }
+      }
+      if (nearest) {
+        p.angle = Math.atan2(nearest.z - p.z, nearest.x - p.x);
+        g.mouseDown = true; // auto-shoot
+      }
     }
 
     // ── Movement ──
@@ -687,8 +705,26 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
   const [onlinePlayersOpen, setOnlinePlayersOpen] = useState(false);
   const [banModalOpen, setBanModalOpen] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [aimbotActive, setAimbotActive] = useState(false);
   const [totalScore, setTotalScore] = useState(0);
   const [, setForceUpdate] = useState(0);
+
+  // Mode display name mapping
+  const MODE_NAMES: Record<string, string> = {
+    "solo": "Solo", "3d-solo": "3D Solo", "boss": "Boss", "ranked": "Ranked",
+    "youvsme": "You vs Me", "school": "School", "survival": "Survival",
+    "zombie": "Zombie", "arena": "Arena", "infection": "Infection",
+    "ctf": "CTF", "koth": "King of Hill", "gungame": "Gun Game",
+    "vip": "Protect VIP", "lms": "Last Man", "dodgeball": "Dodgeball",
+    "payload": "Payload", "sniper": "Sniper Elite", "tag": "Tag",
+    "bounty": "Bounty Hunter", "demolition": "Demolition", "medic": "Medic",
+    "blitz": "Blitz Rush", "juggernaut": "Juggernaut", "stealth": "Stealth Ops",
+    "mirror": "Mirror Match", "lowgrav": "Low Gravity", "chaos": "Chaos",
+    "headhunter": "Headhunter", "vampire": "Vampire", "frostbite": "Frostbite",
+    "titan": "Titan Arena", "offline": "Offline", "host": "Host", "join": "Join",
+  };
+  const modeName = MODE_NAMES[mode || ""] || "Solo";
 
   const gsRef = useRef<GameState>({
     player: {
@@ -701,7 +737,7 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
     time: 0, lastSpawn: 0, spawnInterval: 2.0,
     gameOver: false, cameraMode: "topdown",
     godMode: false, infiniteAmmo: false, speedMultiplier: 1,
-    spawnImmune: true,
+    spawnImmune: true, aimbot: false,
   });
 
   // Sync React state from game state
@@ -758,6 +794,17 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
         toast.info(`Camera: ${newMode === "fps" ? "First Person" : "Top Down"}`);
       }
 
+      // F9 = toggle aimbot (owner only)
+      if (e.key === "F9") {
+        e.preventDefault();
+        if (isOwner) {
+          const newAimbot = !gsRef.current.aimbot;
+          gsRef.current.aimbot = newAimbot;
+          setAimbotActive(newAimbot);
+          toast.info(`Aimbot ${newAimbot ? "ON 🎯" : "OFF"}`);
+        }
+      }
+
       // R = reload
       if (key === "r") {
         const p = gsRef.current.player;
@@ -790,7 +837,7 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [unlockedWeapons]);
+  }, [unlockedWeapons, isOwner]);
 
   // Load user progress (weapons)
   useEffect(() => {
@@ -831,9 +878,12 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
   const checkPermissions = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").single();
+    // Check owner role
+    const { data: ownerData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "owner").maybeSingle();
+    if (ownerData) { setIsOwner(true); setHasPermission(true); return; }
+    const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
     if (roleData) { setHasPermission(true); gsRef.current.godMode = false; return; }
-    const { data: permData } = await supabase.from("chat_permissions").select("can_use_commands").eq("user_id", user.id).single();
+    const { data: permData } = await supabase.from("chat_permissions").select("can_use_commands").eq("user_id", user.id).maybeSingle();
     if (permData?.can_use_commands) setHasPermission(true);
   };
 
@@ -885,13 +935,13 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
   };
 
   return (
-    <div className="relative w-full h-screen">
+    <div className="relative w-full h-screen" style={{ cursor: "none" }}>
       {/* Three.js Canvas - full screen */}
-      <div className="w-full h-full" style={{ pointerEvents: "auto" }}>
+      <div className="w-full h-full" style={{ pointerEvents: "auto", cursor: "none" }}>
         <Canvas
           camera={{ fov: 50, near: 0.1, far: 500, position: [0, 35, 15] }}
           shadows
-          style={{ background: "#0a0e1a" }}
+          style={{ background: "#0a0e1a", cursor: "none" }}
         >
           <GameScene gs={gsRef} onStateChange={handleStateChange} />
         </Canvas>
@@ -910,8 +960,8 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
       )}
 
       {/* HUD - Top left: controls */}
-      <div className="fixed left-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4 space-y-2 z-40">
-        <div className="font-bold text-lg">Food FPS 3D · SOLO</div>
+      <div className="fixed left-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4 space-y-2 z-40" style={{ cursor: "default" }}>
+        <div className="font-bold text-lg">Food FPS 3D · {modeName}</div>
         <div className="text-sm text-muted-foreground space-y-1">
           <div><span className="text-primary font-mono">WASD</span> move</div>
           <div><span className="text-primary font-mono">Mouse</span> aim</div>
@@ -921,11 +971,21 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
           <div className="pt-1 border-t border-border">
             <span className="text-accent font-mono">F7</span> toggle camera
           </div>
+          {isOwner && (
+            <div>
+              <span className="text-accent font-mono">F9</span> aimbot
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 text-xs text-accent">
           <Camera className="w-3 h-3" />
           {cameraMode === "fps" ? "First Person" : "Top Down"}
         </div>
+        {aimbotActive && (
+          <div className="flex items-center gap-2 text-xs text-destructive font-bold animate-pulse">
+            🎯 AIMBOT ACTIVE
+          </div>
+        )}
       </div>
 
       {/* HUD - Top right: stats */}

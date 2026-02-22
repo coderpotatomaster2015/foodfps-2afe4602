@@ -17,6 +17,12 @@ import { GunGameMode } from "@/components/game/GunGameMode";
 import { ProtectTheVIPMode } from "@/components/game/ProtectTheVIPMode";
 import { LastManStandingMode } from "@/components/game/LastManStandingMode";
 import { DodgeballMode } from "@/components/game/DodgeballMode";
+import { PayloadMode } from "@/components/game/PayloadMode";
+import { SniperEliteMode } from "@/components/game/SniperEliteMode";
+import { TagMode } from "@/components/game/TagMode";
+import { BountyHunterMode } from "@/components/game/BountyHunterMode";
+import { DemolitionMode } from "@/components/game/DemolitionMode";
+import { MedicMode } from "@/components/game/MedicMode";
 import { Lobby } from "@/components/game/Lobby";
 import { TimedLobby } from "@/components/game/TimedLobby";
 import { TimedGameCanvas } from "@/components/game/TimedGameCanvas";
@@ -58,7 +64,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { applyRainbowToDocument, removeRainbowFromDocument } from "@/utils/rainbowEffect";
 
-export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | "youvsme" | "school" | "survival" | "zombie" | "arena" | "infection" | "ctf" | "koth" | "gungame" | "vip" | "lms" | "dodgeball" | "blitz" | "juggernaut" | "stealth" | "mirror" | "lowgrav" | "chaos" | "headhunter" | "vampire" | "frostbite" | "titan" | null;
+export type GameMode = "solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | "youvsme" | "school" | "survival" | "zombie" | "arena" | "infection" | "ctf" | "koth" | "gungame" | "vip" | "lms" | "dodgeball" | "payload" | "sniper" | "tag" | "bounty" | "demolition" | "medic" | "blitz" | "juggernaut" | "stealth" | "mirror" | "lowgrav" | "chaos" | "headhunter" | "vampire" | "frostbite" | "titan" | null;
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -110,368 +116,162 @@ const Index = () => {
   const [isClassMode, setIsClassMode] = useState(false);
   const [classCodeId, setClassCodeId] = useState<string | null>(null);
 
-  // Real-time game status hook
   const gameStatus = useGameStatus(user?.id || null);
 
   useEffect(() => {
     checkWebsiteStatus();
-    // Load touchscreen mode from localStorage
     const savedTouchscreen = localStorage.getItem("foodfps_touchscreen");
     if (savedTouchscreen) setTouchscreenMode(savedTouchscreen === "true");
-    // Load skin from localStorage
     const savedSkin = localStorage.getItem("foodfps_skin");
     if (savedSkin) setCurrentSkin(savedSkin);
-    // Load equipped power from localStorage
     const savedPower = localStorage.getItem("equippedPower");
     if (savedPower) setEquippedPower(savedPower);
-    // Check if user is in class mode
     const classMode = localStorage.getItem("isClassMode") === "true";
     setIsClassMode(classMode);
   }, []);
 
-  // Handle real-time status updates
   useEffect(() => {
-    if (!gameStatus.websiteEnabled && !isAdmin) {
-      setWebsiteEnabled(false);
-    }
+    if (!gameStatus.websiteEnabled && !isAdmin) { setWebsiteEnabled(false); }
   }, [gameStatus.websiteEnabled, isAdmin]);
 
-  // Handle ultimate rainbow mode
   useEffect(() => {
     const hasUltimate = gameStatus.adminAbuseEvents.some(e => e.event_type === "ultimate");
-    if (hasUltimate) {
-      applyRainbowToDocument();
-    } else {
-      removeRainbowFromDocument();
-    }
+    if (hasUltimate) { applyRainbowToDocument(); } else { removeRainbowFromDocument(); }
     return () => removeRainbowFromDocument();
   }, [gameStatus.adminAbuseEvents]);
 
   useEffect(() => {
     if (loading) return;
-    
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-
-    checkAdminRole();
-    checkTeacherRole();
-    checkBetaTester();
-    checkClassMemberStatus();
-    loadUserProfile();
-    loadUnreadMessages();
+    if (!user) { navigate("/auth"); return; }
+    checkAdminRole(); checkTeacherRole(); checkBetaTester(); checkClassMemberStatus(); loadUserProfile(); loadUnreadMessages();
   }, [user, loading, navigate]);
 
   const checkClassMemberStatus = async () => {
     if (!user) return;
-    
     try {
-      // Check if user is a class member in the database
-      const { data, error } = await supabase.rpc('is_class_member', { _user_id: user.id });
-      
+      const { data } = await supabase.rpc('is_class_member', { _user_id: user.id });
       if (data === true) {
-        setIsClassMode(true);
-        localStorage.setItem("isClassMode", "true");
-        
-        // Get the class code ID for math problems
-        const { data: memberData } = await supabase
-          .from("class_members")
-          .select("class_code_id")
-          .eq("user_id", user.id)
-          .limit(1)
-          .maybeSingle();
-        
-        if (memberData?.class_code_id) {
-          setClassCodeId(memberData.class_code_id);
-        }
+        setIsClassMode(true); localStorage.setItem("isClassMode", "true");
+        const { data: memberData } = await supabase.from("class_members").select("class_code_id").eq("user_id", user.id).limit(1).maybeSingle();
+        if (memberData?.class_code_id) setClassCodeId(memberData.class_code_id);
       } else {
-        // Only clear class mode if localStorage says true but DB says false
         const localClassMode = localStorage.getItem("isClassMode") === "true";
-        if (localClassMode && !data) {
-          setIsClassMode(false);
-          setClassCodeId(null);
-          localStorage.removeItem("isClassMode");
-          localStorage.removeItem("classCode");
-        }
+        if (localClassMode && !data) { setIsClassMode(false); setClassCodeId(null); localStorage.removeItem("isClassMode"); localStorage.removeItem("classCode"); }
       }
-    } catch (error) {
-      console.error("Error checking class member status:", error);
-    }
+    } catch (error) { console.error("Error checking class member status:", error); }
   };
 
   const checkWebsiteStatus = async () => {
     try {
-      const { data } = await supabase
-        .from("game_settings")
-        .select("*")
-        .eq("id", "00000000-0000-0000-0000-000000000001")
-        .maybeSingle();
-
+      const { data } = await supabase.from("game_settings").select("*").eq("id", "00000000-0000-0000-0000-000000000001").maybeSingle();
       if (data) {
-        setWebsiteEnabled(data.website_enabled);
-        setDisabledMessage(data.disabled_message || "");
-        setSoloDisabled((data as any).solo_disabled || false);
-        setMultiplayerDisabled((data as any).multiplayer_disabled || false);
-        setBossDisabled((data as any).boss_disabled || false);
+        setWebsiteEnabled(data.website_enabled); setDisabledMessage(data.disabled_message || "");
+        setSoloDisabled((data as any).solo_disabled || false); setMultiplayerDisabled((data as any).multiplayer_disabled || false); setBossDisabled((data as any).boss_disabled || false);
       }
-    } catch (error) {
-      console.error("Error checking website status:", error);
-    } finally {
-      setCheckingStatus(false);
-    }
+    } catch (error) { console.error("Error checking website status:", error); } finally { setCheckingStatus(false); }
   };
 
   const checkAdminRole = async () => {
     if (!user) return;
-    
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .in("role", ["admin", "owner"]);
-
-    setIsAdmin(data && data.length > 0);
-    setIsOwner(data?.some(r => r.role === "owner") || false);
+    const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id).in("role", ["admin", "owner"]);
+    setIsAdmin(data && data.length > 0); setIsOwner(data?.some(r => r.role === "owner") || false);
   };
 
   const checkTeacherRole = async () => {
     if (!user) return;
-    
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "teacher")
-      .maybeSingle();
-
+    const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "teacher").maybeSingle();
     setIsTeacher(!!data);
   };
 
   const checkBetaTester = async () => {
     if (!user) return;
-    
-    const { data } = await supabase
-      .from("beta_testers")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
+    const { data } = await supabase.from("beta_testers").select("id").eq("user_id", user.id).maybeSingle();
     setIsBetaTester(!!data);
   };
 
   const loadUserProfile = async () => {
-    if (!user) {
-      setProfileLoaded(true);
-      setTutorialChecked(true);
-      return;
-    }
-    
+    if (!user) { setProfileLoaded(true); setTutorialChecked(true); return; }
     try {
-      const { data } = await supabase
-        .from("profiles")
-        .select("username, tutorial_completed")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      
+      const { data } = await supabase.from("profiles").select("username, tutorial_completed").eq("user_id", user.id).maybeSingle();
       if (data) {
         setUsername(data.username);
-        // Check if tutorial needs to be shown
         const tutorialCompletedLocal = localStorage.getItem("foodfps_tutorial_completed") === "true";
-        const tutorialCompleted = data.tutorial_completed || tutorialCompletedLocal;
-        
-        if (!tutorialCompleted) {
-          setShowTutorial(true);
-        }
+        if (!data.tutorial_completed && !tutorialCompletedLocal) setShowTutorial(true);
       } else {
         const emailUsername = user.email?.split("@")[0] || `user_${user.id.slice(0, 8)}`;
-        setUsername(emailUsername);
-        // New user, show tutorial
-        setShowTutorial(true);
+        setUsername(emailUsername); setShowTutorial(true);
       }
     } catch (error) {
       console.error("Error loading profile:", error);
       const emailUsername = user.email?.split("@")[0] || `user_${user.id.slice(0, 8)}`;
       setUsername(emailUsername);
-    } finally {
-      setProfileLoaded(true);
-      setTutorialChecked(true);
-    }
+    } finally { setProfileLoaded(true); setTutorialChecked(true); }
   };
 
   const handleTutorialComplete = (isMobile: boolean) => {
     setShowTutorial(false);
-    if (isMobile) {
-      setTouchscreenMode(true);
-      localStorage.setItem("foodfps_touchscreen", "true");
-      toast.success("Touch controls enabled! Rotate your device to landscape for best experience.");
-    }
+    if (isMobile) { setTouchscreenMode(true); localStorage.setItem("foodfps_touchscreen", "true"); toast.success("Touch controls enabled! Rotate your device to landscape for best experience."); }
   };
 
   const loadUnreadMessages = async () => {
     if (!user) return;
-    
-    const { count } = await supabase
-      .from("messages")
-      .select("*", { count: "exact", head: true })
-      .eq("to_user_id", user.id)
-      .eq("is_read", false);
-
+    const { count } = await supabase.from("messages").select("*", { count: "exact", head: true }).eq("to_user_id", user.id).eq("is_read", false);
     setUnreadMessages(count || 0);
   };
 
-  const handleUsernameSet = (name: string) => {
-    setUsername(name);
-    localStorage.setItem("foodfps_username", name);
-    setShowUsernameModal(false);
-  };
-
+  const handleUsernameSet = (name: string) => { setUsername(name); localStorage.setItem("foodfps_username", name); setShowUsernameModal(false); };
   const handleModeSelect = (mode: GameMode, code?: string, timed?: number) => {
-    // If timed is set, this is a timed match (host mode with timed minutes)
-    if (timed && timed > 0) {
-      setGameMode("timed-host");
-      setTimedMinutes(timed);
-    } else {
-      setGameMode(mode);
-    }
+    if (timed && timed > 0) { setGameMode("timed-host"); setTimedMinutes(timed); } else { setGameMode(mode); }
     if (code) setRoomCode(code);
   };
-
   const handleStartGame = () => setIsInGame(true);
-  
-  const handleTimedStartGame = (minutes: number) => {
-    setTimedMinutes(minutes);
-    setIsInGame(true);
-  };
-
-  const handleBackToMenu = () => {
-    setGameMode(null);
-    setRoomCode("");
-    setTimedMinutes(0);
-    setIsInGame(false);
-  };
-
+  const handleTimedStartGame = (minutes: number) => { setTimedMinutes(minutes); setIsInGame(true); };
+  const handleBackToMenu = () => { setGameMode(null); setRoomCode(""); setTimedMinutes(0); setIsInGame(false); };
   const handleLogout = async () => {
-    localStorage.removeItem("play_as_guest");
-    localStorage.removeItem("foodfps_username");
-    localStorage.removeItem("isClassMode");
-    localStorage.removeItem("classCode");
-    await supabase.auth.signOut();
-    navigate("/auth");
+    localStorage.removeItem("play_as_guest"); localStorage.removeItem("foodfps_username"); localStorage.removeItem("isClassMode"); localStorage.removeItem("classCode");
+    await supabase.auth.signOut(); navigate("/auth");
   };
-
-  const handleAdminClick = () => {
-    setShowAdminCode(true);
-  };
+  const handleAdminClick = () => { setShowAdminCode(true); };
 
   if (loading || checkingStatus || !profileLoaded || !tutorialChecked) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto" />
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+        <div className="text-center space-y-4"><div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto" /><p className="text-muted-foreground">Loading...</p></div>
       </div>
     );
   }
 
-  // Show ban modal if user is banned
-  if (gameStatus.isBanned && gameStatus.banInfo) {
-    return (
-      <BanModal 
-        open={true} 
-        onOpenChange={() => {}} 
-        banInfo={gameStatus.banInfo}
-      />
-    );
-  }
+  if (gameStatus.isBanned && gameStatus.banInfo) { return <BanModal open={true} onOpenChange={() => {}} banInfo={gameStatus.banInfo} />; }
+  if (!websiteEnabled && !isAdmin) { return <WebsiteDisabled message={disabledMessage} />; }
 
-  if (!websiteEnabled && !isAdmin) {
-    return <WebsiteDisabled message={disabledMessage} />;
-  }
-
-  const handleTouchscreenChange = (enabled: boolean) => {
-    setTouchscreenMode(enabled);
-    localStorage.setItem("foodfps_touchscreen", String(enabled));
-  };
-
+  const handleTouchscreenChange = (enabled: boolean) => { setTouchscreenMode(enabled); localStorage.setItem("foodfps_touchscreen", String(enabled)); };
   const soloBasedModes: GameMode[] = ["solo", "offline", "blitz", "juggernaut", "stealth", "mirror", "lowgrav", "chaos", "headhunter", "vampire", "frostbite", "titan"];
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      {/* Impersonation Warning Banner */}
       <ImpersonationBanner />
-      {/* Left Sidebar for game tabs - hidden for class mode users */}
       {user && !gameMode && !isClassMode && (
         <GameSidebar
-          unreadMessages={unreadMessages}
-          isAdmin={isAdmin}
-          isBetaTester={isBetaTester}
-          onShowMessages={() => setShowMessages(true)}
-          onShowUpdates={() => setShowUpdates(true)}
-          onShowSocial={() => setShowSocial(true)}
-          onShowSkinsShop={() => setShowSkinsShop(true)}
-          onShowLeaderboard={() => setShowLeaderboard(true)}
-          onShowDailyRewards={() => setShowDailyRewards(true)}
-          onShowBetaPanel={() => setShowBetaPanel(true)}
-          onShowSettings={() => setShowSettings(true)}
-          onShowGlobalChat={() => setShowGlobalChat(true)}
-          onShowInventory={() => setShowInventory(true)}
-          onShowItemShop={() => setShowItemShop(true)}
-          onShowRedeemCodes={() => setShowRedeemCodes(true)}
-          onShowEventSchedule={() => setShowEventSchedule(true)}
-          onShowFoodPass={() => setShowFoodPass(true)}
-          onShowProfile={() => setShowProfile(true)}
+          unreadMessages={unreadMessages} isAdmin={isAdmin} isBetaTester={isBetaTester}
+          onShowMessages={() => setShowMessages(true)} onShowUpdates={() => setShowUpdates(true)} onShowSocial={() => setShowSocial(true)}
+          onShowSkinsShop={() => setShowSkinsShop(true)} onShowLeaderboard={() => setShowLeaderboard(true)} onShowDailyRewards={() => setShowDailyRewards(true)}
+          onShowBetaPanel={() => setShowBetaPanel(true)} onShowSettings={() => setShowSettings(true)} onShowGlobalChat={() => setShowGlobalChat(true)}
+          onShowInventory={() => setShowInventory(true)} onShowItemShop={() => setShowItemShop(true)} onShowRedeemCodes={() => setShowRedeemCodes(true)}
+          onShowEventSchedule={() => setShowEventSchedule(true)} onShowFoodPass={() => setShowFoodPass(true)} onShowProfile={() => setShowProfile(true)}
           onShowRanked={() => setGameMode("ranked")}
         />
       )}
 
-      {/* Top right bar - Admin, Owner, Teacher and Logout */}
       <div className="fixed top-4 right-4 flex gap-2 z-50">
-        {isClassMode && (
-          <div className="bg-green-500/20 border border-green-500/50 rounded-lg px-3 py-1.5 flex items-center gap-2 text-sm">
-            <GraduationCap className="w-4 h-4 text-green-500" />
-            <span className="text-green-400">Class Mode</span>
-          </div>
-        )}
-        {isTeacher && !isAdmin && !isClassMode && (
-          <Button variant="secondary" size="sm" onClick={() => setShowTeacherPanel(true)} className="gap-2">
-            <GraduationCap className="w-4 h-4" />
-            Teacher
-          </Button>
-        )}
-        {isOwner && !isClassMode && (
-          <Button size="sm" onClick={() => setShowOwnerPanel(true)} className="gap-2 bg-amber-600 hover:bg-amber-700">
-            <Crown className="w-4 h-4" />
-            Owner
-          </Button>
-        )}
-        {isAdmin && !isClassMode && (
-          <Button variant="default" size="sm" onClick={handleAdminClick} className="gap-2">
-            <Shield className="w-4 h-4" />
-            Admin
-          </Button>
-        )}
-        <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
-          <LogOut className="w-4 h-4" />
-          Logout
-        </Button>
+        {isClassMode && <div className="bg-green-500/20 border border-green-500/50 rounded-lg px-3 py-1.5 flex items-center gap-2 text-sm"><GraduationCap className="w-4 h-4 text-green-500" /><span className="text-green-400">Class Mode</span></div>}
+        {isTeacher && !isAdmin && !isClassMode && <Button variant="secondary" size="sm" onClick={() => setShowTeacherPanel(true)} className="gap-2"><GraduationCap className="w-4 h-4" />Teacher</Button>}
+        {isOwner && !isClassMode && <Button size="sm" onClick={() => setShowOwnerPanel(true)} className="gap-2 bg-amber-600 hover:bg-amber-700"><Crown className="w-4 h-4" />Owner</Button>}
+        {isAdmin && !isClassMode && <Button variant="default" size="sm" onClick={handleAdminClick} className="gap-2"><Shield className="w-4 h-4" />Admin</Button>}
+        <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2"><LogOut className="w-4 h-4" />Logout</Button>
       </div>
 
-      {!websiteEnabled && isAdmin && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm z-50">
-          ⚠️ Website disabled for users
-        </div>
-      )}
-
-      {/* Broadcast Banner */}
-      {gameStatus.activeBroadcast && (
-        <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground px-6 py-3 rounded-lg shadow-lg z-50 max-w-lg text-center animate-pulse">
-          <span className="font-semibold">📢 {gameStatus.activeBroadcast.message}</span>
-        </div>
-      )}
-
-      {/* Admin Abuse Active Indicator */}
+      {!websiteEnabled && isAdmin && <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm z-50">⚠️ Website disabled for users</div>}
+      {gameStatus.activeBroadcast && <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground px-6 py-3 rounded-lg shadow-lg z-50 max-w-lg text-center animate-pulse"><span className="font-semibold">📢 {gameStatus.activeBroadcast.message}</span></div>}
       {gameStatus.adminAbuseEvents.length > 0 && (
         <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-50">
           {gameStatus.adminAbuseEvents.map(event => (
@@ -489,126 +289,42 @@ const Index = () => {
       
       {!gameMode && !showUsernameModal && username && (
         <GameModeSelector 
-          username={username} 
-          onModeSelect={handleModeSelect}
-          soloDisabled={soloDisabled || isClassMode}
-          multiplayerDisabled={multiplayerDisabled || isClassMode}
-          bossDisabled={bossDisabled || isClassMode}
+          username={username} onModeSelect={handleModeSelect}
+          soloDisabled={soloDisabled || isClassMode} multiplayerDisabled={multiplayerDisabled || isClassMode} bossDisabled={bossDisabled || isClassMode}
           isClassMode={isClassMode}
         />
       )}
 
-      {/* Standard Lobby for non-timed matches */}
-      {gameMode && !isInGame && (gameMode === "host" || gameMode === "join") && (
-        <Lobby mode={gameMode} username={username} roomCode={roomCode} onStartGame={handleStartGame} onBack={handleBackToMenu} />
+      {gameMode && !isInGame && (gameMode === "host" || gameMode === "join") && <Lobby mode={gameMode} username={username} roomCode={roomCode} onStartGame={handleStartGame} onBack={handleBackToMenu} />}
+      {gameMode === "timed-host" && !isInGame && <TimedLobby mode="host" username={username} roomCode={roomCode} timedMinutes={timedMinutes} onStartGame={handleTimedStartGame} onBack={handleBackToMenu} />}
+
+      {((isInGame && !soloBasedModes.includes(gameMode)) || (!!gameMode && soloBasedModes.includes(gameMode))) && !["boss","timed-host","survival","zombie","arena","infection","ctf","koth","gungame","vip","lms","dodgeball","payload","sniper","tag","bounty","demolition","medic"].includes(gameMode as string) && (
+        <GameCanvas mode={gameMode as Exclude<GameMode, null | "boss" | "timed-host" | "timed-join">} username={username} roomCode={roomCode} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
       )}
 
-      {/* Timed Match Lobby */}
-      {gameMode === "timed-host" && !isInGame && (
-        <TimedLobby 
-          mode="host"
-          username={username}
-          roomCode={roomCode}
-          timedMinutes={timedMinutes}
-          onStartGame={handleTimedStartGame}
-          onBack={handleBackToMenu}
-        />
-      )}
+      {gameMode === "survival" && <SurvivalMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "zombie" && <ZombieMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "arena" && <ArenaDeathmatch username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "infection" && <InfectionMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "ctf" && <CaptureTheFlagMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "koth" && <KingOfTheHillMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "gungame" && <GunGameMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "vip" && <ProtectTheVIPMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "lms" && <LastManStandingMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "dodgeball" && <DodgeballMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "payload" && <PayloadMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "sniper" && <SniperEliteMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "tag" && <TagMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "bounty" && <BountyHunterMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "demolition" && <DemolitionMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "medic" && <MedicMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
 
-      {/* Standard Game - Solo, Offline, or standard multiplayer */}
-      {((isInGame && !soloBasedModes.includes(gameMode)) || (!!gameMode && soloBasedModes.includes(gameMode))) && gameMode !== "boss" && gameMode !== "timed-host" && gameMode !== "survival" && gameMode !== "zombie" && gameMode !== "arena" && gameMode !== "infection" && gameMode !== "ctf" && gameMode !== "koth" && gameMode !== "gungame" && gameMode !== "vip" && gameMode !== "lms" && gameMode !== "dodgeball" && (
-        <GameCanvas 
-          mode={gameMode as Exclude<GameMode, null | "boss" | "timed-host" | "timed-join">} 
-          username={username} 
-          roomCode={roomCode} 
-          onBack={handleBackToMenu}
-          adminAbuseEvents={gameStatus.adminAbuseEvents}
-          touchscreenMode={touchscreenMode}
-          playerSkin={currentSkin}
-        />
-      )}
+      {gameMode === "timed-host" && isInGame && <TimedGameCanvas username={username} roomCode={roomCode} timedMinutes={timedMinutes} onBack={handleBackToMenu} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "boss" && <BossMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "ranked" && <RankedMode username={username} onBack={handleBackToMenu} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "youvsme" && <YouVsMeMode username={username} onBack={handleBackToMenu} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />}
+      {gameMode === "school" && <SchoolMode username={username} onBack={handleBackToMenu} touchscreenMode={touchscreenMode} playerSkin={currentSkin} isClassMode={isClassMode} classCodeId={classCodeId} />}
 
-      {gameMode === "survival" && (
-        <SurvivalMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
-      )}
-      {gameMode === "zombie" && (
-        <ZombieMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
-      )}
-      {gameMode === "arena" && (
-        <ArenaDeathmatch username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
-      )}
-      {gameMode === "infection" && (
-        <InfectionMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
-      )}
-      {gameMode === "ctf" && (
-        <CaptureTheFlagMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
-      )}
-      {gameMode === "koth" && (
-        <KingOfTheHillMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
-      )}
-      {gameMode === "gungame" && (
-        <GunGameMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
-      )}
-      {gameMode === "vip" && (
-        <ProtectTheVIPMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
-      )}
-      {gameMode === "lms" && (
-        <LastManStandingMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
-      )}
-      {gameMode === "dodgeball" && (
-        <DodgeballMode username={username} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
-      )}
-
-      {/* Timed Match Game */}
-      {gameMode === "timed-host" && isInGame && (
-        <TimedGameCanvas
-          username={username}
-          roomCode={roomCode}
-          timedMinutes={timedMinutes}
-          onBack={handleBackToMenu}
-          touchscreenMode={touchscreenMode}
-          playerSkin={currentSkin}
-        />
-      )}
-
-      {gameMode === "boss" && (
-        <BossMode 
-          username={username} 
-          onBack={handleBackToMenu}
-          adminAbuseEvents={gameStatus.adminAbuseEvents}
-          touchscreenMode={touchscreenMode}
-          playerSkin={currentSkin}
-        />
-      )}
-
-      {gameMode === "ranked" && (
-        <RankedMode
-          username={username}
-          onBack={handleBackToMenu}
-          touchscreenMode={touchscreenMode}
-          playerSkin={currentSkin}
-        />
-      )}
-
-      {gameMode === "youvsme" && (
-        <YouVsMeMode
-          username={username}
-          onBack={handleBackToMenu}
-          touchscreenMode={touchscreenMode}
-          playerSkin={currentSkin}
-        />
-      )}
-
-      {gameMode === "school" && (
-        <SchoolMode
-          username={username}
-          onBack={handleBackToMenu}
-          touchscreenMode={touchscreenMode}
-          playerSkin={currentSkin}
-          isClassMode={isClassMode}
-          classCodeId={classCodeId}
-        />
-      )}
       <AdminCodeModal open={showAdminCode} onOpenChange={setShowAdminCode} onSuccess={() => setShowAdminPanel(true)} />
       <AdminPanel open={showAdminPanel} onClose={() => setShowAdminPanel(false)} />
       <OwnerPanel open={showOwnerPanel} onClose={() => setShowOwnerPanel(false)} />
@@ -617,66 +333,23 @@ const Index = () => {
       <SocialFeed open={showSocial} onOpenChange={setShowSocial} />
       <TeacherPanel open={showTeacherPanel} onClose={() => setShowTeacherPanel(false)} />
       <BetaTesterPanel open={showBetaPanel} onOpenChange={setShowBetaPanel} />
-      <SkinsShop 
-        open={showSkinsShop} 
-        onOpenChange={setShowSkinsShop} 
-        currentSkin={currentSkin}
-        onSkinSelect={(color) => {
-          setCurrentSkin(color);
-          localStorage.setItem("foodfps_skin", color);
-        }}
-      />
+      <SkinsShop open={showSkinsShop} onOpenChange={setShowSkinsShop} currentSkin={currentSkin} onSkinSelect={(color) => { setCurrentSkin(color); localStorage.setItem("foodfps_skin", color); }} />
       <PublicLeaderboard open={showLeaderboard} onOpenChange={setShowLeaderboard} />
       <DailyRewards open={showDailyRewards} onOpenChange={setShowDailyRewards} />
-      <SettingsModal 
-        open={showSettings} 
-        onOpenChange={setShowSettings}
-        touchscreenMode={touchscreenMode}
-        onTouchscreenModeChange={handleTouchscreenChange}
-        onOpenServicePanel={() => setShowServicePanel(true)}
-      />
+      <SettingsModal open={showSettings} onOpenChange={setShowSettings} touchscreenMode={touchscreenMode} onTouchscreenModeChange={handleTouchscreenChange} onOpenServicePanel={() => setShowServicePanel(true)} />
       <AdSignupModal open={showAdSignup} onOpenChange={setShowAdSignup} />
       <RedeemCodeModal open={showRedeemCodes} onOpenChange={setShowRedeemCodes} />
       <FoodPassModal open={showFoodPass} onOpenChange={setShowFoodPass} />
       <PlayerProfileModal open={showProfile} onOpenChange={setShowProfile} />
-      <InventoryModal 
-        open={showInventory} 
-        onOpenChange={setShowInventory}
-        onEquipPower={(power) => setEquippedPower(power)}
-      />
+      <InventoryModal open={showInventory} onOpenChange={setShowInventory} onEquipPower={(power) => setEquippedPower(power)} />
       <ShopModal open={showItemShop} onOpenChange={setShowItemShop} />
       <ServicePanel open={showServicePanel} onOpenChange={setShowServicePanel} />
       
-      {/* Login Streak Tracker - shows welcome back dialog */}
-      {user && username && !gameMode && (
-        <LoginStreakTracker userId={user.id} username={username} />
-      )}
-      {/* Global Chat Modal */}
-      {user && username && (
-        <GlobalChatModal
-          open={showGlobalChat}
-          onOpenChange={setShowGlobalChat}
-          userId={user.id}
-          username={username}
-        />
-      )}
-      
-      {/* Ad Banner - shows for non-exempt users when not in game */}
-      {user && !gameMode && !isAdmin && (
-        <AdBanner userId={user.id} onSignupClick={() => setShowAdSignup(true)} />
-      )}
-
-      {/* Popup Ads - shows for non-exempt users when not in game */}
-      {user && !gameMode && !isAdmin && (
-        <PopupAd userId={user.id} onSignupClick={() => setShowAdSignup(true)} />
-      )}
-
-      {/* Feedback Button */}
-      {user && username && !gameMode && (
-        <FeedbackButton userId={user.id} username={username} />
-      )}
-
-      {/* Event Schedule Modal */}
+      {user && username && !gameMode && <LoginStreakTracker userId={user.id} username={username} />}
+      {user && username && <GlobalChatModal open={showGlobalChat} onOpenChange={setShowGlobalChat} userId={user.id} username={username} />}
+      {user && !gameMode && !isAdmin && <AdBanner userId={user.id} onSignupClick={() => setShowAdSignup(true)} />}
+      {user && !gameMode && !isAdmin && <PopupAd userId={user.id} onSignupClick={() => setShowAdSignup(true)} />}
+      {user && username && !gameMode && <FeedbackButton userId={user.id} username={username} />}
       <PublicScheduleModal open={showEventSchedule} onOpenChange={setShowEventSchedule} />
     </div>
   );

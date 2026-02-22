@@ -65,7 +65,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { applyRainbowToDocument, removeRainbowFromDocument } from "@/utils/rainbowEffect";
 
-export type GameMode = "solo" | "3d-solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | "youvsme" | "school" | "survival" | "zombie" | "arena" | "infection" | "ctf" | "koth" | "gungame" | "vip" | "lms" | "dodgeball" | "payload" | "sniper" | "tag" | "bounty" | "demolition" | "medic" | "blitz" | "juggernaut" | "stealth" | "mirror" | "lowgrav" | "chaos" | "headhunter" | "vampire" | "frostbite" | "titan" | null;
+export type GameMode = "solo" | "3d-solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | "youvsme" | "school" | "survival" | "zombie" | "arena" | "infection" | "ctf" | "koth" | "gungame" | "vip" | "lms" | "dodgeball" | "payload" | "sniper" | "tag" | "bounty" | "demolition" | "medic" | "blitz" | "juggernaut" | "stealth" | "mirror" | "lowgrav" | "chaos" | "headhunter" | "vampire" | "frostbite" | "titan" | "quickplay" | null;
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -251,7 +251,7 @@ const Index = () => {
   const handleTouchscreenChange = (enabled: boolean) => { setTouchscreenMode(enabled); localStorage.setItem("foodfps_touchscreen", String(enabled)); };
   const soloBasedModes: GameMode[] = ["solo", "offline", "blitz", "juggernaut", "stealth", "mirror", "lowgrav", "chaos", "headhunter", "vampire", "frostbite", "titan"];
   // All non-lobby modes that can be 3D
-  const all3DModes: GameMode[] = [...soloBasedModes, "boss", "survival", "zombie", "arena", "infection", "ctf", "koth", "gungame", "vip", "lms", "dodgeball", "payload", "sniper", "tag", "bounty", "demolition", "medic", "ranked", "youvsme", "school", "3d-solo"];
+  const all3DModes: GameMode[] = [...soloBasedModes, "boss", "survival", "zombie", "arena", "infection", "ctf", "koth", "gungame", "vip", "lms", "dodgeball", "payload", "sniper", "tag", "bounty", "demolition", "medic", "ranked", "youvsme", "school", "3d-solo", "quickplay"];
   // Modes that use 2D GameCanvas (solo-based modes when 3D is off)
   const twoDCanvasModes: GameMode[] = [...soloBasedModes];
 
@@ -327,7 +327,7 @@ const Index = () => {
       <SkinsShop open={showSkinsShop} onOpenChange={setShowSkinsShop} currentSkin={currentSkin} onSkinSelect={(color) => { setCurrentSkin(color); localStorage.setItem("foodfps_skin", color); }} />
       <PublicLeaderboard open={showLeaderboard} onOpenChange={setShowLeaderboard} />
       <DailyRewards open={showDailyRewards} onOpenChange={setShowDailyRewards} />
-      <SettingsModal open={showSettings} onOpenChange={setShowSettings} touchscreenMode={touchscreenMode} onTouchscreenModeChange={handleTouchscreenChange} onOpenServicePanel={() => setShowServicePanel(true)} />
+      <SettingsModal open={showSettings} onOpenChange={setShowSettings} touchscreenMode={touchscreenMode} onTouchscreenModeChange={handleTouchscreenChange} onOpenServicePanel={() => setShowServicePanel(true)} onThreeDModeChange={setThreeDMode} />
       <AdSignupModal open={showAdSignup} onOpenChange={setShowAdSignup} />
       <RedeemCodeModal open={showRedeemCodes} onOpenChange={setShowRedeemCodes} />
       <FoodPassModal open={showFoodPass} onOpenChange={setShowFoodPass} />

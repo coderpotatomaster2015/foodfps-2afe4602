@@ -12,6 +12,7 @@ interface SettingsModalProps {
   touchscreenMode: boolean;
   onTouchscreenModeChange: (enabled: boolean) => void;
   onOpenServicePanel?: () => void;
+  onThreeDModeChange?: (enabled: boolean) => void;
 }
 
 // Predefined UI color themes
@@ -105,7 +106,8 @@ export const SettingsModal = ({
   onOpenChange, 
   touchscreenMode, 
   onTouchscreenModeChange,
-  onOpenServicePanel 
+  onOpenServicePanel,
+  onThreeDModeChange 
 }: SettingsModalProps) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [threeDMode, setThreeDMode] = useState(false);
@@ -156,6 +158,7 @@ export const SettingsModal = ({
     } else {
       document.documentElement.removeAttribute("data-3d");
     }
+    onThreeDModeChange?.(enabled);
     playSound("click");
   };
 

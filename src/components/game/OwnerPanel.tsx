@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import type { GameMode } from "@/pages/Index";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +25,19 @@ import { AbuseSchedulePanel } from "./AbuseSchedulePanel";
 interface OwnerPanelProps {
   open: boolean;
   onClose: () => void;
+  onSetGameMode?: (mode: GameMode) => void;
+  onBackToMenu?: () => void;
+  onOpenGlobalChat?: () => void;
+  onOpenSocial?: () => void;
+  onOpenMessages?: () => void;
+  onOpenInventory?: () => void;
+  onOpenProfile?: () => void;
+  onOpenSkinsShop?: () => void;
+  onOpenItemShop?: () => void;
+  onOpenFoodPass?: () => void;
+  onOpenLeaderboard?: () => void;
+  onReopenOwnerPanel?: () => void;
+  currentGameMode?: GameMode;
 }
 
 interface Ad {
@@ -86,7 +100,7 @@ interface GameSettings {
   normal_disabled_message: string | null;
 }
 
-export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
+export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenGlobalChat, onOpenSocial, onOpenMessages, onOpenInventory, onOpenProfile, onOpenSkinsShop, onOpenItemShop, onOpenFoodPass, onOpenLeaderboard, onReopenOwnerPanel, currentGameMode }: OwnerPanelProps) => {
   const [ads, setAds] = useState<Ad[]>([]);
   const [adSignups, setAdSignups] = useState<AdSignup[]>([]);
   const [ipBans, setIPBans] = useState<IPBan[]>([]);
@@ -144,6 +158,7 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
   const [aiPlaying, setAiPlaying] = useState(false);
   const [aiLog, setAiLog] = useState<string[]>([]);
   const [aiTimeLeft, setAiTimeLeft] = useState(0);
+  const [aiCurrentAction, setAiCurrentAction] = useState("");
   const aiTimerRef = useRef<NodeJS.Timeout | null>(null);
   const aiIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -652,7 +667,13 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
     }
   };
 
-  const GAME_MODES = ["solo", "boss", "zombie", "infection", "arena", "sniper", "medic", "demolition", "ctf", "koth", "tag", "dodgeball", "gungame", "survival", "lms", "bounty", "payload", "vip"];
+  const GAME_MODE_MAP: Record<string, GameMode> = {
+    "solo": "solo", "boss": "boss", "zombie": "zombie", "infection": "infection",
+    "arena": "arena", "sniper": "sniper", "medic": "medic", "demolition": "demolition",
+    "ctf": "ctf", "koth": "koth", "tag": "tag", "dodgeball": "dodgeball",
+    "gungame": "gungame", "survival": "survival", "lms": "lms", "bounty": "bounty",
+    "payload": "payload", "vip": "vip", "ranked": "ranked",
+  };
 
   const AI_SOCIAL_POSTS = [
     "Just got a 15 kill streak in zombie mode! 🧟💀",
@@ -692,40 +713,11 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
   const AI_RANK_NAMES = ["Rookie", "Iron", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master", "Grandmaster", "Pro", "Legend", "Mythic"];
 
   const AI_ACTIONS = [
-    "play_game",
-    "play_game",
-    "play_game",
-    "post_social",
-    "send_message",
-    "buy_item",
-    "redeem_code",
-    "claim_reward",
-    "switch_weapon",
-    "play_game",
-    "ranked_match",
-    "ranked_match",
-    "edit_bio",
-    "claim_food_pass",
-    "equip_skin",
-    "change_loadout",
-    "join_multiplayer",
+    "play_game", "play_game", "play_game", "post_social", "send_message",
+    "buy_item", "redeem_code", "claim_reward", "switch_weapon", "play_game",
+    "ranked_match", "ranked_match", "edit_bio", "claim_food_pass", "equip_skin",
+    "change_loadout", "join_multiplayer",
   ];
-
-  const [aiScreen, setAiScreen] = useState<{
-    scene: string;
-    title: string;
-    details: string[];
-    progress: number;
-    avatar: string;
-    stats: { score: number; kills: number; coins: number; gems: number; gold: number };
-  }>({
-    scene: "idle",
-    title: "AI Player Idle",
-    details: [],
-    progress: 0,
-    avatar: "🤖",
-    stats: { score: 0, kills: 0, coins: 0, gems: 0, gold: 0 },
-  });
 
   const startAiPlay = async () => {
     if (!aiGoal.trim()) {
@@ -736,7 +728,6 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Get owner's profile info
     const { data: profile } = await supabase
       .from("profiles")
       .select("username, total_score")
@@ -754,6 +745,9 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
       `─────────────────────`,
     ]);
     setAiTimeLeft(300);
+
+    // Close the owner panel so user sees real UI
+    onClose();
 
     aiTimerRef.current = setInterval(() => {
       setAiTimeLeft(prev => {
@@ -774,216 +768,108 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
       try {
         switch (action) {
           case "play_game": {
-            const mode = GAME_MODES[Math.floor(Math.random() * GAME_MODES.length)];
+            const modeKeys = Object.keys(GAME_MODE_MAP);
+            const modeKey = modeKeys[Math.floor(Math.random() * modeKeys.length)];
+            const mode = GAME_MODE_MAP[modeKey];
             const scoreGain = Math.floor(Math.random() * 150) + 50;
             const kills = Math.floor(Math.random() * 10) + 1;
             const deaths = Math.floor(Math.random() * 3);
             const waves = Math.floor(Math.random() * 5) + 1;
 
-            setAiScreen(prev => ({ ...prev, scene: "playing", title: `Playing ${mode.toUpperCase()}`, details: ["🔄 Loading map...", "📍 Spawning in..."], progress: 10, avatar: "🎮" }));
-            setAiLog(prev => [...prev.slice(-40), `🎮 Entering ${mode.toUpperCase()} mode...`]);
+            setAiCurrentAction(`🎮 Playing ${modeKey.toUpperCase()}...`);
+            setAiLog(prev => [...prev.slice(-40), `🎮 Entering ${modeKey.toUpperCase()} mode...`]);
 
-            // Post to global chat like a real player
+            // Actually navigate to the game mode
+            onSetGameMode?.(mode);
+
             await supabase.from("global_chat").insert({
-              user_id: currentUser.id,
-              username: ownerUsername,
-              message: `Just joined ${mode} mode! Let's go! 🎮`,
+              user_id: currentUser.id, username: ownerUsername,
+              message: `Just joined ${modeKey} mode! Let's go! 🎮`,
             });
-            
-            await new Promise(r => setTimeout(r, 1000));
-            setAiScreen(prev => ({ ...prev, progress: 30, details: [...prev.details, `Wave ${waves} — Fighting enemies...`] }));
-            
-            await new Promise(r => setTimeout(r, 1000));
-            setAiScreen(prev => ({ ...prev, progress: 70, details: [...prev.details, `${kills} kills, ${deaths} deaths`] }));
-            setAiLog(prev => [...prev.slice(-40), `⚔️ Fighting... ${kills} kills, ${deaths} deaths, ${waves} waves cleared`]);
 
-            // Register as active player so others can see
             await supabase.from("active_players").upsert({
-              user_id: currentUser.id,
-              username: ownerUsername,
-              mode: mode,
-              last_seen: new Date().toISOString(),
+              user_id: currentUser.id, username: ownerUsername,
+              mode: modeKey, last_seen: new Date().toISOString(),
             }, { onConflict: "user_id" });
 
-            const { data: prof } = await supabase
-              .from("profiles")
-              .select("total_score")
-              .eq("user_id", currentUser.id)
-              .single();
+            await new Promise(r => setTimeout(r, 4000));
+            setAiLog(prev => [...prev.slice(-40), `⚔️ ${kills} kills, ${deaths} deaths, ${waves} waves`]);
 
+            const { data: prof } = await supabase.from("profiles").select("total_score").eq("user_id", currentUser.id).single();
             if (prof) {
-              await supabase
-                .from("profiles")
-                .update({ total_score: prof.total_score + scoreGain })
-                .eq("user_id", currentUser.id);
+              await supabase.from("profiles").update({ total_score: prof.total_score + scoreGain }).eq("user_id", currentUser.id);
             }
 
             const coins = Math.floor(scoreGain / 2);
             const gems = Math.floor(scoreGain / 10);
             const gold = Math.floor(scoreGain / 20);
+            await supabase.rpc("add_player_currency", { _user_id: currentUser.id, _coins: coins, _gems: gems, _gold: gold });
 
-            await supabase.rpc("add_player_currency", {
-              _user_id: currentUser.id,
-              _coins: coins,
-              _gems: gems,
-              _gold: gold,
-            });
+            setAiLog(prev => [...prev.slice(-40), `✅ +${scoreGain} score, +${coins} coins, +${gems} gems`]);
 
-            setAiScreen(prev => ({
-              ...prev, progress: 100, details: [...prev.details, `✅ +${scoreGain} score, ${kills} kills`],
-              stats: { ...prev.stats, score: prev.stats.score + scoreGain, kills: prev.stats.kills + kills, coins: prev.stats.coins + coins, gems: prev.stats.gems + gems, gold: prev.stats.gold + gold }
-            }));
-            setAiLog(prev => [...prev.slice(-40), `✅ Match complete! +${scoreGain} score, +${coins} coins, +${gems} gems, +${gold} gold`]);
-
-            // Chat about the result like a real player
-            const chatMessages = [
-              `${kills} kills in ${mode} mode! 💀🔥`,
-              `Just dropped ${scoreGain} score in ${mode}! Who can beat that? 😤`,
-              `${mode} mode is too easy for me 😎`,
-              `GG! ${waves} waves cleared in ${mode} 🏆`,
-            ];
+            const chatMsgs = [`${kills} kills in ${modeKey}! 💀🔥`, `${scoreGain} score in ${modeKey}! 😤`, `GG! ${waves} waves 🏆`];
             await supabase.from("global_chat").insert({
-              user_id: currentUser.id,
-              username: ownerUsername,
-              message: chatMessages[Math.floor(Math.random() * chatMessages.length)],
+              user_id: currentUser.id, username: ownerUsername,
+              message: chatMsgs[Math.floor(Math.random() * chatMsgs.length)],
             });
+
+            onBackToMenu?.();
+            await new Promise(r => setTimeout(r, 1500));
             break;
           }
 
           case "post_social": {
             const postContent = AI_SOCIAL_POSTS[Math.floor(Math.random() * AI_SOCIAL_POSTS.length)];
-            setAiScreen(prev => ({ ...prev, scene: "social", title: "Posting to Food Media", details: [`Writing: "${postContent}"`], progress: 50, avatar: "📝" }));
-            setAiLog(prev => [...prev.slice(-40), `📝 Posting to Food Media: "${postContent}"`]);
-
-             await supabase.from("social_posts").insert({
-              user_id: currentUser.id,
-              username: ownerUsername,
-              content: `[AI] ${postContent}`,
-              is_approved: true,
-              is_pending: false,
+            setAiCurrentAction(`📝 Posting to Food Media...`);
+            setAiLog(prev => [...prev.slice(-40), `📝 Posting: "${postContent}"`]);
+            onOpenSocial?.();
+            await new Promise(r => setTimeout(r, 2000));
+            await supabase.from("social_posts").insert({
+              user_id: currentUser.id, username: ownerUsername,
+              content: `[AI] ${postContent}`, is_approved: true, is_pending: false,
             });
-
-            setAiScreen(prev => ({ ...prev, progress: 100, details: [...prev.details, "✅ Published!"] }));
-            setAiLog(prev => [...prev.slice(-40), `✅ Post published successfully!`]);
+            setAiLog(prev => [...prev.slice(-40), `✅ Post published!`]);
+            await new Promise(r => setTimeout(r, 1500));
             break;
           }
 
           case "send_message": {
-            const { data: randomUsers } = await supabase
-              .from("profiles")
-              .select("user_id, username")
-              .neq("user_id", currentUser.id)
-              .limit(10);
-
+            const { data: randomUsers } = await supabase.from("profiles").select("user_id, username").neq("user_id", currentUser.id).limit(10);
             if (randomUsers && randomUsers.length > 0) {
               const target = randomUsers[Math.floor(Math.random() * randomUsers.length)];
               const msg = AI_MESSAGES_SUBJECTS[Math.floor(Math.random() * AI_MESSAGES_SUBJECTS.length)];
-
-              setAiScreen(prev => ({ ...prev, scene: "messaging", title: `Messaging ${target.username}`, details: [`To: ${target.username}`, `Subject: ${msg.subject}`], progress: 50, avatar: "💌" }));
-              setAiLog(prev => [...prev.slice(-40), `💌 Sending message to ${target.username}: "${msg.subject}"`]);
-
+              setAiCurrentAction(`💌 Messaging ${target.username}...`);
+              setAiLog(prev => [...prev.slice(-40), `💌 To ${target.username}: "${msg.subject}"`]);
+              onOpenMessages?.();
+              await new Promise(r => setTimeout(r, 2000));
               await supabase.from("messages").insert({
-                from_user_id: currentUser.id,
-                from_username: ownerUsername,
-                to_user_id: target.user_id,
-                to_username: target.username,
-                subject: `[AI] ${msg.subject}`,
-                content: msg.content,
+                from_user_id: currentUser.id, from_username: ownerUsername,
+                to_user_id: target.user_id, to_username: target.username,
+                subject: `[AI] ${msg.subject}`, content: msg.content,
               });
-
-              setAiScreen(prev => ({ ...prev, progress: 100, details: [...prev.details, "✅ Sent!"] }));
-              setAiLog(prev => [...prev.slice(-40), `✅ Message sent to ${target.username}!`]);
+              setAiLog(prev => [...prev.slice(-40), `✅ Sent to ${target.username}!`]);
             } else {
-              setAiScreen(prev => ({ ...prev, scene: "messaging", title: "Messaging", details: ["No players found"], progress: 100, avatar: "⚠️" }));
-              setAiLog(prev => [...prev.slice(-40), `⚠️ No other players found to message`]);
+              setAiLog(prev => [...prev.slice(-40), `⚠️ No players to message`]);
             }
+            await new Promise(r => setTimeout(r, 1000));
             break;
           }
 
           case "buy_item": {
             const item = AI_SHOP_ITEMS[Math.floor(Math.random() * AI_SHOP_ITEMS.length)];
-            setAiScreen(prev => ({ ...prev, scene: "shopping", title: `Buying ${item.name}`, details: [`Price: ${item.cost} coins`], progress: 30, avatar: "🛒" }));
-            setAiLog(prev => [...prev.slice(-40), `🛒 Buying ${item.name} for ${item.cost} coins...`]);
-
-            const { data: currency } = await supabase
-              .from("player_currencies")
-              .select("coins")
-              .eq("user_id", currentUser.id)
-              .single();
-
+            setAiCurrentAction(`🛒 Buying ${item.name}...`);
+            setAiLog(prev => [...prev.slice(-40), `🛒 Buying ${item.name} (${item.cost} coins)...`]);
+            onOpenItemShop?.();
+            await new Promise(r => setTimeout(r, 2000));
+            const { data: currency } = await supabase.from("player_currencies").select("coins").eq("user_id", currentUser.id).single();
             if (currency && currency.coins >= item.cost) {
-              await supabase
-                .from("player_currencies")
-                .update({ coins: currency.coins - item.cost })
-                .eq("user_id", currentUser.id);
-
-              await supabase.from("player_inventory").insert({
-                user_id: currentUser.id,
-                item_type: item.type,
-                item_id: `ai_bought_${Date.now()}`,
-                quantity: 1,
-              });
-
-              setAiScreen(prev => ({ ...prev, progress: 100, details: [...prev.details, `✅ Purchased! -${item.cost} coins`], stats: { ...prev.stats, coins: prev.stats.coins - item.cost } }));
-              setAiLog(prev => [...prev.slice(-40), `✅ Purchased ${item.name}! (-${item.cost} coins)`]);
+              await supabase.from("player_currencies").update({ coins: currency.coins - item.cost }).eq("user_id", currentUser.id);
+              await supabase.from("player_inventory").insert({ user_id: currentUser.id, item_type: item.type, item_id: `ai_bought_${Date.now()}`, quantity: 1 });
+              setAiLog(prev => [...prev.slice(-40), `✅ Purchased ${item.name}!`]);
             } else {
-              setAiScreen(prev => ({ ...prev, progress: 100, details: [...prev.details, "❌ Not enough coins"], avatar: "❌" }));
-              setAiLog(prev => [...prev.slice(-40), `❌ Not enough coins for ${item.name} (need ${item.cost})`]);
+              setAiLog(prev => [...prev.slice(-40), `❌ Not enough coins`]);
             }
-            break;
-          }
-
-          case "redeem_code": {
-            setAiScreen(prev => ({ ...prev, scene: "redeeming", title: "Checking Codes", details: ["Scanning for active codes..."], progress: 30, avatar: "🎟️" }));
-            setAiLog(prev => [...prev.slice(-40), `🎟️ Checking for redeemable codes...`]);
-            const { data: codes } = await supabase
-              .from("redeem_codes")
-              .select("id, code, reward_type, reward_value")
-              .eq("is_active", true)
-              .limit(5);
-
-            if (codes && codes.length > 0) {
-              const code = codes[Math.floor(Math.random() * codes.length)];
-              const { data: existing } = await supabase
-                .from("redeemed_codes")
-                .select("id")
-                .eq("user_id", currentUser.id)
-                .eq("code_id", code.id)
-                .maybeSingle();
-
-              if (!existing) {
-                setAiScreen(prev => ({ ...prev, progress: 100, details: [...prev.details, `Redeeming "${code.code}" +${code.reward_value} ${code.reward_type}`] }));
-                setAiLog(prev => [...prev.slice(-40), `🎁 Redeeming code "${code.code}" (+${code.reward_value} ${code.reward_type})`]);
-              } else {
-                setAiScreen(prev => ({ ...prev, progress: 100, details: [...prev.details, `"${code.code}" already redeemed`], avatar: "⚠️" }));
-                setAiLog(prev => [...prev.slice(-40), `⚠️ Code "${code.code}" already redeemed`]);
-              }
-            } else {
-              setAiScreen(prev => ({ ...prev, progress: 100, details: [...prev.details, "No active codes"], avatar: "⚠️" }));
-              setAiLog(prev => [...prev.slice(-40), `⚠️ No active codes found`]);
-            }
-            break;
-          }
-
-          case "claim_reward": {
-            setAiScreen(prev => ({ ...prev, scene: "reward", title: "Daily Rewards", details: ["Checking rewards..."], progress: 50, avatar: "🎁" }));
-            setAiLog(prev => [...prev.slice(-40), `🎁 Checking daily rewards...`]);
-            const rewardTypes = ["coins", "gems", "gold"];
-            const type = rewardTypes[Math.floor(Math.random() * rewardTypes.length)];
-            const value = Math.floor(Math.random() * 50) + 10;
-            setAiScreen(prev => ({ ...prev, progress: 100, details: [...prev.details, `+${value} ${type}!`] }));
-            setAiLog(prev => [...prev.slice(-40), `🎉 Daily reward: +${value} ${type}!`]);
-            break;
-          }
-
-          case "switch_weapon": {
-            const weapons = ["Pistol", "Shotgun", "Sniper", "Minigun", "RPG", "Katana", "Railgun", "Plasma Rifle"];
-            const weapon = weapons[Math.floor(Math.random() * weapons.length)];
-            setAiScreen(prev => ({ ...prev, scene: "loadout", title: "Switching Weapon", details: [`Equipping ${weapon}...`], progress: 50, avatar: "🔫" }));
-            setAiLog(prev => [...prev.slice(-40), `🔫 Switching to ${weapon}...`]);
-            await new Promise(r => setTimeout(r, 500));
-            setAiScreen(prev => ({ ...prev, progress: 100, details: [...prev.details, `Now using ${weapon}`] }));
-            setAiLog(prev => [...prev.slice(-40), `✅ Now using ${weapon}`]);
+            await new Promise(r => setTimeout(r, 1000));
             break;
           }
 
@@ -995,305 +881,136 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
             const rank = AI_RANK_NAMES[rankIndex];
             const tier = Math.floor(Math.random() * 5) + 1;
 
-            setAiScreen(prev => ({ ...prev, scene: "ranked", title: "RANKED MATCH", details: ["Entering ranked queue...", "Match found!"], progress: 10, avatar: "🏅" }));
-            setAiLog(prev => [...prev.slice(-40), `🏅 Entering RANKED match...`]);
-            await new Promise(r => setTimeout(r, 1200));
+            setAiCurrentAction(`🏅 RANKED MATCH`);
+            setAiLog(prev => [...prev.slice(-40), `🏅 Entering RANKED...`]);
+            onSetGameMode?.("ranked");
+            await new Promise(r => setTimeout(r, 2000));
 
             for (let w = 1; w <= waves; w++) {
-              setAiScreen(prev => ({ ...prev, progress: Math.floor((w / 7) * 80) + 10, details: [...prev.details.slice(-4), `Wave ${w}/7 — Clearing enemies...`] }));
-              await new Promise(r => setTimeout(r, 400));
+              setAiLog(prev => [...prev.slice(-40), `Wave ${w}/7...`]);
+              await new Promise(r => setTimeout(r, 800));
             }
 
-            setAiScreen(prev => ({ ...prev, progress: 95, details: [...prev.details.slice(-4), `${kills} kills${victory ? " — VICTORY! 🏆" : " — Defeated"}`] }));
-            setAiLog(prev => [...prev.slice(-40), `⚔️ Ranked: ${waves}/7 waves, ${kills} kills${victory ? " — VICTORY!" : ""}`]);
-
-            await supabase.from("ranked_matches").insert({
-              user_id: currentUser.id,
-              waves_completed: waves,
-              enemies_killed: kills,
-              victory,
-              rank_earned: rank,
-              tier_earned: tier,
-            });
-
-            await supabase
-              .from("profiles")
-              .update({ ranked_rank: rank, ranked_tier: tier })
-              .eq("user_id", currentUser.id);
+            await supabase.from("ranked_matches").insert({ user_id: currentUser.id, waves_completed: waves, enemies_killed: kills, victory, rank_earned: rank, tier_earned: tier });
+            await supabase.from("profiles").update({ ranked_rank: rank, ranked_tier: tier }).eq("user_id", currentUser.id);
 
             const scoreGain = waves * 30 + kills * 5;
-            const { data: prof2 } = await supabase
-              .from("profiles")
-              .select("total_score")
-              .eq("user_id", currentUser.id)
-              .single();
-            if (prof2) {
-              await supabase
-                .from("profiles")
-                .update({ total_score: prof2.total_score + scoreGain })
-                .eq("user_id", currentUser.id);
-            }
-            await supabase.rpc("add_player_currency", {
-              _user_id: currentUser.id,
-              _coins: kills * 3,
-              _gems: waves * 2,
-              _gold: victory ? 10 : 0,
-            });
+            const { data: prof2 } = await supabase.from("profiles").select("total_score").eq("user_id", currentUser.id).single();
+            if (prof2) await supabase.from("profiles").update({ total_score: prof2.total_score + scoreGain }).eq("user_id", currentUser.id);
+            await supabase.rpc("add_player_currency", { _user_id: currentUser.id, _coins: kills * 3, _gems: waves * 2, _gold: victory ? 10 : 0 });
 
-            setAiScreen(prev => ({
-              ...prev, progress: 100,
-              details: [...prev.details.slice(-4), `Rank: ${rank} ${tier} | +${scoreGain} score`],
-              stats: { ...prev.stats, score: prev.stats.score + scoreGain, kills: prev.stats.kills + kills, coins: prev.stats.coins + kills * 3, gems: prev.stats.gems + waves * 2, gold: prev.stats.gold + (victory ? 10 : 0) }
-            }));
-            setAiLog(prev => [...prev.slice(-40), `✅ Ranked complete! Rank: ${rank} ${tier} | +${scoreGain} score`]);
+            setAiLog(prev => [...prev.slice(-40), `✅ Rank: ${rank} ${tier} | +${scoreGain} score`]);
+            onBackToMenu?.();
+            await new Promise(r => setTimeout(r, 1500));
             break;
           }
 
           case "edit_bio": {
             const newBio = AI_BIOS[Math.floor(Math.random() * AI_BIOS.length)];
-            setAiScreen(prev => ({ ...prev, scene: "profile", title: "Editing Profile", details: [`New bio: "${newBio}"`], progress: 50, avatar: "✏️" }));
-            setAiLog(prev => [...prev.slice(-40), `✏️ Updating profile bio...`]);
-            await new Promise(r => setTimeout(r, 800));
-
-            await supabase
-              .from("profiles")
-              .update({ bio: newBio })
-              .eq("user_id", currentUser.id);
-
-            setAiScreen(prev => ({ ...prev, progress: 100, details: [...prev.details, "✅ Bio saved!"] }));
-            setAiLog(prev => [...prev.slice(-40), `✅ Bio updated: "${newBio}"`]);
+            setAiCurrentAction(`✏️ Editing profile...`);
+            setAiLog(prev => [...prev.slice(-40), `✏️ Updating bio...`]);
+            onOpenProfile?.();
+            await new Promise(r => setTimeout(r, 2000));
+            await supabase.from("profiles").update({ bio: newBio }).eq("user_id", currentUser.id);
+            setAiLog(prev => [...prev.slice(-40), `✅ Bio: "${newBio}"`]);
+            await new Promise(r => setTimeout(r, 1000));
             break;
           }
 
           case "claim_food_pass": {
-            setAiScreen(prev => ({ ...prev, scene: "foodpass", title: "Food Pass", details: ["Checking progress..."], progress: 20, avatar: "🎖️" }));
-            setAiLog(prev => [...prev.slice(-40), `🎖️ Checking Food Pass progress...`]);
-
-            const { data: fpProgress } = await supabase
-              .from("food_pass_progress")
-              .select("*")
-              .eq("user_id", currentUser.id)
-              .maybeSingle();
-
+            setAiCurrentAction(`🎖️ Food Pass...`);
+            setAiLog(prev => [...prev.slice(-40), `🎖️ Checking Food Pass...`]);
+            onOpenFoodPass?.();
+            await new Promise(r => setTimeout(r, 2000));
+            const { data: fpProgress } = await supabase.from("food_pass_progress").select("*").eq("user_id", currentUser.id).maybeSingle();
             const currentTier = fpProgress?.current_tier || 0;
             const claimedTiers: number[] = (fpProgress?.claimed_tiers as number[]) || [];
             const nextTier = currentTier + 1;
-
             if (nextTier <= 500) {
               const newClaimed = [...claimedTiers, nextTier];
-
               if (fpProgress) {
-                await supabase
-                  .from("food_pass_progress")
-                  .update({ current_tier: nextTier, claimed_tiers: newClaimed })
-                  .eq("user_id", currentUser.id);
+                await supabase.from("food_pass_progress").update({ current_tier: nextTier, claimed_tiers: newClaimed }).eq("user_id", currentUser.id);
               } else {
-                await supabase
-                  .from("food_pass_progress")
-                  .insert({ user_id: currentUser.id, current_tier: nextTier, claimed_tiers: newClaimed });
+                await supabase.from("food_pass_progress").insert({ user_id: currentUser.id, current_tier: nextTier, claimed_tiers: newClaimed });
               }
-
               const rewardCoins = nextTier * 5;
-              await supabase.rpc("add_player_currency", {
-                _user_id: currentUser.id,
-                _coins: rewardCoins,
-                _gems: Math.floor(nextTier / 5),
-                _gold: Math.floor(nextTier / 10),
-              });
-
-              setAiScreen(prev => ({ ...prev, progress: 100, details: [...prev.details, `Claimed Tier ${nextTier}! +${rewardCoins} coins`], stats: { ...prev.stats, coins: prev.stats.coins + rewardCoins } }));
-              setAiLog(prev => [...prev.slice(-40), `🎉 Claimed Food Pass Tier ${nextTier}! +${rewardCoins} coins`]);
+              await supabase.rpc("add_player_currency", { _user_id: currentUser.id, _coins: rewardCoins, _gems: Math.floor(nextTier / 5), _gold: Math.floor(nextTier / 10) });
+              setAiLog(prev => [...prev.slice(-40), `🎉 Tier ${nextTier}! +${rewardCoins} coins`]);
             } else {
-              setAiScreen(prev => ({ ...prev, progress: 100, details: [...prev.details, "Already maxed at Tier 500"], avatar: "⚠️" }));
-              setAiLog(prev => [...prev.slice(-40), `⚠️ Food Pass already maxed at Tier 500`]);
+              setAiLog(prev => [...prev.slice(-40), `⚠️ Maxed at Tier 500`]);
             }
+            await new Promise(r => setTimeout(r, 1000));
             break;
           }
 
           case "equip_skin": {
-            setAiScreen(prev => ({ ...prev, scene: "skins", title: "Equipping Skin", details: ["Browsing skins..."], progress: 20, avatar: "🎨" }));
+            setAiCurrentAction(`🎨 Skins...`);
             setAiLog(prev => [...prev.slice(-40), `🎨 Browsing skins...`]);
-
-            const { data: ownedSkins } = await supabase
-              .from("player_owned_skins")
-              .select("skin_id")
-              .eq("user_id", currentUser.id)
-              .limit(10);
-
+            onOpenSkinsShop?.();
+            await new Promise(r => setTimeout(r, 2000));
+            const { data: ownedSkins } = await supabase.from("player_owned_skins").select("skin_id").eq("user_id", currentUser.id).limit(10);
             if (ownedSkins && ownedSkins.length > 0) {
               const chosen = ownedSkins[Math.floor(Math.random() * ownedSkins.length)];
-              const { data: skinInfo } = await supabase
-                .from("player_skins")
-                .select("name, color")
-                .eq("id", chosen.skin_id)
-                .single();
-
-              const skinName = skinInfo?.name || "Unknown Skin";
-              setAiScreen(prev => ({ ...prev, progress: 70, details: [...prev.details, `Selected: ${skinName}`] }));
-              await new Promise(r => setTimeout(r, 600));
-
-              localStorage.setItem("foodfps_skin", JSON.stringify({ id: chosen.skin_id, name: skinName, color: skinInfo?.color || "#ff0000" }));
-              setAiScreen(prev => ({ ...prev, progress: 100, details: [...prev.details, `✅ Now wearing ${skinName}!`] }));
-              setAiLog(prev => [...prev.slice(-40), `✅ Equipped skin: ${skinName}`]);
+              const { data: skinInfo } = await supabase.from("player_skins").select("name, color").eq("id", chosen.skin_id).single();
+              setAiLog(prev => [...prev.slice(-40), `✅ Equipped: ${skinInfo?.name || "Skin"}`]);
             } else {
-              // Try custom skins
-              const { data: customSkins } = await supabase
-                .from("player_custom_skins")
-                .select("skin_id")
-                .eq("user_id", currentUser.id)
-                .limit(10);
-
-              if (customSkins && customSkins.length > 0) {
-                const chosen = customSkins[Math.floor(Math.random() * customSkins.length)];
-                const { data: skinInfo } = await supabase
-                  .from("custom_skins")
-                  .select("name")
-                  .eq("id", chosen.skin_id)
-                  .single();
-                const skinName = skinInfo?.name || "Custom Skin";
-                setAiScreen(prev => ({ ...prev, progress: 100, details: [...prev.details, `✅ Equipped custom: ${skinName}`] }));
-                setAiLog(prev => [...prev.slice(-40), `✅ Equipped custom skin: ${skinName}`]);
-              } else {
-                setAiScreen(prev => ({ ...prev, progress: 100, details: [...prev.details, "No owned skins found"], avatar: "⚠️" }));
-                setAiLog(prev => [...prev.slice(-40), `⚠️ No owned skins to equip`]);
-              }
+              setAiLog(prev => [...prev.slice(-40), `⚠️ No skins`]);
             }
+            await new Promise(r => setTimeout(r, 1000));
             break;
           }
 
           case "change_loadout": {
-            const slotWeapons = ["pistol", "shotgun", "sniper", "minigun", "rpg", "katana", "railgun", "plasma_rifle"];
+            const slotWeapons = ["pistol", "shotgun", "sniper", "minigun", "rpg", "katana"];
             const slotNum = Math.floor(Math.random() * 5) + 1;
             const weapon = slotWeapons[Math.floor(Math.random() * slotWeapons.length)];
-
-            setAiScreen(prev => ({ ...prev, scene: "loadout", title: "Changing Loadout", details: [`Slot ${slotNum} → ${weapon}`], progress: 40, avatar: "🎒" }));
-            setAiLog(prev => [...prev.slice(-40), `🎒 Changing loadout slot ${slotNum} to ${weapon}...`]);
-
+            setAiCurrentAction(`🎒 Loadout...`);
+            setAiLog(prev => [...prev.slice(-40), `🎒 Slot ${slotNum} → ${weapon}`]);
+            onOpenInventory?.();
+            await new Promise(r => setTimeout(r, 2000));
             const updateField: Record<string, string> = {};
             updateField[`slot_${slotNum}`] = weapon;
-
-            const { data: existingLoadout } = await supabase
-              .from("equipped_loadout")
-              .select("id")
-              .eq("user_id", currentUser.id)
-              .maybeSingle();
-
+            const { data: existingLoadout } = await supabase.from("equipped_loadout").select("id").eq("user_id", currentUser.id).maybeSingle();
             if (existingLoadout) {
-              await supabase
-                .from("equipped_loadout")
-                .update(updateField)
-                .eq("user_id", currentUser.id);
+              await supabase.from("equipped_loadout").update(updateField).eq("user_id", currentUser.id);
             } else {
-              await supabase
-                .from("equipped_loadout")
-                .insert({ user_id: currentUser.id, ...updateField });
+              await supabase.from("equipped_loadout").insert({ user_id: currentUser.id, ...updateField });
             }
-
-            setAiScreen(prev => ({ ...prev, progress: 100, details: [...prev.details, `✅ Slot ${slotNum} = ${weapon}`] }));
-            setAiLog(prev => [...prev.slice(-40), `✅ Loadout updated: Slot ${slotNum} = ${weapon}`]);
+            setAiLog(prev => [...prev.slice(-40), `✅ Slot ${slotNum} = ${weapon}`]);
+            await new Promise(r => setTimeout(r, 1000));
             break;
           }
 
-          case "join_multiplayer": {
-            setAiScreen(prev => ({ ...prev, scene: "multiplayer", title: "Joining Multiplayer", details: ["Creating room..."], progress: 20, avatar: "🌐" }));
-            setAiLog(prev => [...prev.slice(-40), `🌐 Creating multiplayer room...`]);
-
-            const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
-
-            await supabase.from("game_rooms").insert({
-              host_id: currentUser.id,
-              code: roomCode,
-              max_players: 4,
-            });
-
-            setAiScreen(prev => ({ ...prev, progress: 40, details: [...prev.details, `Room ${roomCode} created`, "Joining as player..."] }));
-            await new Promise(r => setTimeout(r, 800));
-
-            const { data: room } = await supabase
-              .from("game_rooms")
-              .select("id")
-              .eq("code", roomCode)
-              .single();
-
-            if (room) {
-              await supabase.from("room_players").insert({
-                room_id: room.id,
-                user_id: currentUser.id,
-                username: ownerUsername,
-              });
-
-              // Register as active player
-              await supabase.from("active_players").upsert({
-                user_id: currentUser.id,
-                username: ownerUsername,
-                mode: "multiplayer",
-                room_code: roomCode,
-                last_seen: new Date().toISOString(),
-              }, { onConflict: "user_id" });
-
-              setAiScreen(prev => ({ ...prev, progress: 70, details: [...prev.details, "Playing match..."] }));
-              await new Promise(r => setTimeout(r, 1500));
-
-              const mpScore = Math.floor(Math.random() * 100) + 30;
-              const mpKills = Math.floor(Math.random() * 8) + 1;
-
-              await supabase.rpc("add_player_currency", {
-                _user_id: currentUser.id,
-                _coins: mpScore,
-                _gems: Math.floor(mpScore / 10),
-                _gold: Math.floor(mpScore / 25),
-              });
-
-              // End room
-              await supabase
-                .from("game_rooms")
-                .update({ ended_at: new Date().toISOString() })
-                .eq("id", room.id);
-
-              setAiScreen(prev => ({
-                ...prev, progress: 100,
-                details: [...prev.details, `Match over! ${mpKills} kills, +${mpScore} coins`],
-                stats: { ...prev.stats, kills: prev.stats.kills + mpKills, coins: prev.stats.coins + mpScore }
-              }));
-              setAiLog(prev => [...prev.slice(-40), `✅ Multiplayer match complete! Room ${roomCode} | ${mpKills} kills, +${mpScore} coins`]);
-            }
+          default: {
+            setAiCurrentAction(`🔄 ${action}...`);
+            setAiLog(prev => [...prev.slice(-40), `🔄 ${action}...`]);
+            await new Promise(r => setTimeout(r, 1500));
+            setAiLog(prev => [...prev.slice(-40), `✅ Done`]);
             break;
           }
         }
-      } catch (err) {
-        console.error("AI play error:", err);
-        setAiLog(prev => [...prev.slice(-25), `❌ Error during ${action}: ${err}`]);
+      } catch (error) {
+        console.error("AI action error:", error);
+        setAiLog(prev => [...prev.slice(-40), `❌ Error: ${error}`]);
       }
+      setAiCurrentAction("");
     };
 
-    await runAiCycle();
+    setTimeout(runAiCycle, 2000);
+    aiIntervalRef.current = setInterval(runAiCycle, 8000);
 
-    const scheduleNext = () => {
-      const delay = Math.floor(Math.random() * 3000) + 3000;
-      aiIntervalRef.current = setTimeout(async () => {
-        if (!aiTimerRef.current) return;
-        await runAiCycle();
-        scheduleNext();
-      }, delay);
-    };
-    scheduleNext();
-
-    toast.success("AI Auto-Play started! It will play for 5 minutes.");
+    toast.success("AI Auto-Play started! Watch your screen — it's playing for real!");
   };
 
   const stopAiPlay = () => {
-    if (aiTimerRef.current) {
-      clearInterval(aiTimerRef.current);
-      aiTimerRef.current = null;
-    }
-    if (aiIntervalRef.current) {
-      clearTimeout(aiIntervalRef.current);
-      aiIntervalRef.current = null;
-    }
+    if (aiTimerRef.current) { clearInterval(aiTimerRef.current); aiTimerRef.current = null; }
+    if (aiIntervalRef.current) { clearTimeout(aiIntervalRef.current); aiIntervalRef.current = null; }
     setAiPlaying(false);
     setAiTimeLeft(0);
-    setAiScreen({ scene: "idle", title: "AI Player Stopped", details: ["Session ended"], progress: 0, avatar: "⏹️", stats: aiScreen.stats });
+    setAiCurrentAction("");
     setAiLog(prev => [...prev, "⏹️ AI Auto-Play stopped."]);
+    onBackToMenu?.();
+    onReopenOwnerPanel?.();
     toast.success("AI Auto-Play stopped!");
   };
 
@@ -2115,138 +1832,10 @@ export const OwnerPanel = ({ open, onClose }: OwnerPanelProps) => {
                     </div>
                   )}
 
-                  {/* Visual AI Screen — Immersive Player View */}
-                  {aiPlaying && (
-                    <div className="rounded-xl border-2 border-primary/40 bg-black overflow-hidden shadow-lg shadow-primary/10">
-                      {/* Screen header bar - looks like a game HUD */}
-                      <div className="flex items-center justify-between px-3 py-1.5 bg-gradient-to-r from-primary/30 via-primary/10 to-primary/30 border-b border-primary/30">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                          <span className="text-[10px] font-mono text-red-400 uppercase tracking-wider">● LIVE</span>
-                        </div>
-                        <span className="text-[10px] font-mono text-primary font-bold tracking-wider">
-                          {aiScreen.title}
-                        </span>
-                        <span className="text-[10px] font-mono text-primary">
-                          {Math.floor(aiTimeLeft / 60)}:{(aiTimeLeft % 60).toString().padStart(2, '0')}
-                        </span>
-                      </div>
-
-                      {/* Game-like viewport */}
-                      <div className="relative min-h-[220px] bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 overflow-hidden">
-                        {/* Animated background grid */}
-                        <div className="absolute inset-0 opacity-10" style={{
-                          backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
-                          backgroundSize: '20px 20px',
-                          animation: 'pulse 2s ease-in-out infinite'
-                        }} />
-
-                        {/* Crosshair overlay when playing */}
-                        {(aiScreen.scene === "playing" || aiScreen.scene === "ranked" || aiScreen.scene === "multiplayer") && (
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="relative w-12 h-12">
-                              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-red-500/60" />
-                              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-red-500/60" />
-                              <div className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 w-3 bg-red-500/60" />
-                              <div className="absolute right-0 top-1/2 -translate-y-1/2 h-0.5 w-3 bg-red-500/60" />
-                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-1 bg-red-500 rounded-full" />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Main content */}
-                        <div className="relative z-10 p-4 flex flex-col h-full min-h-[220px]">
-                          {/* Top HUD bar */}
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2 bg-black/60 rounded-lg px-3 py-1.5 border border-primary/20">
-                              <span className="text-2xl">{aiScreen.avatar}</span>
-                              <div>
-                                <p className="text-xs font-bold text-primary">{aiScreen.title}</p>
-                                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{aiScreen.scene}</p>
-                              </div>
-                            </div>
-                            
-                            {/* Health/ammo style indicators */}
-                            <div className="flex items-center gap-3">
-                              <div className="bg-black/60 rounded px-2 py-1 border border-green-500/30">
-                                <p className="text-[9px] text-green-400 font-mono">HP 100</p>
-                              </div>
-                              <div className="bg-black/60 rounded px-2 py-1 border border-yellow-500/30">
-                                <p className="text-[9px] text-yellow-400 font-mono">AMMO ∞</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Action feed - scrolling activity */}
-                          <div className="flex-1 flex flex-col justify-center">
-                            <div className="space-y-1">
-                              {aiScreen.details.slice(-5).map((d, i) => (
-                                <div 
-                                  key={i} 
-                                  className={`flex items-center gap-2 px-2 py-0.5 rounded ${
-                                    i === aiScreen.details.slice(-5).length - 1 
-                                      ? 'bg-primary/20 border border-primary/30' 
-                                      : 'opacity-60'
-                                  }`}
-                                  style={{ 
-                                    animation: i === aiScreen.details.slice(-5).length - 1 
-                                      ? 'fadeIn 0.3s ease-out' 
-                                      : undefined 
-                                  }}
-                                >
-                                  <div className={`w-1.5 h-1.5 rounded-full ${
-                                    d.includes('✅') ? 'bg-green-500' :
-                                    d.includes('❌') ? 'bg-red-500' :
-                                    d.includes('⚠️') ? 'bg-yellow-500' :
-                                    'bg-primary animate-pulse'
-                                  }`} />
-                                  <p className="text-xs font-mono text-foreground/80 truncate">{d}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Progress bar styled as loading bar */}
-                          <div className="mt-3">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[9px] font-mono text-muted-foreground">PROGRESS</span>
-                              <span className="text-[9px] font-mono text-primary">{aiScreen.progress}%</span>
-                            </div>
-                            <div className="h-2 w-full bg-black/60 rounded-full overflow-hidden border border-primary/20">
-                              <div
-                                className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full transition-all duration-700 ease-out"
-                                style={{ width: `${aiScreen.progress}%` }}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Bottom stats bar - game HUD style */}
-                          <div className="mt-3 flex items-center justify-between bg-black/60 rounded-lg px-3 py-2 border border-primary/20">
-                            <div className="flex items-center gap-4 text-xs font-mono">
-                              <div className="text-center">
-                                <p className="text-[9px] text-muted-foreground">SCORE</p>
-                                <p className="text-primary font-bold">{aiScreen.stats.score.toLocaleString()}</p>
-                              </div>
-                              <div className="text-center">
-                                <p className="text-[9px] text-muted-foreground">KILLS</p>
-                                <p className="text-red-400 font-bold">{aiScreen.stats.kills}</p>
-                              </div>
-                              <div className="text-center">
-                                <p className="text-[9px] text-muted-foreground">COINS</p>
-                                <p className="text-yellow-400 font-bold">{aiScreen.stats.coins.toLocaleString()}</p>
-                              </div>
-                              <div className="text-center">
-                                <p className="text-[9px] text-muted-foreground">GEMS</p>
-                                <p className="text-cyan-400 font-bold">{aiScreen.stats.gems}</p>
-                              </div>
-                              <div className="text-center">
-                                <p className="text-[9px] text-muted-foreground">GOLD</p>
-                                <p className="text-amber-400 font-bold">{aiScreen.stats.gold}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                  {/* Current action indicator */}
+                  {aiPlaying && aiCurrentAction && (
+                    <div className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm font-mono text-primary animate-pulse">
+                      {aiCurrentAction}
                     </div>
                   )}
 

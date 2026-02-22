@@ -363,7 +363,23 @@ const Index = () => {
 
       <AdminCodeModal open={showAdminCode} onOpenChange={setShowAdminCode} onSuccess={() => setShowAdminPanel(true)} />
       <AdminPanel open={showAdminPanel} onClose={() => setShowAdminPanel(false)} />
-      <OwnerPanel open={showOwnerPanel} onClose={() => setShowOwnerPanel(false)} />
+      <OwnerPanel
+        open={showOwnerPanel}
+        onClose={() => setShowOwnerPanel(false)}
+        onSetGameMode={(mode: GameMode) => { setShowOwnerPanel(false); setGameMode(mode); }}
+        onBackToMenu={handleBackToMenu}
+        onOpenGlobalChat={() => { setShowOwnerPanel(false); setShowGlobalChat(true); }}
+        onOpenSocial={() => { setShowOwnerPanel(false); setShowSocial(true); }}
+        onOpenMessages={() => { setShowOwnerPanel(false); setShowMessages(true); }}
+        onOpenInventory={() => { setShowOwnerPanel(false); setShowInventory(true); }}
+        onOpenProfile={() => { setShowOwnerPanel(false); setShowProfile(true); }}
+        onOpenSkinsShop={() => { setShowOwnerPanel(false); setShowSkinsShop(true); }}
+        onOpenItemShop={() => { setShowOwnerPanel(false); setShowItemShop(true); }}
+        onOpenFoodPass={() => { setShowOwnerPanel(false); setShowFoodPass(true); }}
+        onOpenLeaderboard={() => { setShowOwnerPanel(false); setShowLeaderboard(true); }}
+        onReopenOwnerPanel={() => setShowOwnerPanel(true)}
+        currentGameMode={gameMode}
+      />
       <MessagesPanel open={showMessages} onOpenChange={setShowMessages} />
       <UpdatesHub open={showUpdates} onOpenChange={setShowUpdates} />
       <SocialFeed open={showSocial} onOpenChange={setShowSocial} />

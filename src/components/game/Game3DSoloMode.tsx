@@ -364,27 +364,42 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
   return (
     <>
       {/* Lighting */}
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[20, 30, 10]} intensity={0.8} castShadow />
-      <pointLight position={[0, 10, 0]} intensity={0.3} color="#FFB84D" />
+      <ambientLight intensity={0.3} />
+      <directionalLight position={[20, 40, 15]} intensity={1.0} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} shadow-camera-far={100} shadow-camera-left={-30} shadow-camera-right={30} shadow-camera-top={30} shadow-camera-bottom={-30} />
+      <pointLight position={[0, 8, 0]} intensity={0.4} color="#FFB84D" distance={40} />
+      <pointLight position={[-15, 6, -10]} intensity={0.2} color="#6BAFFF" distance={25} />
+      <pointLight position={[15, 6, 10]} intensity={0.2} color="#FF6B6B" distance={25} />
+      <hemisphereLight args={["#1a2040", "#0a0e14", 0.3]} />
 
-      {/* Sky */}
+      {/* Sky dome */}
       <mesh>
-        <sphereGeometry args={[200, 32, 32]} />
-        <meshBasicMaterial color="#0a0e1a" side={THREE.BackSide} />
+        <sphereGeometry args={[200, 64, 64]} />
+        <meshBasicMaterial color="#060a14" side={THREE.BackSide} />
       </mesh>
 
-      {/* Ground */}
+      {/* Stars */}
+      <StarField />
+
+      {/* Ground with better texture */}
       <mesh ref={groundRef} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[ARENA_W, ARENA_H]} />
-        <meshStandardMaterial color="#1a1f2e" />
+        <meshStandardMaterial color="#141822" roughness={0.9} metalness={0.1} />
+      </mesh>
+
+      {/* Ground detail - secondary layer */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
+        <planeGeometry args={[ARENA_W - 0.5, ARENA_H - 0.5]} />
+        <meshStandardMaterial color="#181d2a" roughness={0.85} metalness={0.05} transparent opacity={0.8} />
       </mesh>
 
       {/* Grid lines on ground */}
-      <gridHelper args={[Math.max(ARENA_W, ARENA_H), 24, "#1b3444", "#111827"]} position={[0, 0.01, 0]} />
+      <gridHelper args={[Math.max(ARENA_W, ARENA_H), 32, "#1b3444", "#0d1520"]} position={[0, 0.01, 0]} />
 
-      {/* Arena walls */}
+      {/* Arena walls with glow effect */}
       <ArenaWalls />
+
+      {/* Cover objects / environment */}
+      <EnvironmentObjects />
 
       {/* Player (only visible in top-down) */}
       {gs.current.cameraMode === "topdown" && <PlayerMesh gs={gs} />}
@@ -409,36 +424,126 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
 
       {/* Crosshair in FPS mode */}
       {gs.current.cameraMode === "fps" && <FPSCrosshair />}
+
+      {/* Fog effect */}
+      <fog attach="fog" args={["#060a14", 30, 80]} />
     </>
   );
 };
 
 // ── Sub-components ────────────────────────────────────────────────────
 
+const StarField = () => {
+  const starsRef = useRef<THREE.Points>(null);
+  const [positions] = useState(() => {
+    const pos = new Float32Array(600 * 3);
+    for (let i = 0; i < 600; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.random() * Math.PI * 0.5;
+      const r = 150 + Math.random() * 40;
+      pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      pos[i * 3 + 1] = r * Math.cos(phi);
+      pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+    }
+    return pos;
+  });
+  return (
+    <points ref={starsRef}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" count={200} array={positions} itemSize={3} />
+      </bufferGeometry>
+      <pointsMaterial color="#ffffff" size={0.4} sizeAttenuation transparent opacity={0.7} />
+    </points>
+  );
+};
+
+const EnvironmentObjects = () => {
+  // Static cover objects placed around the arena
+  const objects = useMemo(() => {
+    const hw = ARENA_W / 2 - 3, hh = ARENA_H / 2 - 3;
+    return [
+      // Crates
+      { pos: [8, 0.75, 5] as [number, number, number], size: [1.5, 1.5, 1.5] as [number, number, number], color: "#5a3a1a" },
+      { pos: [-10, 0.75, -7] as [number, number, number], size: [1.5, 1.5, 1.5] as [number, number, number], color: "#5a3a1a" },
+      { pos: [15, 0.75, -10] as [number, number, number], size: [1.5, 1.5, 1.5] as [number, number, number], color: "#4a2a10" },
+      { pos: [-5, 0.75, 12] as [number, number, number], size: [1.5, 1.5, 1.5] as [number, number, number], color: "#5a3a1a" },
+      // Tall barriers
+      { pos: [0, 1.5, -8] as [number, number, number], size: [4, 3, 0.5] as [number, number, number], color: "#2a3545" },
+      { pos: [-12, 1.5, 3] as [number, number, number], size: [0.5, 3, 4] as [number, number, number], color: "#2a3545" },
+      { pos: [12, 1.5, 8] as [number, number, number], size: [0.5, 3, 4] as [number, number, number], color: "#2a3545" },
+      // Low cover
+      { pos: [5, 0.5, -3] as [number, number, number], size: [3, 1, 0.8] as [number, number, number], color: "#333d4a" },
+      { pos: [-7, 0.5, 7] as [number, number, number], size: [3, 1, 0.8] as [number, number, number], color: "#333d4a" },
+      // Pillars
+      { pos: [-18, 2, -12] as [number, number, number], size: [1, 4, 1] as [number, number, number], color: "#3a4555" },
+      { pos: [18, 2, 12] as [number, number, number], size: [1, 4, 1] as [number, number, number], color: "#3a4555" },
+      { pos: [18, 2, -12] as [number, number, number], size: [1, 4, 1] as [number, number, number], color: "#3a4555" },
+      { pos: [-18, 2, 12] as [number, number, number], size: [1, 4, 1] as [number, number, number], color: "#3a4555" },
+    ];
+  }, []);
+
+  return (
+    <group>
+      {objects.map((obj, i) => (
+        <mesh key={i} position={obj.pos} castShadow receiveShadow>
+          <boxGeometry args={obj.size} />
+          <meshStandardMaterial color={obj.color} roughness={0.8} metalness={0.1} />
+        </mesh>
+      ))}
+      {/* Glowing floor markers */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+        <ringGeometry args={[2, 2.3, 32]} />
+        <meshBasicMaterial color="#FFB84D" transparent opacity={0.15} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+        <ringGeometry args={[4, 4.2, 32]} />
+        <meshBasicMaterial color="#FFB84D" transparent opacity={0.08} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+};
+
 const ArenaWalls = () => {
   const hw = ARENA_W / 2, hh = ARENA_H / 2;
-  const wallH = 3, wallThick = 0.3;
+  const wallH = 4, wallThick = 0.4;
   return (
     <group>
       {/* North */}
-      <mesh position={[0, wallH / 2, -hh]}>
+      <mesh position={[0, wallH / 2, -hh]} castShadow>
         <boxGeometry args={[ARENA_W, wallH, wallThick]} />
-        <meshStandardMaterial color="#2a3040" transparent opacity={0.6} />
+        <meshStandardMaterial color="#1a2535" roughness={0.7} metalness={0.2} />
+      </mesh>
+      {/* North wall top glow */}
+      <mesh position={[0, wallH, -hh]}>
+        <boxGeometry args={[ARENA_W, 0.1, wallThick + 0.1]} />
+        <meshStandardMaterial color="#FFB84D" emissive="#FFB84D" emissiveIntensity={0.5} transparent opacity={0.6} />
       </mesh>
       {/* South */}
-      <mesh position={[0, wallH / 2, hh]}>
+      <mesh position={[0, wallH / 2, hh]} castShadow>
         <boxGeometry args={[ARENA_W, wallH, wallThick]} />
-        <meshStandardMaterial color="#2a3040" transparent opacity={0.6} />
+        <meshStandardMaterial color="#1a2535" roughness={0.7} metalness={0.2} />
+      </mesh>
+      <mesh position={[0, wallH, hh]}>
+        <boxGeometry args={[ARENA_W, 0.1, wallThick + 0.1]} />
+        <meshStandardMaterial color="#FFB84D" emissive="#FFB84D" emissiveIntensity={0.5} transparent opacity={0.6} />
       </mesh>
       {/* West */}
-      <mesh position={[-hw, wallH / 2, 0]}>
+      <mesh position={[-hw, wallH / 2, 0]} castShadow>
         <boxGeometry args={[wallThick, wallH, ARENA_H]} />
-        <meshStandardMaterial color="#2a3040" transparent opacity={0.6} />
+        <meshStandardMaterial color="#1a2535" roughness={0.7} metalness={0.2} />
+      </mesh>
+      <mesh position={[-hw, wallH, 0]}>
+        <boxGeometry args={[wallThick + 0.1, 0.1, ARENA_H]} />
+        <meshStandardMaterial color="#6BAFFF" emissive="#6BAFFF" emissiveIntensity={0.5} transparent opacity={0.6} />
       </mesh>
       {/* East */}
-      <mesh position={[hw, wallH / 2, 0]}>
+      <mesh position={[hw, wallH / 2, 0]} castShadow>
         <boxGeometry args={[wallThick, wallH, ARENA_H]} />
-        <meshStandardMaterial color="#2a3040" transparent opacity={0.6} />
+        <meshStandardMaterial color="#1a2535" roughness={0.7} metalness={0.2} />
+      </mesh>
+      <mesh position={[hw, wallH, 0]}>
+        <boxGeometry args={[wallThick + 0.1, 0.1, ARENA_H]} />
+        <meshStandardMaterial color="#6BAFFF" emissive="#6BAFFF" emissiveIntensity={0.5} transparent opacity={0.6} />
       </mesh>
     </group>
   );
@@ -782,7 +887,7 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
   return (
     <div className="relative w-full h-screen">
       {/* Three.js Canvas - full screen */}
-      <div className="w-full h-full">
+      <div className="w-full h-full" style={{ pointerEvents: "auto" }}>
         <Canvas
           camera={{ fov: 50, near: 0.1, far: 500, position: [0, 35, 15] }}
           shadows
@@ -894,11 +999,11 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
       </div>
 
       {/* Bottom buttons */}
-      <div className="fixed bottom-24 left-4 flex gap-2 z-40">
-        <Button variant="outline" onClick={handleBackToMenu}>
+      <div className="fixed bottom-24 left-4 flex gap-2 z-50" style={{ pointerEvents: "auto" }}>
+        <Button variant="outline" onClick={(e) => { e.stopPropagation(); handleBackToMenu(); }} className="bg-card/90 backdrop-blur-sm">
           <ArrowLeft className="w-4 h-4 mr-2" />Back to Menu
         </Button>
-        <Button variant="outline" onClick={() => setChatOpen(!chatOpen)}>
+        <Button variant="outline" onClick={(e) => { e.stopPropagation(); setChatOpen(!chatOpen); }} className="bg-card/90 backdrop-blur-sm">
           <MessageSquare className="w-4 h-4 mr-2" />Console
         </Button>
       </div>

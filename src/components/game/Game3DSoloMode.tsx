@@ -58,11 +58,332 @@ const WEAPONS: Record<Weapon, WeaponConfig> = {
 const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "rifle", "sniper", "smg", "knife", "rpg", "axe", "flamethrower", "minigun", "railgun", "crossbow", "laser_pistol", "grenade_launcher", "katana", "dual_pistols", "plasma_rifle", "boomerang", "whip", "freeze_ray", "harpoon_gun"];
 
 // ── Game scale: 1 unit = ~1 meter ──────────────────────────────────────
-const ARENA_W = 48; // 48 meters wide
-const ARENA_H = 32; // 32 meters tall
-const SCALE = ARENA_W / 960; // conversion from old pixel coords
+const ARENA_W = 48;
+const ARENA_H = 32;
+const SCALE = ARENA_W / 960;
 
-// ── Shared mutable game state (passed via ref to Three.js scene) ──────
+// ── Mode Theme System ──────────────────────────────────────────────────
+interface ModeTheme {
+  skyColor: string;
+  groundColor: string;
+  groundColor2: string;
+  gridColor1: string;
+  gridColor2: string;
+  wallColor: string;
+  wallGlow1: string;
+  wallGlow2: string;
+  fogColor: string;
+  fogNear: number;
+  fogFar: number;
+  ambientIntensity: number;
+  pointLights: { pos: [number, number, number]; color: string; intensity: number; distance: number }[];
+  enemyColor: string;
+  enemyHp: number;
+  enemySpeed: [number, number]; // min, max
+  spawnInterval: number;
+  specialFeature: string; // description for HUD
+  playerSpeed: number;
+  enemyShootInterval: number;
+}
+
+const DEFAULT_THEME: ModeTheme = {
+  skyColor: "#060a14", groundColor: "#141822", groundColor2: "#181d2a",
+  gridColor1: "#1b3444", gridColor2: "#0d1520",
+  wallColor: "#1a2535", wallGlow1: "#FFB84D", wallGlow2: "#6BAFFF",
+  fogColor: "#060a14", fogNear: 30, fogFar: 80,
+  ambientIntensity: 0.3,
+  pointLights: [
+    { pos: [0, 8, 0], color: "#FFB84D", intensity: 0.4, distance: 40 },
+    { pos: [-15, 6, -10], color: "#6BAFFF", intensity: 0.2, distance: 25 },
+    { pos: [15, 6, 10], color: "#FF6B6B", intensity: 0.2, distance: 25 },
+  ],
+  enemyColor: "#FF6B6B", enemyHp: 60, enemySpeed: [2, 4], spawnInterval: 2.0,
+  specialFeature: "", playerSpeed: 9, enemyShootInterval: 3.5,
+};
+
+const MODE_THEMES: Record<string, Partial<ModeTheme>> = {
+  boss: {
+    skyColor: "#1a0a0a", groundColor: "#1a0808", groundColor2: "#200c0c",
+    gridColor1: "#3a1515", gridColor2: "#150808",
+    wallColor: "#2a1010", wallGlow1: "#FF2222", wallGlow2: "#FF4444",
+    fogColor: "#1a0505", fogNear: 25, fogFar: 70,
+    pointLights: [
+      { pos: [0, 10, 0], color: "#FF3333", intensity: 0.6, distance: 50 },
+      { pos: [-12, 8, -8], color: "#FF0000", intensity: 0.3, distance: 30 },
+      { pos: [12, 8, 8], color: "#880000", intensity: 0.3, distance: 30 },
+    ],
+    enemyColor: "#FF2222", enemyHp: 200, enemySpeed: [1, 2], spawnInterval: 4.0,
+    specialFeature: "Boss enemies have 3x HP", playerSpeed: 9,
+    enemyShootInterval: 2.0,
+  },
+  ranked: {
+    skyColor: "#0a0a1a", groundColor: "#101025", groundColor2: "#14142a",
+    gridColor1: "#252560", gridColor2: "#0a0a20",
+    wallColor: "#1a1a40", wallGlow1: "#FFD700", wallGlow2: "#FFD700",
+    fogColor: "#0a0a1a", fogNear: 35, fogFar: 90,
+    pointLights: [
+      { pos: [0, 10, 0], color: "#FFD700", intensity: 0.5, distance: 45 },
+      { pos: [-15, 6, -10], color: "#DAA520", intensity: 0.3, distance: 30 },
+      { pos: [15, 6, 10], color: "#B8860B", intensity: 0.3, distance: 30 },
+    ],
+    enemyColor: "#DAA520", enemyHp: 80, enemySpeed: [3, 5], spawnInterval: 1.5,
+    specialFeature: "Faster enemies, faster spawns", playerSpeed: 10,
+    enemyShootInterval: 2.5,
+  },
+  survival: {
+    skyColor: "#1a1508", groundColor: "#1a1508", groundColor2: "#201a0c",
+    gridColor1: "#3a3015", gridColor2: "#151208",
+    wallColor: "#2a2510", wallGlow1: "#FF8C00", wallGlow2: "#CD853F",
+    fogColor: "#1a1508", fogNear: 20, fogFar: 60,
+    pointLights: [
+      { pos: [0, 8, 0], color: "#FF8C00", intensity: 0.5, distance: 40 },
+      { pos: [-10, 5, -8], color: "#CD853F", intensity: 0.3, distance: 25 },
+      { pos: [10, 5, 8], color: "#DEB887", intensity: 0.2, distance: 20 },
+    ],
+    enemyColor: "#CD853F", enemyHp: 40, enemySpeed: [3, 6], spawnInterval: 1.0,
+    specialFeature: "Endless waves, fast spawns", playerSpeed: 10,
+    enemyShootInterval: 3.0,
+  },
+  zombie: {
+    skyColor: "#050a05", groundColor: "#0a1a0a", groundColor2: "#0c200c",
+    gridColor1: "#153a15", gridColor2: "#081508",
+    wallColor: "#102a10", wallGlow1: "#00FF00", wallGlow2: "#44FF44",
+    fogColor: "#030803", fogNear: 15, fogFar: 50,
+    ambientIntensity: 0.15,
+    pointLights: [
+      { pos: [0, 8, 0], color: "#33FF33", intensity: 0.3, distance: 35 },
+      { pos: [-15, 4, -10], color: "#00FF00", intensity: 0.2, distance: 20 },
+      { pos: [15, 4, 10], color: "#228B22", intensity: 0.15, distance: 20 },
+    ],
+    enemyColor: "#22AA22", enemyHp: 30, enemySpeed: [1.5, 3], spawnInterval: 0.8,
+    specialFeature: "Hordes of weak zombies", playerSpeed: 8,
+    enemyShootInterval: 5.0,
+  },
+  arena: {
+    skyColor: "#0a0510", groundColor: "#18101e", groundColor2: "#1c1424",
+    gridColor1: "#3a2050", gridColor2: "#100a18",
+    wallColor: "#2a1540", wallGlow1: "#AA33FF", wallGlow2: "#FF33AA",
+    fogColor: "#0a0510", fogNear: 30, fogFar: 75,
+    pointLights: [
+      { pos: [0, 10, 0], color: "#AA33FF", intensity: 0.5, distance: 45 },
+      { pos: [-12, 6, -8], color: "#FF33AA", intensity: 0.3, distance: 25 },
+      { pos: [12, 6, 8], color: "#9933FF", intensity: 0.3, distance: 25 },
+    ],
+    enemyColor: "#CC44FF", enemyHp: 70, enemySpeed: [2.5, 5], spawnInterval: 1.5,
+    specialFeature: "Shift to dash, gladiator arena", playerSpeed: 11,
+    enemyShootInterval: 3.0,
+  },
+  infection: {
+    skyColor: "#0a100a", groundColor: "#0c180c", groundColor2: "#10200e",
+    gridColor1: "#1a3a18", gridColor2: "#081508",
+    wallColor: "#142a12", wallGlow1: "#44FF00", wallGlow2: "#88FF44",
+    fogColor: "#050a04", fogNear: 15, fogFar: 55,
+    ambientIntensity: 0.2,
+    pointLights: [
+      { pos: [0, 6, 0], color: "#66FF00", intensity: 0.5, distance: 35 },
+      { pos: [-15, 5, -10], color: "#44FF00", intensity: 0.3, distance: 25 },
+      { pos: [10, 3, 5], color: "#AAFF00", intensity: 0.2, distance: 15 },
+    ],
+    enemyColor: "#66FF00", enemyHp: 45, enemySpeed: [3, 5.5], spawnInterval: 1.2,
+    specialFeature: "Toxic zone, enemies spread infection", playerSpeed: 9,
+    enemyShootInterval: 2.5,
+  },
+  ctf: {
+    skyColor: "#080a14", groundColor: "#101828", groundColor2: "#141c2c",
+    gridColor1: "#203050", gridColor2: "#0a1020",
+    wallColor: "#182840", wallGlow1: "#3388FF", wallGlow2: "#FF3333",
+    fogColor: "#080a14", fogNear: 35, fogFar: 85,
+    pointLights: [
+      { pos: [-15, 8, 0], color: "#3388FF", intensity: 0.5, distance: 35 },
+      { pos: [15, 8, 0], color: "#FF3333", intensity: 0.5, distance: 35 },
+      { pos: [0, 6, 0], color: "#FFFFFF", intensity: 0.2, distance: 20 },
+    ],
+    enemyColor: "#FF4444", enemyHp: 50, enemySpeed: [3, 5], spawnInterval: 1.8,
+    specialFeature: "Two team bases, capture zone", playerSpeed: 10,
+    enemyShootInterval: 3.0,
+  },
+  koth: {
+    skyColor: "#100a05", groundColor: "#1a1510", groundColor2: "#201a14",
+    gridColor1: "#3a3020", gridColor2: "#151008",
+    wallColor: "#2a2015", wallGlow1: "#FFAA00", wallGlow2: "#FF6600",
+    fogColor: "#100a05", fogNear: 25, fogFar: 70,
+    pointLights: [
+      { pos: [0, 12, 0], color: "#FFAA00", intensity: 0.7, distance: 50 },
+      { pos: [-10, 5, -8], color: "#FF6600", intensity: 0.3, distance: 25 },
+      { pos: [10, 5, 8], color: "#CC8800", intensity: 0.2, distance: 20 },
+    ],
+    enemyColor: "#FF8800", enemyHp: 55, enemySpeed: [2, 4], spawnInterval: 1.5,
+    specialFeature: "Hold the center hill to score", playerSpeed: 9,
+    enemyShootInterval: 3.0,
+  },
+  gungame: {
+    skyColor: "#0a0a0a", groundColor: "#181818", groundColor2: "#1c1c1c",
+    gridColor1: "#333333", gridColor2: "#111111",
+    wallColor: "#222222", wallGlow1: "#FFFFFF", wallGlow2: "#AAAAAA",
+    fogColor: "#0a0a0a", fogNear: 30, fogFar: 80,
+    pointLights: [
+      { pos: [0, 8, 0], color: "#FFFFFF", intensity: 0.5, distance: 40 },
+      { pos: [-15, 6, -10], color: "#CCCCCC", intensity: 0.2, distance: 25 },
+      { pos: [15, 6, 10], color: "#DDDDDD", intensity: 0.2, distance: 25 },
+    ],
+    enemyColor: "#AAAAAA", enemyHp: 40, enemySpeed: [3, 5], spawnInterval: 1.5,
+    specialFeature: "Weapon changes every 5 kills", playerSpeed: 10,
+    enemyShootInterval: 3.0,
+  },
+  sniper: {
+    skyColor: "#050810", groundColor: "#0a1018", groundColor2: "#0e141c",
+    gridColor1: "#1a2840", gridColor2: "#081020",
+    wallColor: "#101830", wallGlow1: "#00AAFF", wallGlow2: "#0066CC",
+    fogColor: "#050810", fogNear: 40, fogFar: 120,
+    ambientIntensity: 0.2,
+    pointLights: [
+      { pos: [0, 10, 0], color: "#0088FF", intensity: 0.3, distance: 50 },
+      { pos: [-20, 8, -12], color: "#0044AA", intensity: 0.2, distance: 30 },
+    ],
+    enemyColor: "#4488CC", enemyHp: 40, enemySpeed: [1.5, 3], spawnInterval: 3.0,
+    specialFeature: "Long-range only, 2x headshot dmg", playerSpeed: 7,
+    enemyShootInterval: 4.0,
+  },
+  dodgeball: {
+    skyColor: "#14080a", groundColor: "#201012", groundColor2: "#241418",
+    gridColor1: "#402025", gridColor2: "#180a10",
+    wallColor: "#301520", wallGlow1: "#FF4466", wallGlow2: "#FF6688",
+    fogColor: "#14080a", fogNear: 30, fogFar: 75,
+    pointLights: [
+      { pos: [0, 10, 0], color: "#FF4466", intensity: 0.5, distance: 45 },
+      { pos: [-12, 6, 0], color: "#FF6688", intensity: 0.3, distance: 25 },
+      { pos: [12, 6, 0], color: "#CC3355", intensity: 0.3, distance: 25 },
+    ],
+    enemyColor: "#FF4466", enemyHp: 25, enemySpeed: [4, 7], spawnInterval: 0.6,
+    specialFeature: "Fast projectiles, dodge to survive", playerSpeed: 12,
+    enemyShootInterval: 1.5,
+  },
+  tag: {
+    skyColor: "#081410", groundColor: "#102018", groundColor2: "#14241c",
+    gridColor1: "#204030", gridColor2: "#0a1810",
+    wallColor: "#183028", wallGlow1: "#33FF88", wallGlow2: "#88FFAA",
+    fogColor: "#081410", fogNear: 30, fogFar: 80,
+    pointLights: [
+      { pos: [0, 8, 0], color: "#33FF88", intensity: 0.5, distance: 40 },
+      { pos: [-15, 6, -10], color: "#88FFAA", intensity: 0.2, distance: 25 },
+    ],
+    enemyColor: "#33FF88", enemyHp: 35, enemySpeed: [4, 6], spawnInterval: 1.5,
+    specialFeature: "Touch enemies to tag, speed boost", playerSpeed: 12,
+    enemyShootInterval: 5.0,
+  },
+  bounty: {
+    skyColor: "#100a08", groundColor: "#1a1410", groundColor2: "#201814",
+    gridColor1: "#3a2a18", gridColor2: "#15100a",
+    wallColor: "#2a2015", wallGlow1: "#FFD700", wallGlow2: "#B8860B",
+    fogColor: "#100a08", fogNear: 25, fogFar: 70,
+    pointLights: [
+      { pos: [0, 10, 0], color: "#FFD700", intensity: 0.5, distance: 45 },
+      { pos: [-10, 5, -8], color: "#B8860B", intensity: 0.3, distance: 25 },
+    ],
+    enemyColor: "#FFD700", enemyHp: 100, enemySpeed: [2, 3], spawnInterval: 3.0,
+    specialFeature: "High-value bounty targets, 3x score", playerSpeed: 9,
+    enemyShootInterval: 2.5,
+  },
+  demolition: {
+    skyColor: "#140a05", groundColor: "#201208", groundColor2: "#24160c",
+    gridColor1: "#402810", gridColor2: "#181008",
+    wallColor: "#302010", wallGlow1: "#FF6600", wallGlow2: "#FF4400",
+    fogColor: "#140a05", fogNear: 20, fogFar: 60,
+    pointLights: [
+      { pos: [0, 8, 0], color: "#FF6600", intensity: 0.6, distance: 40 },
+      { pos: [-12, 6, -8], color: "#FF4400", intensity: 0.4, distance: 30 },
+      { pos: [12, 6, 8], color: "#CC3300", intensity: 0.3, distance: 25 },
+    ],
+    enemyColor: "#FF6600", enemyHp: 50, enemySpeed: [2, 4], spawnInterval: 1.5,
+    specialFeature: "Explosive kills, chain reactions", playerSpeed: 9,
+    enemyShootInterval: 3.0,
+  },
+  medic: {
+    skyColor: "#081014", groundColor: "#101820", groundColor2: "#141c24",
+    gridColor1: "#203040", gridColor2: "#0a1520",
+    wallColor: "#182838", wallGlow1: "#33AAFF", wallGlow2: "#66CCFF",
+    fogColor: "#081014", fogNear: 30, fogFar: 80,
+    pointLights: [
+      { pos: [0, 8, 0], color: "#33AAFF", intensity: 0.4, distance: 40 },
+      { pos: [-15, 6, -10], color: "#66CCFF", intensity: 0.3, distance: 25 },
+    ],
+    enemyColor: "#33AAFF", enemyHp: 50, enemySpeed: [2, 4], spawnInterval: 1.8,
+    specialFeature: "Kills heal 10 HP", playerSpeed: 9,
+    enemyShootInterval: 3.5,
+  },
+  lms: {
+    skyColor: "#100810", groundColor: "#1a101a", groundColor2: "#20142a",
+    gridColor1: "#302040", gridColor2: "#120a18",
+    wallColor: "#221430", wallGlow1: "#DD44FF", wallGlow2: "#9922CC",
+    fogColor: "#100810", fogNear: 25, fogFar: 70,
+    pointLights: [
+      { pos: [0, 10, 0], color: "#DD44FF", intensity: 0.5, distance: 45 },
+      { pos: [-12, 6, -8], color: "#9922CC", intensity: 0.3, distance: 25 },
+    ],
+    enemyColor: "#DD44FF", enemyHp: 80, enemySpeed: [2, 4], spawnInterval: 2.0,
+    specialFeature: "No respawns, survive the longest", playerSpeed: 9,
+    enemyShootInterval: 3.0,
+  },
+  vip: {
+    skyColor: "#0a0a12", groundColor: "#14142a", groundColor2: "#18183a",
+    gridColor1: "#252550", gridColor2: "#0a0a20",
+    wallColor: "#1a1a45", wallGlow1: "#FFD700", wallGlow2: "#FFA500",
+    fogColor: "#0a0a12", fogNear: 30, fogFar: 80,
+    pointLights: [
+      { pos: [0, 10, 0], color: "#FFD700", intensity: 0.6, distance: 45 },
+      { pos: [-10, 6, 0], color: "#FFA500", intensity: 0.3, distance: 25 },
+    ],
+    enemyColor: "#FFA500", enemyHp: 70, enemySpeed: [3, 5], spawnInterval: 1.5,
+    specialFeature: "Protect the VIP zone", playerSpeed: 10,
+    enemyShootInterval: 2.5,
+  },
+  payload: {
+    skyColor: "#0a0810", groundColor: "#141020", groundColor2: "#181428",
+    gridColor1: "#282040", gridColor2: "#0a0818",
+    wallColor: "#201838", wallGlow1: "#FF8844", wallGlow2: "#CC6633",
+    fogColor: "#0a0810", fogNear: 30, fogFar: 80,
+    pointLights: [
+      { pos: [0, 8, 0], color: "#FF8844", intensity: 0.5, distance: 40 },
+      { pos: [-15, 6, -10], color: "#CC6633", intensity: 0.3, distance: 25 },
+    ],
+    enemyColor: "#FF8844", enemyHp: 55, enemySpeed: [2, 4], spawnInterval: 1.8,
+    specialFeature: "Escort the payload zone", playerSpeed: 9,
+    enemyShootInterval: 3.0,
+  },
+  school: {
+    skyColor: "#0a1010", groundColor: "#101a1a", groundColor2: "#142020",
+    gridColor1: "#1a3030", gridColor2: "#081515",
+    wallColor: "#152828", wallGlow1: "#44CCCC", wallGlow2: "#228888",
+    fogColor: "#0a1010", fogNear: 30, fogFar: 80,
+    pointLights: [
+      { pos: [0, 8, 0], color: "#44CCCC", intensity: 0.4, distance: 40 },
+      { pos: [-15, 6, -10], color: "#228888", intensity: 0.2, distance: 25 },
+    ],
+    enemyColor: "#44CCCC", enemyHp: 50, enemySpeed: [2, 3], spawnInterval: 2.5,
+    specialFeature: "Educational mode, math bonus", playerSpeed: 8,
+    enemyShootInterval: 4.0,
+  },
+  youvsme: {
+    skyColor: "#100508", groundColor: "#1a0c12", groundColor2: "#201018",
+    gridColor1: "#3a1828", gridColor2: "#15080e",
+    wallColor: "#2a1020", wallGlow1: "#FF2266", wallGlow2: "#2266FF",
+    fogColor: "#100508", fogNear: 30, fogFar: 75,
+    pointLights: [
+      { pos: [-12, 8, 0], color: "#FF2266", intensity: 0.5, distance: 35 },
+      { pos: [12, 8, 0], color: "#2266FF", intensity: 0.5, distance: 35 },
+    ],
+    enemyColor: "#FF2266", enemyHp: 100, enemySpeed: [3, 5], spawnInterval: 3.0,
+    specialFeature: "1v1 duel arena", playerSpeed: 10,
+    enemyShootInterval: 2.0,
+  },
+};
+
+function getTheme(mode: string): ModeTheme {
+  const overrides = MODE_THEMES[mode] || {};
+  return { ...DEFAULT_THEME, ...overrides };
+}
+
+// ── Shared mutable game state ──────────────────────────────────────────
 interface Enemy3D {
   id: string; x: number; z: number; r: number; speed: number;
   hp: number; maxHp: number; color: string; stun: number; lastShot: number;
@@ -93,7 +414,7 @@ interface GameState {
   particles: Particle3D[];
   keys: Record<string, boolean>;
   mouseDown: boolean;
-  mouseNDC: { x: number; y: number }; // normalised device coords for raycasting
+  mouseNDC: { x: number; y: number };
   time: number;
   lastSpawn: number;
   spawnInterval: number;
@@ -104,21 +425,28 @@ interface GameState {
   speedMultiplier: number;
   spawnImmune: boolean;
   aimbot: boolean;
+  dashCooldown: number;
+  lastDash: number;
+  gunGameKills: number;
+  gunGameWeaponIndex: number;
 }
 
-// ── 3D Scene (runs inside Canvas) ─────────────────────────────────────
-const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState>; onStateChange: () => void }) => {
+// ── 3D Scene ──────────────────────────────────────────────────────────
+const GameScene = ({ gs, onStateChange, theme, mode }: {
+  gs: React.MutableRefObject<GameState>;
+  onStateChange: () => void;
+  theme: ModeTheme;
+  mode: string;
+}) => {
   const { camera, gl } = useThree();
   const groundRef = useRef<THREE.Mesh>(null);
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
   const mouseVec = useMemo(() => new THREE.Vector2(), []);
   const groundPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), []);
 
-  // Update camera based on mode
   const updateCamera = useCallback(() => {
     const p = gs.current.player;
     if (gs.current.cameraMode === "fps") {
-      // First person: camera at player position, looking forward
       const eyeHeight = 1.6;
       camera.position.set(p.x, eyeHeight, p.z);
       const lookX = p.x + Math.sin(p.angle) * 10;
@@ -127,7 +455,6 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
       (camera as THREE.PerspectiveCamera).fov = 75;
       (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
     } else {
-      // Top-down isometric
       const height = 35;
       camera.position.set(p.x, height, p.z - 15);
       camera.lookAt(p.x, 0, p.z);
@@ -136,23 +463,17 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
     }
   }, [camera, gs]);
 
-  // Mouse move handler to get aim direction
   useEffect(() => {
     const canvas = gl.domElement;
     const handleMouseMove = (e: MouseEvent) => {
-      // Skip mouse aim when aimbot is active
       if (gs.current.aimbot) return;
-      
       if (gs.current.cameraMode === "fps") {
-        // FPS mode: use mouse delta for rotation
         const sensitivity = 0.003;
         gs.current.player.angle += e.movementX * sensitivity;
       } else {
-        // Top-down mode: raycast to ground plane
         const rect = canvas.getBoundingClientRect();
         gs.current.mouseNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
         gs.current.mouseNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
         mouseVec.set(gs.current.mouseNDC.x, gs.current.mouseNDC.y);
         raycaster.setFromCamera(mouseVec, camera);
         const hit = new THREE.Vector3();
@@ -166,7 +487,6 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
     const handleMouseDown = (e: MouseEvent) => { if (e.button === 0) gs.current.mouseDown = true; };
     const handleMouseUp = (e: MouseEvent) => { if (e.button === 0) gs.current.mouseDown = false; };
     const handleContextMenu = (e: Event) => e.preventDefault();
-
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("mousedown", handleMouseDown);
     canvas.addEventListener("mouseup", handleMouseUp);
@@ -179,7 +499,6 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
     };
   }, [gl, camera, gs, raycaster, mouseVec, groundPlane]);
 
-  // Main game loop running in Three.js frame
   useFrame((_, delta) => {
     const dt = Math.min(0.033, delta);
     const g = gs.current;
@@ -187,15 +506,12 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
     const p = g.player;
 
     if (p.hp <= 0 && !g.godMode) {
-      if (!g.gameOver) {
-        g.gameOver = true;
-        onStateChange();
-      }
+      if (!g.gameOver) { g.gameOver = true; onStateChange(); }
       updateCamera();
       return;
     }
 
-    // ── Aimbot: auto-aim at nearest enemy ──
+    // ── Aimbot ──
     if (g.aimbot && g.enemies.length > 0) {
       let nearest: Enemy3D | null = null;
       let nearestDist = Infinity;
@@ -205,7 +521,18 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
       }
       if (nearest) {
         p.angle = Math.atan2(nearest.x - p.x, nearest.z - p.z);
-        g.mouseDown = true; // auto-shoot
+        g.mouseDown = true;
+      }
+    }
+
+    // ── Dash (arena/tag modes) ──
+    if (g.keys["shift"] && g.time - g.lastDash > g.dashCooldown && (mode === "arena" || mode === "tag" || mode === "dodgeball")) {
+      g.lastDash = g.time;
+      const dashDist = 6;
+      p.x = Math.max(-ARENA_W / 2 + 1, Math.min(ARENA_W / 2 - 1, p.x + Math.sin(p.angle) * dashDist));
+      p.z = Math.max(-ARENA_H / 2 + 1, Math.min(ARENA_H / 2 - 1, p.z + Math.cos(p.angle) * dashDist));
+      for (let k = 0; k < 8; k++) {
+        g.particles.push({ x: p.x, y: 0.5, z: p.z, vx: (Math.random() - 0.5) * 5, vy: Math.random() * 2, vz: (Math.random() - 0.5) * 5, life: 0.4, color: theme.wallGlow1 });
       }
     }
 
@@ -240,6 +567,12 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
             e.stun = 0.6;
             if (e.hp <= 0) {
               p.score += 10;
+              // Medic mode heal on kill
+              if (mode === "medic") { p.hp = Math.min(p.maxHp, p.hp + 10); }
+              // Bounty mode 3x score
+              if (mode === "bounty") { p.score += 20; }
+              // Gun game weapon progression
+              if (mode === "gungame") { handleGunGameKill(g); }
               if (Math.random() < 0.35) g.pickups.push({ x: e.x, z: e.z, r: 0.5, amt: 2, ttl: 18 });
               g.enemies.splice(i, 1);
             }
@@ -253,7 +586,6 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
       if (g.mouseDown && g.time - p.lastShot >= fireRate && (hasInfiniteAmmo || p.ammo > 0)) {
         p.lastShot = g.time;
         if (!hasInfiniteAmmo) p.ammo--;
-
         const bulletsToFire = p.weapon === "shotgun" ? 5 : 1;
         for (let i = 0; i < bulletsToFire; i++) {
           const spread = weapon.spread * (Math.PI / 180);
@@ -264,10 +596,7 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
             z: p.z + Math.cos(p.angle) * 0.8,
             vx: Math.sin(finalAngle) * speed,
             vz: Math.cos(finalAngle) * speed,
-            r: 0.15,
-            life: 2.5,
-            dmg: weapon.damage,
-            color: weapon.color,
+            r: 0.15, life: 2.5, dmg: weapon.damage, color: weapon.color,
           });
         }
         onStateChange();
@@ -278,19 +607,35 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
     for (let i = g.bullets.length - 1; i >= 0; i--) {
       const b = g.bullets[i];
       b.x += b.vx * dt; b.z += b.vz * dt; b.life -= dt;
-      if (b.life <= 0 || Math.abs(b.x) > ARENA_W || Math.abs(b.z) > ARENA_H) {
-        g.bullets.splice(i, 1); continue;
-      }
+      if (b.life <= 0 || Math.abs(b.x) > ARENA_W || Math.abs(b.z) > ARENA_H) { g.bullets.splice(i, 1); continue; }
       for (let j = g.enemies.length - 1; j >= 0; j--) {
         const e = g.enemies[j];
         if (Math.hypot(b.x - e.x, b.z - e.z) < e.r + b.r) {
-          e.hp -= b.dmg; e.stun = 0.6;
-          // Particles
+          // Sniper mode: 2x damage
+          const dmgMult = mode === "sniper" ? 2 : 1;
+          e.hp -= b.dmg * dmgMult;
+          e.stun = 0.6;
           for (let k = 0; k < 5; k++) {
             g.particles.push({ x: b.x, y: 0.5, z: b.z, vx: (Math.random() - 0.5) * 4, vy: Math.random() * 3, vz: (Math.random() - 0.5) * 4, life: 0.5, color: "#FFF3D6" });
           }
           if (e.hp <= 0) {
-            p.score += 10;
+            p.score += mode === "bounty" ? 30 : 10;
+            if (mode === "medic") { p.hp = Math.min(p.maxHp, p.hp + 10); }
+            if (mode === "gungame") { handleGunGameKill(g); }
+            // Demolition: chain explosion
+            if (mode === "demolition") {
+              for (let k = g.enemies.length - 1; k >= 0; k--) {
+                if (k === j) continue;
+                const e2 = g.enemies[k];
+                if (Math.hypot(e2.x - e.x, e2.z - e.z) < 5) {
+                  e2.hp -= 50;
+                  for (let m = 0; m < 8; m++) {
+                    g.particles.push({ x: e2.x, y: 1, z: e2.z, vx: (Math.random() - 0.5) * 8, vy: Math.random() * 6, vz: (Math.random() - 0.5) * 8, life: 0.6, color: "#FF6600" });
+                  }
+                  if (e2.hp <= 0) { p.score += 10; g.enemies.splice(k, 1); if (k < j) j--; }
+                }
+              }
+            }
             for (let k = 0; k < 10; k++) {
               g.particles.push({ x: e.x, y: 0.5, z: e.z, vx: (Math.random() - 0.5) * 6, vy: Math.random() * 5, vz: (Math.random() - 0.5) * 6, life: 0.8, color: e.color });
             }
@@ -308,14 +653,9 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
     for (let i = g.enemyBullets.length - 1; i >= 0; i--) {
       const b = g.enemyBullets[i];
       b.x += b.vx * dt; b.z += b.vz * dt; b.life -= dt;
-      if (b.life <= 0 || Math.abs(b.x) > ARENA_W || Math.abs(b.z) > ARENA_H) {
-        g.enemyBullets.splice(i, 1); continue;
-      }
+      if (b.life <= 0 || Math.abs(b.x) > ARENA_W || Math.abs(b.z) > ARENA_H) { g.enemyBullets.splice(i, 1); continue; }
       if (Math.hypot(b.x - p.x, b.z - p.z) < p.r + b.r) {
-        if (!g.godMode && !g.spawnImmune) {
-          p.hp -= b.dmg;
-          onStateChange();
-        }
+        if (!g.godMode && !g.spawnImmune) { p.hp -= b.dmg; onStateChange(); }
         g.enemyBullets.splice(i, 1);
       }
     }
@@ -326,13 +666,8 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
       const vx = p.x - e.x, vz = p.z - e.z;
       const d = Math.hypot(vx, vz);
       if (d > 0) { e.x += (vx / d) * e.speed * dt; e.z += (vz / d) * e.speed * dt; }
-      // Contact damage
-      if (d < p.r + e.r && !g.godMode && !g.spawnImmune) {
-        p.hp -= 5 * dt;
-        onStateChange();
-      }
-      // Enemy shooting
-      if (d < 17.5 && g.time - e.lastShot >= 3.5) {
+      if (d < p.r + e.r && !g.godMode && !g.spawnImmune) { p.hp -= 5 * dt; onStateChange(); }
+      if (d < 17.5 && g.time - e.lastShot >= theme.enemyShootInterval) {
         e.lastShot = g.time;
         const ang = Math.atan2(p.x - e.x, p.z - e.z);
         const spd = 10 * SCALE;
@@ -356,7 +691,7 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
     for (let i = g.particles.length - 1; i >= 0; i--) {
       const pt = g.particles[i];
       pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.z += pt.vz * dt;
-      pt.vy -= 9.8 * dt; // gravity
+      pt.vy -= 9.8 * dt;
       pt.life -= dt;
       if (pt.life <= 0 || pt.y < -1) g.particles.splice(i, 1);
     }
@@ -374,83 +709,77 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
       g.enemies.push({
         id: `e_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         x: ex, z: ez, r: 0.8,
-        speed: 2 + Math.random() * 2,
-        hp: 60, maxHp: 60,
-        color: "#FF6B6B", stun: 0, lastShot: -1,
+        speed: theme.enemySpeed[0] + Math.random() * (theme.enemySpeed[1] - theme.enemySpeed[0]),
+        hp: theme.enemyHp, maxHp: theme.enemyHp,
+        color: theme.enemyColor, stun: 0, lastShot: -1,
       });
-      if (g.spawnInterval > 0.6) g.spawnInterval *= 0.993;
+      if (g.spawnInterval > 0.4) g.spawnInterval *= 0.993;
     }
 
     updateCamera();
   });
 
-  // ── Render 3D scene ──
+  // Gun game weapon progression helper
+  const handleGunGameKill = (g: GameState) => {
+    if (mode !== "gungame") return;
+    g.gunGameKills++;
+    if (g.gunGameKills % 5 === 0) {
+      g.gunGameWeaponIndex = (g.gunGameWeaponIndex + 1) % WEAPON_ORDER.length;
+      const newWeapon = WEAPON_ORDER[g.gunGameWeaponIndex];
+      g.player.weapon = newWeapon;
+      const wc = WEAPONS[newWeapon];
+      g.player.ammo = wc.ammo;
+      g.player.maxAmmo = wc.maxAmmo;
+      onStateChange();
+    }
+  };
+
   return (
     <>
       {/* Lighting */}
-      <ambientLight intensity={0.3} />
+      <ambientLight intensity={theme.ambientIntensity} />
       <directionalLight position={[20, 40, 15]} intensity={1.0} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} shadow-camera-far={100} shadow-camera-left={-30} shadow-camera-right={30} shadow-camera-top={30} shadow-camera-bottom={-30} />
-      <pointLight position={[0, 8, 0]} intensity={0.4} color="#FFB84D" distance={40} />
-      <pointLight position={[-15, 6, -10]} intensity={0.2} color="#6BAFFF" distance={25} />
-      <pointLight position={[15, 6, 10]} intensity={0.2} color="#FF6B6B" distance={25} />
-      <hemisphereLight args={["#1a2040", "#0a0e14", 0.3]} />
+      {theme.pointLights.map((l, i) => (
+        <pointLight key={i} position={l.pos} intensity={l.intensity} color={l.color} distance={l.distance} />
+      ))}
+      <hemisphereLight args={[theme.skyColor, "#000000", 0.3]} />
 
       {/* Sky dome */}
       <mesh>
         <sphereGeometry args={[200, 64, 64]} />
-        <meshBasicMaterial color="#060a14" side={THREE.BackSide} />
+        <meshBasicMaterial color={theme.skyColor} side={THREE.BackSide} />
       </mesh>
 
-      {/* Stars */}
       <StarField />
 
-      {/* Ground with better texture */}
+      {/* Ground */}
       <mesh ref={groundRef} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[ARENA_W, ARENA_H]} />
-        <meshStandardMaterial color="#141822" roughness={0.9} metalness={0.1} />
+        <meshStandardMaterial color={theme.groundColor} roughness={0.9} metalness={0.1} />
       </mesh>
-
-      {/* Ground detail - secondary layer */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
         <planeGeometry args={[ARENA_W - 0.5, ARENA_H - 0.5]} />
-        <meshStandardMaterial color="#181d2a" roughness={0.85} metalness={0.05} transparent opacity={0.8} />
+        <meshStandardMaterial color={theme.groundColor2} roughness={0.85} metalness={0.05} transparent opacity={0.8} />
       </mesh>
 
-      {/* Grid lines on ground */}
-      <gridHelper args={[Math.max(ARENA_W, ARENA_H), 32, "#1b3444", "#0d1520"]} position={[0, 0.01, 0]} />
+      <gridHelper args={[Math.max(ARENA_W, ARENA_H), 32, theme.gridColor1, theme.gridColor2]} position={[0, 0.01, 0]} />
 
-      {/* Arena walls with glow effect */}
-      <ArenaWalls />
+      <ThemedArenaWalls theme={theme} />
 
-      {/* Cover objects / environment */}
-      <EnvironmentObjects />
+      <ModeEnvironment mode={mode} theme={theme} />
 
-      {/* Player (only visible in top-down) */}
       {gs.current.cameraMode === "topdown" && <PlayerMesh gs={gs} />}
-
-      {/* FPS weapon model */}
       {gs.current.cameraMode === "fps" && <FPSWeaponModel gs={gs} />}
 
-      {/* Enemies */}
       {gs.current.enemies.map((e) => <EnemyMesh key={e.id} enemy={e} />)}
-
-      {/* Player bullets */}
       {gs.current.bullets.map((b, i) => <BulletMesh key={`pb_${i}`} bullet={b} />)}
-
-      {/* Enemy bullets */}
       {gs.current.enemyBullets.map((b, i) => <BulletMesh key={`eb_${i}`} bullet={b} />)}
-
-      {/* Pickups */}
-      {gs.current.pickups.map((pk, i) => <PickupMesh key={`pk_${i}`} pickup={pk} />)}
-
-      {/* Particles */}
+      {gs.current.pickups.map((pk, i) => <PickupMesh key={`pk_${i}`} pickup={pk} theme={theme} />)}
       {gs.current.particles.map((pt, i) => <ParticleMesh key={`pt_${i}`} particle={pt} />)}
 
-      {/* Crosshair in FPS mode */}
       {gs.current.cameraMode === "fps" && <FPSCrosshair />}
 
-      {/* Fog effect */}
-      <fog attach="fog" args={["#060a14", 30, 80]} />
+      <fog attach="fog" args={[theme.fogColor, theme.fogNear, theme.fogFar]} />
     </>
   );
 };
@@ -458,7 +787,6 @@ const GameScene = ({ gs, onStateChange }: { gs: React.MutableRefObject<GameState
 // ── Sub-components ────────────────────────────────────────────────────
 
 const StarField = () => {
-  const starsRef = useRef<THREE.Points>(null);
   const [positions] = useState(() => {
     const pos = new Float32Array(600 * 3);
     for (let i = 0; i < 600; i++) {
@@ -472,7 +800,7 @@ const StarField = () => {
     return pos;
   });
   return (
-    <points ref={starsRef}>
+    <points>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" count={200} array={positions} itemSize={3} />
       </bufferGeometry>
@@ -481,30 +809,63 @@ const StarField = () => {
   );
 };
 
-const EnvironmentObjects = () => {
-  // Static cover objects placed around the arena
+// Mode-specific environment objects
+const ModeEnvironment = ({ mode, theme }: { mode: string; theme: ModeTheme }) => {
   const objects = useMemo(() => {
-    const hw = ARENA_W / 2 - 3, hh = ARENA_H / 2 - 3;
-    return [
-      // Crates
-      { pos: [8, 0.75, 5] as [number, number, number], size: [1.5, 1.5, 1.5] as [number, number, number], color: "#5a3a1a" },
-      { pos: [-10, 0.75, -7] as [number, number, number], size: [1.5, 1.5, 1.5] as [number, number, number], color: "#5a3a1a" },
-      { pos: [15, 0.75, -10] as [number, number, number], size: [1.5, 1.5, 1.5] as [number, number, number], color: "#4a2a10" },
-      { pos: [-5, 0.75, 12] as [number, number, number], size: [1.5, 1.5, 1.5] as [number, number, number], color: "#5a3a1a" },
-      // Tall barriers
-      { pos: [0, 1.5, -8] as [number, number, number], size: [4, 3, 0.5] as [number, number, number], color: "#2a3545" },
-      { pos: [-12, 1.5, 3] as [number, number, number], size: [0.5, 3, 4] as [number, number, number], color: "#2a3545" },
-      { pos: [12, 1.5, 8] as [number, number, number], size: [0.5, 3, 4] as [number, number, number], color: "#2a3545" },
-      // Low cover
-      { pos: [5, 0.5, -3] as [number, number, number], size: [3, 1, 0.8] as [number, number, number], color: "#333d4a" },
-      { pos: [-7, 0.5, 7] as [number, number, number], size: [3, 1, 0.8] as [number, number, number], color: "#333d4a" },
-      // Pillars
-      { pos: [-18, 2, -12] as [number, number, number], size: [1, 4, 1] as [number, number, number], color: "#3a4555" },
-      { pos: [18, 2, 12] as [number, number, number], size: [1, 4, 1] as [number, number, number], color: "#3a4555" },
-      { pos: [18, 2, -12] as [number, number, number], size: [1, 4, 1] as [number, number, number], color: "#3a4555" },
-      { pos: [-18, 2, 12] as [number, number, number], size: [1, 4, 1] as [number, number, number], color: "#3a4555" },
+    const hw = ARENA_W / 2 - 3;
+    const baseObjects = [
+      { pos: [8, 0.75, 5] as [number, number, number], size: [1.5, 1.5, 1.5] as [number, number, number], color: theme.wallColor },
+      { pos: [-10, 0.75, -7] as [number, number, number], size: [1.5, 1.5, 1.5] as [number, number, number], color: theme.wallColor },
+      { pos: [15, 0.75, -10] as [number, number, number], size: [1.5, 1.5, 1.5] as [number, number, number], color: theme.wallColor },
+      { pos: [-5, 0.75, 12] as [number, number, number], size: [1.5, 1.5, 1.5] as [number, number, number], color: theme.wallColor },
     ];
-  }, []);
+
+    // Mode-specific structures
+    if (mode === "ctf") {
+      baseObjects.push(
+        { pos: [-18, 2, 0] as [number, number, number], size: [3, 4, 6] as [number, number, number], color: "#1a2244" },
+        { pos: [18, 2, 0] as [number, number, number], size: [3, 4, 6] as [number, number, number], color: "#441a1a" },
+      );
+    } else if (mode === "koth") {
+      baseObjects.push(
+        { pos: [0, 0.5, 0] as [number, number, number], size: [8, 1, 8] as [number, number, number], color: "#3a3020" },
+      );
+    } else if (mode === "arena") {
+      // Colosseum pillars
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const r = 14;
+        baseObjects.push({
+          pos: [Math.cos(a) * r, 2.5, Math.sin(a) * r] as [number, number, number],
+          size: [1.2, 5, 1.2] as [number, number, number],
+          color: "#2a1540",
+        });
+      }
+    } else if (mode === "sniper") {
+      // Long barriers for cover
+      baseObjects.push(
+        { pos: [0, 1.5, -8] as [number, number, number], size: [10, 3, 0.5] as [number, number, number], color: "#101830" },
+        { pos: [0, 1.5, 8] as [number, number, number], size: [10, 3, 0.5] as [number, number, number], color: "#101830" },
+        { pos: [-12, 1.5, 0] as [number, number, number], size: [0.5, 3, 8] as [number, number, number], color: "#101830" },
+        { pos: [12, 1.5, 0] as [number, number, number], size: [0.5, 3, 8] as [number, number, number], color: "#101830" },
+      );
+    } else if (mode === "boss") {
+      // Boss arena platforms
+      baseObjects.push(
+        { pos: [-10, 0.3, -6] as [number, number, number], size: [4, 0.6, 4] as [number, number, number], color: "#2a1010" },
+        { pos: [10, 0.3, 6] as [number, number, number], size: [4, 0.6, 4] as [number, number, number], color: "#2a1010" },
+        { pos: [0, 0.5, 0] as [number, number, number], size: [6, 1, 6] as [number, number, number], color: "#301515" },
+      );
+    } else {
+      // Default cover
+      baseObjects.push(
+        { pos: [0, 1.5, -8] as [number, number, number], size: [4, 3, 0.5] as [number, number, number], color: theme.wallColor },
+        { pos: [-12, 1.5, 3] as [number, number, number], size: [0.5, 3, 4] as [number, number, number], color: theme.wallColor },
+        { pos: [12, 1.5, 8] as [number, number, number], size: [0.5, 3, 4] as [number, number, number], color: theme.wallColor },
+      );
+    }
+    return baseObjects;
+  }, [mode, theme]);
 
   return (
     <group>
@@ -514,60 +875,71 @@ const EnvironmentObjects = () => {
           <meshStandardMaterial color={obj.color} roughness={0.8} metalness={0.1} />
         </mesh>
       ))}
-      {/* Glowing floor markers */}
+      {/* Center glow ring */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <ringGeometry args={[2, 2.3, 32]} />
-        <meshBasicMaterial color="#FFB84D" transparent opacity={0.15} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={theme.wallGlow1} transparent opacity={0.15} side={THREE.DoubleSide} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-        <ringGeometry args={[4, 4.2, 32]} />
-        <meshBasicMaterial color="#FFB84D" transparent opacity={0.08} side={THREE.DoubleSide} />
-      </mesh>
+      {mode === "koth" && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
+          <ringGeometry args={[3.5, 4, 32]} />
+          <meshBasicMaterial color={theme.wallGlow1} transparent opacity={0.3} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+      {mode === "ctf" && (
+        <>
+          {/* Blue base marker */}
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-18, 0.03, 0]}>
+            <circleGeometry args={[2, 32]} />
+            <meshBasicMaterial color="#3388FF" transparent opacity={0.3} side={THREE.DoubleSide} />
+          </mesh>
+          {/* Red base marker */}
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[18, 0.03, 0]}>
+            <circleGeometry args={[2, 32]} />
+            <meshBasicMaterial color="#FF3333" transparent opacity={0.3} side={THREE.DoubleSide} />
+          </mesh>
+        </>
+      )}
     </group>
   );
 };
 
-const ArenaWalls = () => {
+const ThemedArenaWalls = ({ theme }: { theme: ModeTheme }) => {
   const hw = ARENA_W / 2, hh = ARENA_H / 2;
   const wallH = 4, wallThick = 0.4;
   return (
     <group>
-      {/* North */}
       <mesh position={[0, wallH / 2, -hh]} castShadow>
         <boxGeometry args={[ARENA_W, wallH, wallThick]} />
-        <meshStandardMaterial color="#1a2535" roughness={0.7} metalness={0.2} />
+        <meshStandardMaterial color={theme.wallColor} roughness={0.7} metalness={0.2} />
       </mesh>
-      {/* North wall top glow */}
       <mesh position={[0, wallH, -hh]}>
         <boxGeometry args={[ARENA_W, 0.1, wallThick + 0.1]} />
-        <meshStandardMaterial color="#FFB84D" emissive="#FFB84D" emissiveIntensity={0.5} transparent opacity={0.6} />
+        <meshStandardMaterial color={theme.wallGlow1} emissive={theme.wallGlow1} emissiveIntensity={0.5} transparent opacity={0.6} />
       </mesh>
-      {/* South */}
       <mesh position={[0, wallH / 2, hh]} castShadow>
         <boxGeometry args={[ARENA_W, wallH, wallThick]} />
-        <meshStandardMaterial color="#1a2535" roughness={0.7} metalness={0.2} />
+        <meshStandardMaterial color={theme.wallColor} roughness={0.7} metalness={0.2} />
       </mesh>
       <mesh position={[0, wallH, hh]}>
         <boxGeometry args={[ARENA_W, 0.1, wallThick + 0.1]} />
-        <meshStandardMaterial color="#FFB84D" emissive="#FFB84D" emissiveIntensity={0.5} transparent opacity={0.6} />
+        <meshStandardMaterial color={theme.wallGlow1} emissive={theme.wallGlow1} emissiveIntensity={0.5} transparent opacity={0.6} />
       </mesh>
-      {/* West */}
       <mesh position={[-hw, wallH / 2, 0]} castShadow>
         <boxGeometry args={[wallThick, wallH, ARENA_H]} />
-        <meshStandardMaterial color="#1a2535" roughness={0.7} metalness={0.2} />
+        <meshStandardMaterial color={theme.wallColor} roughness={0.7} metalness={0.2} />
       </mesh>
       <mesh position={[-hw, wallH, 0]}>
         <boxGeometry args={[wallThick + 0.1, 0.1, ARENA_H]} />
-        <meshStandardMaterial color="#6BAFFF" emissive="#6BAFFF" emissiveIntensity={0.5} transparent opacity={0.6} />
+        <meshStandardMaterial color={theme.wallGlow2} emissive={theme.wallGlow2} emissiveIntensity={0.5} transparent opacity={0.6} />
       </mesh>
-      {/* East */}
       <mesh position={[hw, wallH / 2, 0]} castShadow>
         <boxGeometry args={[wallThick, wallH, ARENA_H]} />
-        <meshStandardMaterial color="#1a2535" roughness={0.7} metalness={0.2} />
+        <meshStandardMaterial color={theme.wallColor} roughness={0.7} metalness={0.2} />
       </mesh>
       <mesh position={[hw, wallH, 0]}>
         <boxGeometry args={[wallThick + 0.1, 0.1, ARENA_H]} />
-        <meshStandardMaterial color="#6BAFFF" emissive="#6BAFFF" emissiveIntensity={0.5} transparent opacity={0.6} />
+        <meshStandardMaterial color={theme.wallGlow2} emissive={theme.wallGlow2} emissiveIntensity={0.5} transparent opacity={0.6} />
       </mesh>
     </group>
   );
@@ -596,7 +968,6 @@ const FPSWeaponModel = ({ gs }: { gs: React.MutableRefObject<GameState> }) => {
   const { camera } = useThree();
   useFrame(() => {
     if (!groupRef.current) return;
-    // Position weapon relative to camera (bottom right of view)
     const offset = new THREE.Vector3(0.4, -0.3, -0.7);
     offset.applyQuaternion(camera.quaternion);
     groupRef.current.position.copy(camera.position).add(offset);
@@ -609,7 +980,6 @@ const FPSWeaponModel = ({ gs }: { gs: React.MutableRefObject<GameState> }) => {
         <boxGeometry args={weapon.isMelee ? [0.06, 0.06, 0.6] : [0.1, 0.08, 0.4]} />
         <meshStandardMaterial color={weapon.color} />
       </mesh>
-      {/* Gun grip */}
       {!weapon.isMelee && (
         <mesh position={[0, -0.08, 0.1]}>
           <boxGeometry args={[0.06, 0.12, 0.08]} />
@@ -633,7 +1003,6 @@ const EnemyMesh = ({ enemy }: { enemy: Enemy3D }) => {
         <capsuleGeometry args={[enemy.r * 0.6, enemy.r, 8, 16]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.2} />
       </mesh>
-      {/* Health bar */}
       <mesh position={[enemy.x, 1.8, enemy.z]}>
         <planeGeometry args={[1.4, 0.15]} />
         <meshBasicMaterial color="#333" />
@@ -656,7 +1025,7 @@ const BulletMesh = ({ bullet }: { bullet: Bullet3D }) => {
   );
 };
 
-const PickupMesh = ({ pickup }: { pickup: Pickup3D }) => (
+const PickupMesh = ({ pickup, theme }: { pickup: Pickup3D; theme: ModeTheme }) => (
   <mesh position={[pickup.x, 0.3 + Math.sin(pickup.ttl * 3) * 0.15, pickup.z]}>
     <sphereGeometry args={[pickup.r, 12, 12]} />
     <meshStandardMaterial color="#A6FFB3" emissive="#A6FFB3" emissiveIntensity={0.5} />
@@ -695,6 +1064,8 @@ const FPSCrosshair = () => {
 
 // ── Main component ─────────────────────────────────────────────────────
 export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEvents = [], touchscreenMode = false, playerSkin = "#FFF3D6" }: Game3DSoloModeProps) => {
+  const theme = useMemo(() => getTheme(mode || "solo"), [mode]);
+  
   const [score, setScore] = useState(0);
   const [ammo, setAmmo] = useState(10);
   const [maxAmmo, setMaxAmmo] = useState(10);
@@ -716,7 +1087,6 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
   const [totalScore, setTotalScore] = useState(0);
   const [, setForceUpdate] = useState(0);
 
-  // Mode display name mapping
   const MODE_NAMES: Record<string, string> = {
     "solo": "Solo", "3d-solo": "3D Solo", "boss": "Boss", "ranked": "Ranked",
     "youvsme": "You vs Me", "school": "School", "survival": "Survival",
@@ -734,25 +1104,27 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
 
   const gsRef = useRef<GameState>({
     player: {
-      x: 0, z: 0, r: 0.7, speed: 9, angle: 0,
+      x: 0, z: 0, r: 0.7, speed: theme.playerSpeed, angle: 0,
       weapon: "pistol", lastShot: -1, lastMelee: -1,
       hp: 100, maxHp: 100, score: 0, ammo: 10, maxAmmo: 10,
     },
     enemies: [], bullets: [], enemyBullets: [], pickups: [], particles: [],
     keys: {}, mouseDown: false, mouseNDC: { x: 0, y: 0 },
-    time: 0, lastSpawn: 0, spawnInterval: 2.0,
+    time: 0, lastSpawn: 0, spawnInterval: theme.spawnInterval,
     gameOver: false, cameraMode: "topdown",
     godMode: false, infiniteAmmo: false, speedMultiplier: 1,
     spawnImmune: true, aimbot: false,
+    dashCooldown: 2.0, lastDash: -10,
+    gunGameKills: 0, gunGameWeaponIndex: 0,
   });
 
-  // Sync React state from game state
   const handleStateChange = useCallback(() => {
     const g = gsRef.current;
     const p = g.player;
     setScore(p.score);
     setAmmo(p.ammo);
     setMaxAmmo(p.maxAmmo);
+    setCurrentWeapon(p.weapon);
     setHealth(Math.max(0, Math.round(p.hp)));
     if (g.gameOver && !gameOver) {
       setGameOver(true);
@@ -762,19 +1134,18 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
     setForceUpdate(prev => prev + 1);
   }, [gameOver]);
 
-  // Periodic state sync (for HUD updates)
   useEffect(() => {
     const interval = setInterval(() => {
       const p = gsRef.current.player;
       setScore(p.score);
       setAmmo(p.ammo);
       setHealth(Math.max(0, Math.round(p.hp)));
-      setKills(p.score / 10); // approximate
+      setKills(p.score / 10);
+      setCurrentWeapon(p.weapon);
     }, 100);
     return () => clearInterval(interval);
   }, []);
 
-  // Spawn immunity timer
   useEffect(() => {
     gsRef.current.spawnImmune = true;
     setSpawnImmunity(true);
@@ -785,13 +1156,11 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
     return () => clearTimeout(timer);
   }, []);
 
-  // Keyboard input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
       gsRef.current.keys[key] = true;
 
-      // F7 = toggle camera
       if (e.key === "F7") {
         e.preventDefault();
         const newMode = gsRef.current.cameraMode === "fps" ? "topdown" : "fps";
@@ -800,7 +1169,6 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
         toast.info(`Camera: ${newMode === "fps" ? "First Person" : "Top Down"}`);
       }
 
-      // F9 = toggle aimbot (owner only)
       if (e.key === "F9") {
         e.preventDefault();
         if (isOwner) {
@@ -811,7 +1179,6 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
         }
       }
 
-      // R = reload
       if (key === "r") {
         const p = gsRef.current.player;
         const wc = WEAPONS[p.weapon];
@@ -821,7 +1188,6 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
         }
       }
 
-      // Number keys = weapon switch
       const num = parseInt(e.key);
       if (num >= 1 && num <= unlockedWeapons.length) {
         const w = unlockedWeapons[num - 1];
@@ -845,13 +1211,11 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
     };
   }, [unlockedWeapons, isOwner]);
 
-  // Load user progress (weapons)
   useEffect(() => {
     loadUserProgress();
     checkPermissions();
   }, []);
 
-  // Apply admin abuse events
   useEffect(() => {
     const now = new Date();
     for (const event of adminAbuseEvents) {
@@ -862,7 +1226,6 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
     }
   }, [adminAbuseEvents]);
 
-  // Spawn initial enemies
   useEffect(() => {
     const g = gsRef.current;
     for (let i = 0; i < 3; i++) {
@@ -875,8 +1238,9 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
       else { ex = hw + 2; ez = (Math.random() - 0.5) * ARENA_H; }
       g.enemies.push({
         id: `e_init_${i}`, x: ex, z: ez, r: 0.8,
-        speed: 2 + Math.random() * 2, hp: 60, maxHp: 60,
-        color: "#FF6B6B", stun: 0, lastShot: -1,
+        speed: theme.enemySpeed[0] + Math.random() * (theme.enemySpeed[1] - theme.enemySpeed[0]),
+        hp: theme.enemyHp, maxHp: theme.enemyHp,
+        color: theme.enemyColor, stun: 0, lastShot: -1,
       });
     }
   }, []);
@@ -884,7 +1248,6 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
   const checkPermissions = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    // Check owner role
     const { data: ownerData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "owner").maybeSingle();
     if (ownerData) { setIsOwner(true); setHasPermission(true); return; }
     const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
@@ -899,7 +1262,6 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
       if (!user) { setUnlockedWeapons(["pistol"]); return; }
       const { data: profile } = await supabase.from("profiles").select("total_score").eq("user_id", user.id).single();
       setTotalScore(profile?.total_score || 0);
-
       const { data: loadout } = await supabase.from("equipped_loadout").select("*").eq("user_id", user.id).maybeSingle();
       if (loadout) {
         const equipped = [loadout.slot_1, loadout.slot_2, loadout.slot_3, loadout.slot_4, loadout.slot_5].filter(Boolean) as Weapon[];
@@ -942,18 +1304,16 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
 
   return (
     <div className="relative w-full h-screen" style={{ cursor: "none" }}>
-      {/* Three.js Canvas - full screen */}
       <div className="w-full h-full" style={{ pointerEvents: "auto", cursor: "none" }}>
         <Canvas
           camera={{ fov: 50, near: 0.1, far: 500, position: [0, 35, 15] }}
           shadows
-          style={{ background: "#0a0e1a", cursor: "none" }}
+          style={{ background: theme.skyColor, cursor: "none" }}
         >
-          <GameScene gs={gsRef} onStateChange={handleStateChange} />
+          <GameScene gs={gsRef} onStateChange={handleStateChange} theme={theme} mode={mode || "solo"} />
         </Canvas>
       </div>
 
-      {/* Game Over overlay */}
       {gameOver && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="text-center space-y-4">
@@ -965,7 +1325,7 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
         </div>
       )}
 
-      {/* HUD - Top left: controls */}
+      {/* HUD - Top left */}
       <div className="fixed left-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4 space-y-2 z-40" style={{ cursor: "default" }}>
         <div className="font-bold text-lg">Food FPS 3D · {modeName}</div>
         <div className="text-sm text-muted-foreground space-y-1">
@@ -974,39 +1334,43 @@ export const Game3DSoloMode = ({ mode, username, roomCode, onBack, adminAbuseEve
           <div><span className="text-primary font-mono">LMB</span> shoot</div>
           {!WEAPONS[currentWeapon].isMelee && <div><span className="text-primary font-mono">R</span> reload</div>}
           <div><span className="text-primary font-mono">1-{unlockedWeapons.length}</span> weapons</div>
+          {(mode === "arena" || mode === "tag" || mode === "dodgeball") && (
+            <div><span className="text-accent font-mono">Shift</span> dash</div>
+          )}
           <div className="pt-1 border-t border-border">
             <span className="text-accent font-mono">F7</span> toggle camera
           </div>
           {isOwner && (
-            <div>
-              <span className="text-accent font-mono">F9</span> aimbot
-            </div>
+            <div><span className="text-accent font-mono">F9</span> aimbot</div>
           )}
         </div>
+        {theme.specialFeature && (
+          <div className="text-xs text-accent italic border-t border-border pt-1">{theme.specialFeature}</div>
+        )}
         <div className="flex items-center gap-2 text-xs text-accent">
           <Camera className="w-3 h-3" />
           {cameraMode === "fps" ? "First Person" : "Top Down"}
         </div>
         {aimbotActive && (
-          <div className="flex items-center gap-2 text-xs text-destructive font-bold animate-pulse">
-            🎯 AIMBOT ACTIVE
-          </div>
+          <div className="flex items-center gap-2 text-xs text-destructive font-bold animate-pulse">🎯 AIMBOT ACTIVE</div>
         )}
       </div>
 
-      {/* HUD - Top right: stats */}
+      {/* HUD - Top right */}
       <div className="fixed right-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4 space-y-3 min-w-[180px] z-40">
         <div className="flex justify-between items-center">
           <span className="text-sm text-muted-foreground">Health</span>
           <span className="font-bold text-lg">{health}</span>
         </div>
         <div className="w-full bg-secondary rounded-full h-3 overflow-hidden">
-          <div className="bg-gradient-to-r from-red-500 to-green-500 h-full transition-all duration-300"
-            style={{ width: `${(health / maxHealth) * 100}%` }} />
+          <div className="h-full transition-all duration-300" style={{ 
+            width: `${(health / maxHealth) * 100}%`,
+            background: `linear-gradient(to right, ${theme.wallGlow1}, ${theme.wallGlow2})`
+          }} />
         </div>
 
         {spawnImmunity && (
-          <div className="flex items-center gap-2 text-yellow-500 text-sm">
+          <div className="flex items-center gap-2 text-sm" style={{ color: theme.wallGlow1 }}>
             <Shield className="w-4 h-4" /><span>Spawn Protection</span>
           </div>
         )}

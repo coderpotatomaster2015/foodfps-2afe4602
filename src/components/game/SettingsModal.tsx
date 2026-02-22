@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, Smartphone, Volume2, Palette, Check, Box } from "lucide-react";
+import { Settings, Smartphone, Volume2, Palette, Check } from "lucide-react";
 
 interface SettingsModalProps {
   open: boolean;
@@ -12,8 +12,6 @@ interface SettingsModalProps {
   touchscreenMode: boolean;
   onTouchscreenModeChange: (enabled: boolean) => void;
   onOpenServicePanel?: () => void;
-  threeDMode?: boolean;
-  onThreeDModeChange?: (enabled: boolean) => void;
 }
 
 // Predefined UI color themes
@@ -107,15 +105,18 @@ export const SettingsModal = ({
   onOpenChange, 
   touchscreenMode, 
   onTouchscreenModeChange,
-  onOpenServicePanel,
-  threeDMode: threeDModeProp = false,
-  onThreeDModeChange 
+  onOpenServicePanel
 }: SettingsModalProps) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [selectedTheme, setSelectedTheme] = useState("default");
+codex/fix-3d-toggle-in-settings-tab-g5j0ho
+
+=======
   const [threeDModeLocal, setThreeDModeLocal] = useState(threeDModeProp);
+main
   const [tapCount, setTapCount] = useState(0);
   const [tapTimer, setTapTimer] = useState<NodeJS.Timeout | null>(null);
+
 
   useEffect(() => {
     setThreeDModeLocal(threeDModeProp);
@@ -131,6 +132,8 @@ export const SettingsModal = ({
       applyTheme(savedTheme);
     }
 
+codex/fix-3d-toggle-in-settings-tab-g5j0ho
+=======
     const saved3D = localStorage.getItem("foodfps_3d");
     const isSaved3DEnabled = saved3D === "true";
     setThreeDModeLocal(isSaved3DEnabled);
@@ -143,6 +146,7 @@ export const SettingsModal = ({
     if (onThreeDModeChange && threeDModeProp !== isSaved3DEnabled) {
       onThreeDModeChange(isSaved3DEnabled);
     }
+main
   }, []);
 
   const handleSoundChange = (enabled: boolean) => {
@@ -163,6 +167,8 @@ export const SettingsModal = ({
     document.documentElement.style.setProperty("--accent", theme.accent);
   };
 
+codex/fix-3d-toggle-in-settings-tab-g5j0ho
+=======
   const handleThreeDChange = (enabled: boolean) => {
     setThreeDModeLocal(enabled);
     localStorage.setItem("foodfps_3d", String(enabled));
@@ -174,6 +180,7 @@ export const SettingsModal = ({
     onThreeDModeChange?.(enabled);
     playSound("click");
   };
+main
 
   const handleThemeChange = (themeId: string) => {
     setSelectedTheme(themeId);
@@ -246,6 +253,8 @@ export const SettingsModal = ({
               />
             </div>
           </Card>
+    codex/fix-3d-toggle-in-settings-tab-g5j0ho
+=======
 
 
           {/* 3D Mode */}
@@ -266,7 +275,7 @@ export const SettingsModal = ({
               />
             </div>
           </Card>
-
+    main
           {/* UI Color Theme */}
           <Card className="p-4">
             <div className="flex items-center gap-3 mb-3">

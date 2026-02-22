@@ -34,7 +34,6 @@ interface ModeCard {
 
 const ALL_MODES: ModeCard[] = [
   { mode: "solo", title: "Solo", description: "Endless waves", difficulty: "Easy", estMinutes: "8-20m", colorClass: "group-hover:bg-primary", icon: User, disabledBy: "solo" },
-  { mode: "3d-solo", title: "3D Solo", description: "FPS + Top-Down", difficulty: "Medium", estMinutes: "8-20m", colorClass: "group-hover:bg-emerald-500", icon: Box, disabledBy: "solo" },
   { mode: "boss", title: "Boss", description: "Fight bosses", difficulty: "Hard", estMinutes: "10-15m", colorClass: "group-hover:bg-destructive", icon: Skull, disabledBy: "boss" },
   { mode: "ranked", title: "Ranked", description: "7 waves, ranks", difficulty: "Hard", estMinutes: "6-10m", colorClass: "group-hover:bg-primary", icon: Swords },
   { mode: "payload", title: "Payload", description: "Escort cargo", difficulty: "Medium", estMinutes: "5-8m", colorClass: "group-hover:bg-purple-500", icon: Box },

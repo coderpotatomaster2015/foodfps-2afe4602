@@ -12,6 +12,7 @@ interface SettingsModalProps {
   touchscreenMode: boolean;
   onTouchscreenModeChange: (enabled: boolean) => void;
   onOpenServicePanel?: () => void;
+  threeDMode?: boolean;
   onThreeDModeChange?: (enabled: boolean) => void;
 }
 
@@ -107,10 +108,10 @@ export const SettingsModal = ({
   touchscreenMode, 
   onTouchscreenModeChange,
   onOpenServicePanel,
+  threeDMode: threeDModeProp = false,
   onThreeDModeChange 
 }: SettingsModalProps) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [threeDMode, setThreeDMode] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState("default");
   const [tapCount, setTapCount] = useState(0);
   const [tapTimer, setTapTimer] = useState<NodeJS.Timeout | null>(null);
@@ -127,7 +128,6 @@ export const SettingsModal = ({
 
     const saved3D = localStorage.getItem("foodfps_3d");
     if (saved3D === "true") {
-      setThreeDMode(true);
       document.documentElement.setAttribute("data-3d", "true");
     }
   }, []);
@@ -151,7 +151,6 @@ export const SettingsModal = ({
   };
 
   const handleThreeDChange = (enabled: boolean) => {
-    setThreeDMode(enabled);
     localStorage.setItem("foodfps_3d", String(enabled));
     if (enabled) {
       document.documentElement.setAttribute("data-3d", "true");
@@ -248,7 +247,7 @@ export const SettingsModal = ({
                 </div>
               </div>
               <Switch 
-                checked={threeDMode} 
+                checked={threeDModeProp} 
                 onCheckedChange={handleThreeDChange}
               />
             </div>

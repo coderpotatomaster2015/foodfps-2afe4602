@@ -327,7 +327,7 @@ const Index = () => {
       <SkinsShop open={showSkinsShop} onOpenChange={setShowSkinsShop} currentSkin={currentSkin} onSkinSelect={(color) => { setCurrentSkin(color); localStorage.setItem("foodfps_skin", color); }} />
       <PublicLeaderboard open={showLeaderboard} onOpenChange={setShowLeaderboard} />
       <DailyRewards open={showDailyRewards} onOpenChange={setShowDailyRewards} />
-      <SettingsModal open={showSettings} onOpenChange={setShowSettings} touchscreenMode={touchscreenMode} onTouchscreenModeChange={handleTouchscreenChange} onOpenServicePanel={() => setShowServicePanel(true)} onThreeDModeChange={setThreeDMode} />
+      <SettingsModal open={showSettings} onOpenChange={setShowSettings} touchscreenMode={touchscreenMode} onTouchscreenModeChange={handleTouchscreenChange} onOpenServicePanel={() => setShowServicePanel(true)} threeDMode={threeDMode} onThreeDModeChange={setThreeDMode} />
       <AdSignupModal open={showAdSignup} onOpenChange={setShowAdSignup} />
       <RedeemCodeModal open={showRedeemCodes} onOpenChange={setShowRedeemCodes} />
       <FoodPassModal open={showFoodPass} onOpenChange={setShowFoodPass} />

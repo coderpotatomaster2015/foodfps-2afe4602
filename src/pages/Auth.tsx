@@ -279,6 +279,19 @@ export const Auth = () => {
             </form>
           </TabsContent>
         </Tabs>
+
+        <p className="text-center text-sm text-muted-foreground">
+          Made by{" "}
+          <a
+            href="https://victories.games"
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary hover:underline"
+          >
+            victories
+          </a>
+          .
+        </p>
       </Card>
     </div>
   );

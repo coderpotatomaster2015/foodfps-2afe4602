@@ -7,32 +7,46 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+
+type AdminResetStep = "admin-login" | "reset-password";
+
+type ResetPayload = {
+  action: "verify" | "reset";
+  adminUsername: string;
+  adminPassword: string;
+  targetUsername?: string;
+  newPassword?: string;
+};
+
+const SERVICE_UNREACHABLE_MESSAGE =
+  "Could not reach admin reset service. Please try again in a moment.";
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error) {
+    if (error.message.includes("Failed to fetch")) {
+      return SERVICE_UNREACHABLE_MESSAGE;
+    }
+    return error.message || fallback;
+  }
+  return fallback;
+};
 
 const AdminPasswordReset = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState<"admin-login" | "reset-password">("admin-login");
+  const [step, setStep] = useState<AdminResetStep>("admin-login");
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [targetUsername, setTargetUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const callResetFunction = async (payload: Record<string, string>) => {
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-password-reset`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      },
-      body: JSON.stringify(payload),
+  const callResetFunction = async (payload: ResetPayload) => {
+    const { data, error } = await supabase.functions.invoke("admin-password-reset", {
+      body: payload,
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data?.error || "Request failed");
-    }
-
+    if (error) throw new Error(error.message || "Request failed");
     return data;
   };
 
@@ -51,8 +65,8 @@ const AdminPasswordReset = () => {
       });
       setStep("reset-password");
       toast.success("Admin verified. You can now reset a player's password.");
-    } catch (error: any) {
-      toast.error(error.message || "Admin verification failed");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Admin verification failed"));
     } finally {
       setLoading(false);
     }
@@ -82,8 +96,8 @@ const AdminPasswordReset = () => {
       toast.success(`Password updated for ${data.username}`);
       setTargetUsername("");
       setNewPassword("");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to reset password");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to reset password"));
     } finally {
       setLoading(false);
     }
@@ -95,7 +109,12 @@ const AdminPasswordReset = () => {
         <div className="flex items-center gap-3">
           <Shield className="w-6 h-6 text-destructive" />
           <h1 className="text-2xl font-bold">Admin Password Reset</h1>
-          <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="ml-auto">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/")}
+            className="ml-auto"
+          >
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
           </Button>
         </div>
@@ -105,6 +124,7 @@ const AdminPasswordReset = () => {
             <p className="text-sm text-muted-foreground text-center">
               Admins must log in first before changing another user's password.
             </p>
+
             <div className="space-y-2">
               <Label>Admin Username or Email</Label>
               <Input
@@ -114,6 +134,7 @@ const AdminPasswordReset = () => {
                 autoComplete="username"
               />
             </div>
+
             <div className="space-y-2">
               <Label>Admin Password</Label>
               <Input
@@ -125,6 +146,7 @@ const AdminPasswordReset = () => {
                 onKeyDown={(e) => e.key === "Enter" && handleAdminLogin()}
               />
             </div>
+
             <Button className="w-full" onClick={handleAdminLogin} disabled={loading}>
               <Lock className="w-4 h-4 mr-2" />
               {loading ? "Verifying..." : "Login as Admin"}
@@ -135,6 +157,7 @@ const AdminPasswordReset = () => {
             <p className="text-sm text-muted-foreground text-center">
               Choose a user and set a new password.
             </p>
+
             <div className="space-y-2">
               <Label>Target Username</Label>
               <Input
@@ -143,6 +166,7 @@ const AdminPasswordReset = () => {
                 placeholder="username"
               />
             </div>
+
             <div className="space-y-2">
               <Label>New Password</Label>
               <Input
@@ -154,11 +178,18 @@ const AdminPasswordReset = () => {
                 onKeyDown={(e) => e.key === "Enter" && handlePasswordReset()}
               />
             </div>
+
             <Button className="w-full" onClick={handlePasswordReset} disabled={loading}>
               <KeyRound className="w-4 h-4 mr-2" />
               {loading ? "Updating..." : "Reset Password"}
             </Button>
-            <Button variant="outline" className="w-full" onClick={() => setStep("admin-login")} disabled={loading}>
+
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setStep("admin-login")}
+              disabled={loading}
+            >
               <UserRound className="w-4 h-4 mr-2" /> Switch Admin Account
             </Button>
           </div>

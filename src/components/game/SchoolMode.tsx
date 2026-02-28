@@ -461,16 +461,16 @@ export const SchoolMode = ({
       const power = ELEMENTAL_POWERS[activePower];
       const currentAmmo = ammoRef.current[activePower];
       
-      if (mouseRef.current.down && time - lastShotRef.current[currentPower] >= power.cooldown && currentAmmo > 0) {
-        lastShotRef.current[currentPower] = time;
+      if (mouseRef.current.down && time - lastShotRef.current[activePower] >= power.cooldown && currentAmmo > 0) {
+        lastShotRef.current[activePower] = time;
 
         // Decrease ammo
         setAmmo(prev => ({
           ...prev,
-          [currentPower]: prev[currentPower] - 1
+          [activePower]: prev[activePower] - 1
         }));
 
-        const projCount = currentPower === "water" ? 3 : currentPower === "air" ? 5 : 1;
+        const projCount = activePower === "water" ? 3 : activePower === "air" ? 5 : 1;
         
         for (let i = 0; i < projCount; i++) {
           const spreadAngle = currentPower === "water" ? (i - 1) * 0.2 : 

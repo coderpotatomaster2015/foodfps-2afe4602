@@ -137,6 +137,7 @@ export const SchoolMode = ({
     fire: 0, water: 0, earth: 0, air: 0
   });
   const ammoRef = useRef(ammo);
+  const currentPowerRef = useRef<ElementalPower>(currentPower);
 
   const touchMoveRef = useRef({ x: 0, y: 0 });
   const touchAimRef = useRef({ x: 480, y: 320 });

@@ -625,7 +625,7 @@ export const SchoolMode = ({
 
       ctx.save();
       ctx.globalAlpha = 0.1;
-      ctx.strokeStyle = ELEMENTAL_POWERS[currentPower].color;
+      ctx.strokeStyle = ELEMENTAL_POWERS[currentPowerRef.current].color;
       for (let x = 0; x < W; x += 40) {
         ctx.beginPath();
         ctx.moveTo(x, 0);

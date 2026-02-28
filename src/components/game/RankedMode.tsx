@@ -1012,10 +1012,18 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
 
   const getRankColor = (rank: string) => {
     switch (rank) {
+      case "rookie": return "text-gray-400";
+      case "iron": return "text-gray-500";
       case "bronze": return "text-amber-600";
+      case "silver": return "text-gray-300";
       case "gold": return "text-yellow-400";
+      case "platinum": return "text-teal-400";
       case "diamond": return "text-cyan-400";
+      case "master": return "text-indigo-400";
+      case "grandmaster": return "text-pink-400";
       case "pro": return "text-purple-500";
+      case "legend": return "text-orange-400";
+      case "mythic": return "text-red-500";
       default: return "text-muted-foreground";
     }
   };

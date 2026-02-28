@@ -1270,6 +1270,8 @@ export type Database = {
           id: string
           ranked_rank: string | null
           ranked_tier: number | null
+          terms_accepted: boolean
+          terms_accepted_at: string | null
           total_score: number
           tutorial_completed: boolean
           updated_at: string
@@ -1284,6 +1286,8 @@ export type Database = {
           id?: string
           ranked_rank?: string | null
           ranked_tier?: number | null
+          terms_accepted?: boolean
+          terms_accepted_at?: string | null
           total_score?: number
           tutorial_completed?: boolean
           updated_at?: string
@@ -1298,6 +1302,8 @@ export type Database = {
           id?: string
           ranked_rank?: string | null
           ranked_tier?: number | null
+          terms_accepted?: boolean
+          terms_accepted_at?: string | null
           total_score?: number
           tutorial_completed?: boolean
           updated_at?: string

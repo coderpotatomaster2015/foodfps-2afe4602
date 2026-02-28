@@ -57,6 +57,7 @@ import { ShopModal } from "@/components/game/ShopModal";
 import { ServicePanel } from "@/components/game/ServicePanel";
 import { ImpersonationBanner } from "@/components/game/ImpersonationBanner";
 import { LoginStreakTracker } from "@/components/game/LoginStreakTracker";
+import { TermsModal } from "@/components/game/TermsModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
@@ -117,6 +118,8 @@ const Index = () => {
   const [equippedPower, setEquippedPower] = useState<string | null>(null);
   const [isClassMode, setIsClassMode] = useState(false);
   const [classCodeId, setClassCodeId] = useState<string | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(true); // default true, will be set false if needed
+  const [termsChecked, setTermsChecked] = useState(false);
 
   const gameStatus = useGameStatus(user?.id || null);
 
@@ -194,22 +197,23 @@ const Index = () => {
   };
 
   const loadUserProfile = async () => {
-    if (!user) { setProfileLoaded(true); setTutorialChecked(true); return; }
+    if (!user) { setProfileLoaded(true); setTutorialChecked(true); setTermsChecked(true); return; }
     try {
-      const { data } = await supabase.from("profiles").select("username, tutorial_completed").eq("user_id", user.id).maybeSingle();
+      const { data } = await supabase.from("profiles").select("username, tutorial_completed, terms_accepted").eq("user_id", user.id).maybeSingle();
       if (data) {
         setUsername(data.username);
+        setTermsAccepted(data.terms_accepted || false);
         const tutorialCompletedLocal = localStorage.getItem("foodfps_tutorial_completed") === "true";
         if (!data.tutorial_completed && !tutorialCompletedLocal) setShowTutorial(true);
       } else {
         const emailUsername = user.email?.split("@")[0] || `user_${user.id.slice(0, 8)}`;
-        setUsername(emailUsername); setShowTutorial(true);
+        setUsername(emailUsername); setShowTutorial(true); setTermsAccepted(false);
       }
     } catch (error) {
       console.error("Error loading profile:", error);
       const emailUsername = user.email?.split("@")[0] || `user_${user.id.slice(0, 8)}`;
       setUsername(emailUsername);
-    } finally { setProfileLoaded(true); setTutorialChecked(true); }
+    } finally { setProfileLoaded(true); setTutorialChecked(true); setTermsChecked(true); }
   };
 
   const handleTutorialComplete = (isMobile: boolean) => {
@@ -223,6 +227,11 @@ const Index = () => {
     setUnreadMessages(count || 0);
   };
 
+  const handleAcceptTerms = async () => {
+    if (!user) return;
+    await supabase.from("profiles").update({ terms_accepted: true, terms_accepted_at: new Date().toISOString() }).eq("user_id", user.id);
+    setTermsAccepted(true);
+  };
   const handleUsernameSet = (name: string) => { setUsername(name); localStorage.setItem("foodfps_username", name); setShowUsernameModal(false); };
   const handleModeSelect = (mode: GameMode, code?: string, timed?: number) => {
     if (timed && timed > 0) { setGameMode("timed-host"); setTimedMinutes(timed); } else { setGameMode(mode); }
@@ -237,7 +246,7 @@ const Index = () => {
   };
   const handleAdminClick = () => { setShowAdminCode(true); };
 
-  if (loading || checkingStatus || !profileLoaded || !tutorialChecked) {
+  if (loading || checkingStatus || !profileLoaded || !tutorialChecked || !termsChecked) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4"><div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto" /><p className="text-muted-foreground">Loading...</p></div>
@@ -247,6 +256,7 @@ const Index = () => {
 
   if (gameStatus.isBanned && gameStatus.banInfo) { return <BanModal open={true} onOpenChange={() => {}} banInfo={gameStatus.banInfo} />; }
   if (!websiteEnabled && !isAdmin) { return <WebsiteDisabled message={disabledMessage} />; }
+  if (!termsAccepted) { return <TermsModal open={true} onAccept={handleAcceptTerms} />; }
 
   const handleTouchscreenChange = (enabled: boolean) => { setTouchscreenMode(enabled); localStorage.setItem("foodfps_touchscreen", String(enabled)); };
   const soloBasedModes: GameMode[] = ["solo", "offline", "blitz", "juggernaut", "stealth", "mirror", "lowgrav", "chaos", "headhunter", "vampire", "frostbite", "titan"];

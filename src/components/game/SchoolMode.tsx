@@ -473,8 +473,8 @@ export const SchoolMode = ({
         const projCount = activePower === "water" ? 3 : activePower === "air" ? 5 : 1;
         
         for (let i = 0; i < projCount; i++) {
-          const spreadAngle = currentPower === "water" ? (i - 1) * 0.2 : 
-                             currentPower === "air" ? (i - 2) * 0.15 : 0;
+          const spreadAngle = activePower === "water" ? (i - 1) * 0.2 : 
+                             activePower === "air" ? (i - 2) * 0.15 : 0;
           
           projectiles.push({
             x: player.x + Math.cos(player.angle) * player.r * 1.5,

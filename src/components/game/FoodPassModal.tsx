@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Utensils, Gift, Coins, Gem, Medal, Zap, Check, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { generateFoodPassTiers, type GeneratedTier } from "@/utils/foodPassAlgorithm";
 
 interface FoodPassModalProps {
   open: boolean;

@@ -485,7 +485,7 @@ export const SchoolMode = ({
             life: 1.5,
             dmg: power.damage,
             color: power.color,
-            element: currentPower,
+            element: activePower,
             trail: []
           });
         }

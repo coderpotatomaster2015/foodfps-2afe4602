@@ -74,25 +74,46 @@ const WAVE_CONFIG = [
   { count: 20, types: ["fast", "tank", "elite"], spawnDelay: 400, hpMultiplier: 1.8 },
   { count: 25, types: ["fast", "tank", "elite"], spawnDelay: 350, hpMultiplier: 2.0 },
   { count: 30, types: ["tank", "elite"], spawnDelay: 300, hpMultiplier: 2.5 },
+  { count: 35, types: ["tank", "elite"], spawnDelay: 250, hpMultiplier: 3.0 },
+  { count: 40, types: ["elite"], spawnDelay: 200, hpMultiplier: 3.5 },
+  { count: 50, types: ["elite"], spawnDelay: 180, hpMultiplier: 4.0 },
 ];
 
 const RANK_THRESHOLDS = [
   { rank: "unranked", minWaves: 0, tier: 1 },
   { rank: "rookie", minWaves: 1, tier: 1 },
+  { rank: "rookie", minWaves: 1, tier: 2 },
   { rank: "rookie", minWaves: 1, tier: 3 },
   { rank: "iron", minWaves: 2, tier: 1 },
+  { rank: "iron", minWaves: 2, tier: 2 },
   { rank: "iron", minWaves: 2, tier: 3 },
   { rank: "bronze", minWaves: 3, tier: 1 },
+  { rank: "bronze", minWaves: 3, tier: 2 },
   { rank: "bronze", minWaves: 3, tier: 3 },
   { rank: "silver", minWaves: 4, tier: 1 },
-  { rank: "gold", minWaves: 4, tier: 3 },
-  { rank: "platinum", minWaves: 5, tier: 1 },
-  { rank: "diamond", minWaves: 5, tier: 3 },
-  { rank: "master", minWaves: 6, tier: 1 },
-  { rank: "grandmaster", minWaves: 6, tier: 3 },
-  { rank: "pro", minWaves: 7, tier: 1 },
-  { rank: "legend", minWaves: 7, tier: 3 },
-  { rank: "mythic", minWaves: 7, tier: 5 },
+  { rank: "silver", minWaves: 4, tier: 2 },
+  { rank: "silver", minWaves: 4, tier: 3 },
+  { rank: "gold", minWaves: 5, tier: 1 },
+  { rank: "gold", minWaves: 5, tier: 2 },
+  { rank: "gold", minWaves: 5, tier: 3 },
+  { rank: "platinum", minWaves: 6, tier: 1 },
+  { rank: "platinum", minWaves: 6, tier: 2 },
+  { rank: "platinum", minWaves: 6, tier: 3 },
+  { rank: "diamond", minWaves: 7, tier: 1 },
+  { rank: "diamond", minWaves: 7, tier: 2 },
+  { rank: "diamond", minWaves: 7, tier: 3 },
+  { rank: "master", minWaves: 8, tier: 1 },
+  { rank: "master", minWaves: 8, tier: 2 },
+  { rank: "master", minWaves: 8, tier: 3 },
+  { rank: "grandmaster", minWaves: 9, tier: 1 },
+  { rank: "grandmaster", minWaves: 9, tier: 2 },
+  { rank: "grandmaster", minWaves: 9, tier: 3 },
+  { rank: "pro", minWaves: 10, tier: 1 },
+  { rank: "pro", minWaves: 10, tier: 2 },
+  { rank: "pro", minWaves: 10, tier: 3 },
+  { rank: "legend", minWaves: 10, tier: 4 },
+  { rank: "legend", minWaves: 10, tier: 5 },
+  { rank: "mythic", minWaves: 10, tier: 5 },
 ];
 
 interface Enemy {
@@ -304,6 +325,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
 
       // Set game state first - canvas will be rendered
       setGameState("playing");
+      keysRef.current = {};
       enemiesRef.current = [];
       bulletsRef.current = [];
       enemyBulletsRef.current = [];
@@ -372,7 +394,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
     if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
 
-    const wavesCompleted = victory ? 7 : currentWave - 1;
+    const wavesCompleted = victory ? 10 : currentWave - 1;
     const rankResult = calculateRank(wavesCompleted);
 
     if (rankResult) {
@@ -402,6 +424,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
             .single();
 
           const rankOrder = ["unranked", "rookie", "iron", "bronze", "silver", "gold", "platinum", "diamond", "master", "grandmaster", "pro", "legend", "mythic"];
+          // getRankColor is also updated below
           const currentRankIndex = currentProfile?.ranked_rank ? rankOrder.indexOf(currentProfile.ranked_rank) : -1;
           const newRankIndex = rankOrder.indexOf(rankResult.rank);
 
@@ -434,7 +457,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
   };
 
   const nextWave = () => {
-    if (currentWave < 7) {
+    if (currentWave < 10) {
       setCurrentWave(prev => prev + 1);
       setGameState("ready");
     } else {
@@ -989,10 +1012,18 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
 
   const getRankColor = (rank: string) => {
     switch (rank) {
+      case "rookie": return "text-gray-400";
+      case "iron": return "text-gray-500";
       case "bronze": return "text-amber-600";
+      case "silver": return "text-gray-300";
       case "gold": return "text-yellow-400";
+      case "platinum": return "text-teal-400";
       case "diamond": return "text-cyan-400";
+      case "master": return "text-indigo-400";
+      case "grandmaster": return "text-pink-400";
       case "pro": return "text-purple-500";
+      case "legend": return "text-orange-400";
+      case "mythic": return "text-red-500";
       default: return "text-muted-foreground";
     }
   };

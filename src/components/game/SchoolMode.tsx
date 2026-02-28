@@ -137,15 +137,20 @@ export const SchoolMode = ({
     fire: 0, water: 0, earth: 0, air: 0
   });
   const ammoRef = useRef(ammo);
+  const currentPowerRef = useRef<ElementalPower>(currentPower);
 
   const touchMoveRef = useRef({ x: 0, y: 0 });
   const touchAimRef = useRef({ x: 480, y: 320 });
   const touchShootingRef = useRef(false);
 
-  // Keep ammoRef in sync
+  // Keep refs in sync
   useEffect(() => {
     ammoRef.current = ammo;
   }, [ammo]);
+
+  useEffect(() => {
+    currentPowerRef.current = currentPower;
+  }, [currentPower]);
 
   useEffect(() => {
     checkPermissions();
@@ -169,6 +174,7 @@ export const SchoolMode = ({
   const startGame = useCallback(() => {
     try {
       setGameState("playing");
+      keysRef.current = {};
       enemiesRef.current = [];
       projectilesRef.current = [];
       enemyProjectilesRef.current = [];
@@ -451,39 +457,40 @@ export const SchoolMode = ({
       }
 
       // Handle power attacks with ammo check
-      const power = ELEMENTAL_POWERS[currentPower];
-      const currentAmmo = ammoRef.current[currentPower];
+      const activePower = currentPowerRef.current;
+      const power = ELEMENTAL_POWERS[activePower];
+      const currentAmmo = ammoRef.current[activePower];
       
-      if (mouseRef.current.down && time - lastShotRef.current[currentPower] >= power.cooldown && currentAmmo > 0) {
-        lastShotRef.current[currentPower] = time;
+      if (mouseRef.current.down && time - lastShotRef.current[activePower] >= power.cooldown && currentAmmo > 0) {
+        lastShotRef.current[activePower] = time;
 
         // Decrease ammo
         setAmmo(prev => ({
           ...prev,
-          [currentPower]: prev[currentPower] - 1
+          [activePower]: prev[activePower] - 1
         }));
 
-        const projCount = currentPower === "water" ? 3 : currentPower === "air" ? 5 : 1;
+        const projCount = activePower === "water" ? 3 : activePower === "air" ? 5 : 1;
         
         for (let i = 0; i < projCount; i++) {
-          const spreadAngle = currentPower === "water" ? (i - 1) * 0.2 : 
-                             currentPower === "air" ? (i - 2) * 0.15 : 0;
+          const spreadAngle = activePower === "water" ? (i - 1) * 0.2 : 
+                             activePower === "air" ? (i - 2) * 0.15 : 0;
           
           projectiles.push({
             x: player.x + Math.cos(player.angle) * player.r * 1.5,
             y: player.y + Math.sin(player.angle) * player.r * 1.5,
             vx: Math.cos(player.angle + spreadAngle) * 400,
             vy: Math.sin(player.angle + spreadAngle) * 400,
-            r: currentPower === "earth" ? 12 : 8,
+            r: activePower === "earth" ? 12 : 8,
             life: 1.5,
             dmg: power.damage,
             color: power.color,
-            element: currentPower,
+            element: activePower,
             trail: []
           });
         }
 
-        spawnElementalEffect(player.x, player.y, currentPower, player.angle);
+        spawnElementalEffect(player.x, player.y, activePower, player.angle);
       }
 
       // Update projectiles
@@ -618,7 +625,7 @@ export const SchoolMode = ({
 
       ctx.save();
       ctx.globalAlpha = 0.1;
-      ctx.strokeStyle = ELEMENTAL_POWERS[currentPower].color;
+      ctx.strokeStyle = ELEMENTAL_POWERS[currentPowerRef.current].color;
       for (let x = 0; x < W; x += 40) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
@@ -737,7 +744,7 @@ export const SchoolMode = ({
       canvas.removeEventListener("mousedown", handleMouseDown);
       canvas.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [gameState, currentPower, touchscreenMode, playerSkin, handleReload]);
+  }, [gameState, touchscreenMode, playerSkin, handleReload]);
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center bg-background p-4">

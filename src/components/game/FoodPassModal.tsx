@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Utensils, Gift, Coins, Gem, Medal, Zap, Check, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { generateFoodPassTiers, type GeneratedTier } from "@/utils/foodPassAlgorithm";
 
 interface FoodPassModalProps {
   open: boolean;
@@ -23,6 +24,15 @@ interface Tier {
 }
 
 export const FoodPassModal = ({ open, onOpenChange }: FoodPassModalProps) => {
+  // Generate tiers algorithmically (deterministic, same for all players)
+  const algorithmicTiers = useMemo(() => {
+    const generated = generateFoodPassTiers(600);
+    return generated.map((t) => ({
+      ...t,
+      id: `algo_tier_${t.tier}`,
+    }));
+  }, []);
+
   const [tiers, setTiers] = useState<Tier[]>([]);
   const [currentScore, setCurrentScore] = useState(0);
   const [claimedTiers, setClaimedTiers] = useState<number[]>([]);
@@ -41,14 +51,27 @@ export const FoodPassModal = ({ open, onOpenChange }: FoodPassModalProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Load tiers
-      const { data: tiersData } = await supabase
+      // Use algorithm-generated tiers (DB tiers are optional overrides)
+      const { data: dbTiers } = await supabase
         .from("food_pass_tiers")
         .select("*")
         .order("tier", { ascending: true })
         .limit(600);
 
-      if (tiersData) setTiers(tiersData);
+      // Merge: DB overrides take priority, algorithm fills the rest
+      const dbTierMap = new Map<number, Tier>();
+      if (dbTiers) {
+        for (const t of dbTiers) {
+          dbTierMap.set(t.tier, t);
+        }
+      }
+
+      const mergedTiers: Tier[] = algorithmicTiers.map((algoTier) => {
+        const dbOverride = dbTierMap.get(algoTier.tier);
+        return dbOverride || algoTier;
+      });
+
+      setTiers(mergedTiers);
 
       // Load player score
       const { data: profile } = await supabase

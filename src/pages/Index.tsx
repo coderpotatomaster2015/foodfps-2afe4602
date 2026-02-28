@@ -57,6 +57,7 @@ import { ShopModal } from "@/components/game/ShopModal";
 import { ServicePanel } from "@/components/game/ServicePanel";
 import { ImpersonationBanner } from "@/components/game/ImpersonationBanner";
 import { LoginStreakTracker } from "@/components/game/LoginStreakTracker";
+import { TermsModal } from "@/components/game/TermsModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";

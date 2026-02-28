@@ -118,6 +118,8 @@ const Index = () => {
   const [equippedPower, setEquippedPower] = useState<string | null>(null);
   const [isClassMode, setIsClassMode] = useState(false);
   const [classCodeId, setClassCodeId] = useState<string | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(true); // default true, will be set false if needed
+  const [termsChecked, setTermsChecked] = useState(false);
 
   const gameStatus = useGameStatus(user?.id || null);
 

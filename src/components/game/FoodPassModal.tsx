@@ -51,14 +51,27 @@ export const FoodPassModal = ({ open, onOpenChange }: FoodPassModalProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Load tiers
-      const { data: tiersData } = await supabase
+      // Use algorithm-generated tiers (DB tiers are optional overrides)
+      const { data: dbTiers } = await supabase
         .from("food_pass_tiers")
         .select("*")
         .order("tier", { ascending: true })
         .limit(600);
 
-      if (tiersData) setTiers(tiersData);
+      // Merge: DB overrides take priority, algorithm fills the rest
+      const dbTierMap = new Map<number, Tier>();
+      if (dbTiers) {
+        for (const t of dbTiers) {
+          dbTierMap.set(t.tier, t);
+        }
+      }
+
+      const mergedTiers: Tier[] = algorithmicTiers.map((algoTier) => {
+        const dbOverride = dbTierMap.get(algoTier.tier);
+        return dbOverride || algoTier;
+      });
+
+      setTiers(mergedTiers);
 
       // Load player score
       const { data: profile } = await supabase

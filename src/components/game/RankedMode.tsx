@@ -394,7 +394,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
     if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
 
-    const wavesCompleted = victory ? 7 : currentWave - 1;
+    const wavesCompleted = victory ? 10 : currentWave - 1;
     const rankResult = calculateRank(wavesCompleted);
 
     if (rankResult) {

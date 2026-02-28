@@ -8,10 +8,17 @@ import { FileText } from "lucide-react";
 interface TermsModalProps {
   open: boolean;
   onAccept: () => void;
+  onDeny: () => void;
 }
 
-export const TermsModal = ({ open, onAccept }: TermsModalProps) => {
+export const TermsModal = ({ open, onAccept, onDeny }: TermsModalProps) => {
   const [agreed, setAgreed] = useState(false);
+  const [hasOpenedTerms, setHasOpenedTerms] = useState(false);
+
+  const handleOpenTerms = () => {
+    window.open("https://foodfps.lovable.app/FoodFPS_Terms_and_Privacy.pdf", "_blank", "noopener,noreferrer");
+    setHasOpenedTerms(true);
+  };
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
@@ -29,38 +36,14 @@ export const TermsModal = ({ open, onAccept }: TermsModalProps) => {
 
         <ScrollArea className="flex-1 max-h-[40vh] border border-border rounded-md p-4 bg-background">
           <div className="space-y-4 text-sm text-foreground leading-relaxed">
-            <h3 className="font-bold text-primary">Terms of Service</h3>
-            <p>By playing Food FPS, you agree to the following terms:</p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>You must be at least 13 years old to use this service.</li>
-              <li>You are responsible for your account and all activity under it.</li>
-              <li>You agree not to cheat, exploit bugs, or use unauthorized tools.</li>
-              <li>You agree not to harass, bully, or abuse other players.</li>
-              <li>Admins and owners reserve the right to ban or restrict accounts at any time.</li>
-              <li>Your username must not contain offensive, inappropriate, or impersonating content.</li>
-              <li>We may modify or discontinue the game at any time without notice.</li>
-            </ul>
-
-            <h3 className="font-bold text-primary mt-4">Privacy Policy</h3>
-            <p>We collect and store the following data:</p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>Account information (username, email, scores, progress).</li>
-              <li>Game activity (matches played, chat messages, social posts).</li>
-              <li>Technical data (login timestamps, session info).</li>
-            </ul>
-            <p>Your data is used solely to operate and improve Food FPS. We do not sell your personal information to third parties.</p>
-            <p>You may request account deletion by contacting an admin.</p>
-
-            <p className="text-xs text-muted-foreground mt-4">
-              Full document available:{" "}
-              <a
-                href="/FoodFPS_Terms_and_Privacy.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline"
-              >
-                Download PDF
-              </a>
+            <p>
+              Please open and review the full Terms of Service and Privacy Policy PDF before choosing whether to continue.
+            </p>
+            <Button variant="secondary" className="w-full" onClick={handleOpenTerms}>
+              Open Terms & Privacy PDF
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Link: https://foodfps.lovable.app/FoodFPS_Terms_and_Privacy.pdf
             </p>
           </div>
         </ScrollArea>
@@ -70,20 +53,36 @@ export const TermsModal = ({ open, onAccept }: TermsModalProps) => {
             id="terms-agree"
             checked={agreed}
             onCheckedChange={(checked) => setAgreed(checked === true)}
+            disabled={!hasOpenedTerms}
           />
           <label htmlFor="terms-agree" className="text-sm text-foreground cursor-pointer">
-            I have read and agree to the Terms of Service and Privacy Policy
+            I reviewed the PDF and agree to the Terms of Service and Privacy Policy
           </label>
         </div>
 
-        <Button
-          variant="gaming"
-          className="w-full mt-2"
-          disabled={!agreed}
-          onClick={onAccept}
-        >
-          Accept & Continue
-        </Button>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <Button
+            variant="destructive"
+            onClick={onDeny}
+            disabled={!hasOpenedTerms}
+          >
+            Deny
+          </Button>
+
+          <Button
+            variant="gaming"
+            disabled={!agreed || !hasOpenedTerms}
+            onClick={onAccept}
+          >
+            Accept
+          </Button>
+        </div>
+
+        {!hasOpenedTerms && (
+          <p className="text-xs text-center text-muted-foreground">
+            Open the PDF first to enable Accept or Deny.
+          </p>
+        )}
       </DialogContent>
     </Dialog>
   );

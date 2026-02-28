@@ -490,7 +490,7 @@ export const SchoolMode = ({
           });
         }
 
-        spawnElementalEffect(player.x, player.y, currentPower, player.angle);
+        spawnElementalEffect(player.x, player.y, activePower, player.angle);
       }
 
       // Update projectiles

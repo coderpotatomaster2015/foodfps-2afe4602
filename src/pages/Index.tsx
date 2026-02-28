@@ -232,6 +232,11 @@ const Index = () => {
     await supabase.from("profiles").update({ terms_accepted: true, terms_accepted_at: new Date().toISOString() }).eq("user_id", user.id);
     setTermsAccepted(true);
   };
+
+  const handleDenyTerms = async () => {
+    toast.error("You must accept the Terms & Privacy Policy to play Food FPS.");
+    await handleLogout();
+  };
   const handleUsernameSet = (name: string) => { setUsername(name); localStorage.setItem("foodfps_username", name); setShowUsernameModal(false); };
   const handleModeSelect = (mode: GameMode, code?: string, timed?: number) => {
     if (timed && timed > 0) { setGameMode("timed-host"); setTimedMinutes(timed); } else { setGameMode(mode); }
@@ -256,7 +261,7 @@ const Index = () => {
 
   if (gameStatus.isBanned && gameStatus.banInfo) { return <BanModal open={true} onOpenChange={() => {}} banInfo={gameStatus.banInfo} />; }
   if (!websiteEnabled && !isAdmin) { return <WebsiteDisabled message={disabledMessage} />; }
-  if (!termsAccepted) { return <TermsModal open={true} onAccept={handleAcceptTerms} />; }
+  if (!termsAccepted) { return <TermsModal open={true} onAccept={handleAcceptTerms} onDeny={handleDenyTerms} />; }
 
   const handleTouchscreenChange = (enabled: boolean) => { setTouchscreenMode(enabled); localStorage.setItem("foodfps_touchscreen", String(enabled)); };
   const soloBasedModes: GameMode[] = ["solo", "offline", "blitz", "juggernaut", "stealth", "mirror", "lowgrav", "chaos", "headhunter", "vampire", "frostbite", "titan"];

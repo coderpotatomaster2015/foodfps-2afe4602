@@ -457,8 +457,9 @@ export const SchoolMode = ({
       }
 
       // Handle power attacks with ammo check
-      const power = ELEMENTAL_POWERS[currentPower];
-      const currentAmmo = ammoRef.current[currentPower];
+      const activePower = currentPowerRef.current;
+      const power = ELEMENTAL_POWERS[activePower];
+      const currentAmmo = ammoRef.current[activePower];
       
       if (mouseRef.current.down && time - lastShotRef.current[currentPower] >= power.cooldown && currentAmmo > 0) {
         lastShotRef.current[currentPower] = time;

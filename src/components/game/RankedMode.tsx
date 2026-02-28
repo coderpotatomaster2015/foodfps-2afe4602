@@ -304,6 +304,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
 
       // Set game state first - canvas will be rendered
       setGameState("playing");
+      keysRef.current = {};
       enemiesRef.current = [];
       bulletsRef.current = [];
       enemyBulletsRef.current = [];

@@ -24,6 +24,15 @@ interface Tier {
 }
 
 export const FoodPassModal = ({ open, onOpenChange }: FoodPassModalProps) => {
+  // Generate tiers algorithmically (deterministic, same for all players)
+  const algorithmicTiers = useMemo(() => {
+    const generated = generateFoodPassTiers(600);
+    return generated.map((t) => ({
+      ...t,
+      id: `algo_tier_${t.tier}`,
+    }));
+  }, []);
+
   const [tiers, setTiers] = useState<Tier[]>([]);
   const [currentScore, setCurrentScore] = useState(0);
   const [claimedTiers, setClaimedTiers] = useState<number[]>([]);

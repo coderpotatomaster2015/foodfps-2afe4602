@@ -456,7 +456,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
   };
 
   const nextWave = () => {
-    if (currentWave < 7) {
+    if (currentWave < 10) {
       setCurrentWave(prev => prev + 1);
       setGameState("ready");
     } else {

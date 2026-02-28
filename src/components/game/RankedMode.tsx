@@ -424,6 +424,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
             .single();
 
           const rankOrder = ["unranked", "rookie", "iron", "bronze", "silver", "gold", "platinum", "diamond", "master", "grandmaster", "pro", "legend", "mythic"];
+          // getRankColor is also updated below
           const currentRankIndex = currentProfile?.ranked_rank ? rankOrder.indexOf(currentProfile.ranked_rank) : -1;
           const newRankIndex = rankOrder.indexOf(rankResult.rank);
 

@@ -174,6 +174,7 @@ export const SchoolMode = ({
   const startGame = useCallback(() => {
     try {
       setGameState("playing");
+      keysRef.current = {};
       enemiesRef.current = [];
       projectilesRef.current = [];
       enemyProjectilesRef.current = [];

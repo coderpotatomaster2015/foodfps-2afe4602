@@ -197,22 +197,23 @@ const Index = () => {
   };
 
   const loadUserProfile = async () => {
-    if (!user) { setProfileLoaded(true); setTutorialChecked(true); return; }
+    if (!user) { setProfileLoaded(true); setTutorialChecked(true); setTermsChecked(true); return; }
     try {
-      const { data } = await supabase.from("profiles").select("username, tutorial_completed").eq("user_id", user.id).maybeSingle();
+      const { data } = await supabase.from("profiles").select("username, tutorial_completed, terms_accepted").eq("user_id", user.id).maybeSingle();
       if (data) {
         setUsername(data.username);
+        setTermsAccepted(data.terms_accepted || false);
         const tutorialCompletedLocal = localStorage.getItem("foodfps_tutorial_completed") === "true";
         if (!data.tutorial_completed && !tutorialCompletedLocal) setShowTutorial(true);
       } else {
         const emailUsername = user.email?.split("@")[0] || `user_${user.id.slice(0, 8)}`;
-        setUsername(emailUsername); setShowTutorial(true);
+        setUsername(emailUsername); setShowTutorial(true); setTermsAccepted(false);
       }
     } catch (error) {
       console.error("Error loading profile:", error);
       const emailUsername = user.email?.split("@")[0] || `user_${user.id.slice(0, 8)}`;
       setUsername(emailUsername);
-    } finally { setProfileLoaded(true); setTutorialChecked(true); }
+    } finally { setProfileLoaded(true); setTutorialChecked(true); setTermsChecked(true); }
   };
 
   const handleTutorialComplete = (isMobile: boolean) => {

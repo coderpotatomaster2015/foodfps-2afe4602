@@ -143,10 +143,14 @@ export const SchoolMode = ({
   const touchAimRef = useRef({ x: 480, y: 320 });
   const touchShootingRef = useRef(false);
 
-  // Keep ammoRef in sync
+  // Keep refs in sync
   useEffect(() => {
     ammoRef.current = ammo;
   }, [ammo]);
+
+  useEffect(() => {
+    currentPowerRef.current = currentPower;
+  }, [currentPower]);
 
   useEffect(() => {
     checkPermissions();

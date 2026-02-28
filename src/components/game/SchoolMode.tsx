@@ -481,7 +481,7 @@ export const SchoolMode = ({
             y: player.y + Math.sin(player.angle) * player.r * 1.5,
             vx: Math.cos(player.angle + spreadAngle) * 400,
             vy: Math.sin(player.angle + spreadAngle) * 400,
-            r: currentPower === "earth" ? 12 : 8,
+            r: activePower === "earth" ? 12 : 8,
             life: 1.5,
             dmg: power.damage,
             color: power.color,

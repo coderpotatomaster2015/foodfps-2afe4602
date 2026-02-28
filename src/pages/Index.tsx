@@ -246,7 +246,7 @@ const Index = () => {
   };
   const handleAdminClick = () => { setShowAdminCode(true); };
 
-  if (loading || checkingStatus || !profileLoaded || !tutorialChecked) {
+  if (loading || checkingStatus || !profileLoaded || !tutorialChecked || !termsChecked) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4"><div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto" /><p className="text-muted-foreground">Loading...</p></div>
@@ -256,6 +256,7 @@ const Index = () => {
 
   if (gameStatus.isBanned && gameStatus.banInfo) { return <BanModal open={true} onOpenChange={() => {}} banInfo={gameStatus.banInfo} />; }
   if (!websiteEnabled && !isAdmin) { return <WebsiteDisabled message={disabledMessage} />; }
+  if (!termsAccepted) { return <TermsModal open={true} onAccept={handleAcceptTerms} />; }
 
   const handleTouchscreenChange = (enabled: boolean) => { setTouchscreenMode(enabled); localStorage.setItem("foodfps_touchscreen", String(enabled)); };
   const soloBasedModes: GameMode[] = ["solo", "offline", "blitz", "juggernaut", "stealth", "mirror", "lowgrav", "chaos", "headhunter", "vampire", "frostbite", "titan"];

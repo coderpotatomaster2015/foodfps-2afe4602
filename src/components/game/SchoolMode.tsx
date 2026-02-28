@@ -744,7 +744,7 @@ export const SchoolMode = ({
       canvas.removeEventListener("mousedown", handleMouseDown);
       canvas.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [gameState, currentPower, touchscreenMode, playerSkin, handleReload]);
+  }, [gameState, touchscreenMode, playerSkin, handleReload]);
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center bg-background p-4">

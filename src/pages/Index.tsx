@@ -227,6 +227,11 @@ const Index = () => {
     setUnreadMessages(count || 0);
   };
 
+  const handleAcceptTerms = async () => {
+    if (!user) return;
+    await supabase.from("profiles").update({ terms_accepted: true, terms_accepted_at: new Date().toISOString() }).eq("user_id", user.id);
+    setTermsAccepted(true);
+  };
   const handleUsernameSet = (name: string) => { setUsername(name); localStorage.setItem("foodfps_username", name); setShowUsernameModal(false); };
   const handleModeSelect = (mode: GameMode, code?: string, timed?: number) => {
     if (timed && timed > 0) { setGameMode("timed-host"); setTimedMinutes(timed); } else { setGameMode(mode); }

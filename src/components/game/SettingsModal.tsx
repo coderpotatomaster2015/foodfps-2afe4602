@@ -403,6 +403,7 @@ export const SettingsModal = ({
             </p>
           </Card>
         </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

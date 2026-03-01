@@ -314,6 +314,53 @@ export const SettingsModal = ({
             </div>
           </Card>
 
+          {/* Cursor Color */}
+          <Card className="p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <MousePointer className="w-5 h-5 text-primary" />
+              <div>
+                <Label className="font-medium">Cursor Color</Label>
+                <p className="text-xs text-muted-foreground">
+                  Choose a custom cursor color
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-5 gap-2">
+              {CURSOR_COLORS.map((cursor) => {
+                const isSelected = cursorColor === cursor.value;
+                return (
+                  <Button
+                    key={cursor.value}
+                    variant="outline"
+                    size="sm"
+                    className={`relative h-10 p-1 ${isSelected ? "ring-2 ring-primary" : ""}`}
+                    onClick={() => {
+                      setCursorColor(cursor.value);
+                      localStorage.setItem("foodfps_cursor", cursor.value);
+                      applyCursor(cursor.value);
+                      playSound("click");
+                    }}
+                    title={cursor.name}
+                  >
+                    {cursor.value === "default" ? (
+                      <span className="text-xs">Default</span>
+                    ) : (
+                      <div className="w-full h-full rounded" style={{ backgroundColor: cursor.color }} />
+                    )}
+                    {isSelected && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Check className="w-3 h-3 text-white drop-shadow-lg" />
+                      </div>
+                    )}
+                  </Button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              {CURSOR_COLORS.find(c => c.value === cursorColor)?.name || "Default"}
+            </p>
+          </Card>
+
           {/* UI Color Theme */}
           <Card className="p-4">
             <div className="flex items-center gap-3 mb-3">

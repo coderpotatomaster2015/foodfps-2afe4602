@@ -79,6 +79,7 @@ export const GameSidebar = ({
 
   const otherItems = [
     { icon: User, label: "My Profile", onClick: onShowProfile },
+    { icon: Gamepad2, label: "Create Mode", onClick: onShowGamemodeCreator },
     { icon: Sparkles, label: "Updates", onClick: onShowUpdates },
     ...(isBetaTester || isAdmin ? [{ icon: FlaskConical, label: "Beta", onClick: onShowBetaPanel }] : []),
     { icon: Settings, label: "Settings", onClick: onShowSettings },

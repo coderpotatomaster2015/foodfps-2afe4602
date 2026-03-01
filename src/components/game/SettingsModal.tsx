@@ -256,6 +256,7 @@ export const SettingsModal = ({
           </DialogDescription>
         </DialogHeader>
 
+        <ScrollArea className="h-[60vh]">
         <div className="space-y-4 py-4">
           {/* Touchscreen Mode */}
           <Card className="p-4">

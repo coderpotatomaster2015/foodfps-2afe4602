@@ -4,7 +4,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, Smartphone, Volume2, Palette, Check, Box } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Settings, Smartphone, Volume2, Palette, Check, Box, MousePointer } from "lucide-react";
 
 interface SettingsModalProps {
   open: boolean;

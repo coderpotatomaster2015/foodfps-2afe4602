@@ -149,25 +149,28 @@ export const SkinsShop = ({ open, onOpenChange, onSkinSelect, currentSkin = "#FF
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Check if can afford
-      if (skin.price_gems > 0 && currencies.gems < skin.price_gems) {
+      // Determine which currency to use (primary = first non-zero)
+      const price = getPrice(skin);
+      if (!price) return;
+
+      if (price.type === "gems" && currencies.gems < price.amount) {
         toast.error("Not enough gems!");
         return;
       }
-      if (skin.price_coins > 0 && currencies.coins < skin.price_coins) {
+      if (price.type === "coins" && currencies.coins < price.amount) {
         toast.error("Not enough coins!");
         return;
       }
-      if (skin.price_gold > 0 && currencies.gold < skin.price_gold) {
+      if (price.type === "gold" && currencies.gold < price.amount) {
         toast.error("Not enough gold!");
         return;
       }
 
-      // Deduct currencies
+      // Deduct only the primary currency
       const newCurrencies = {
-        gems: currencies.gems - skin.price_gems,
-        coins: currencies.coins - skin.price_coins,
-        gold: currencies.gold - skin.price_gold,
+        gems: currencies.gems - (price.type === "gems" ? price.amount : 0),
+        coins: currencies.coins - (price.type === "coins" ? price.amount : 0),
+        gold: currencies.gold - (price.type === "gold" ? price.amount : 0),
       };
 
       await supabase

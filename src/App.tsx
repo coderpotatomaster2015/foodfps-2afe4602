@@ -67,7 +67,11 @@ const App = () => (
               <Route path="/userishackingorbanned" element={<AdminAccountViewer />} />
               <Route path="/adminpasswordreset" element={<AdminPasswordReset />} />
               <Route path="/privatestuffpasswordsandmore" element={<PrivateStuff />} />
+ codex/remove-game-recordings-and-add-anti-cheat-602csl
+              <Route path="/:gamemode/:username/play/:role" element={<Index />} />
+=======
               <Route path="/custom/:slug" element={<CustomGamemodePage />} />
+main
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

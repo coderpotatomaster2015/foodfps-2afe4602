@@ -2,7 +2,7 @@ import { useState } from "react";
 import { 
   Mail, Sparkles, Globe, Palette, Trophy, Gift, FlaskConical, 
   Settings, ChevronLeft, ChevronRight, MessageCircle, Ticket, CalendarDays,
-  Utensils, User, Swords, Backpack, Store
+  Utensils, User, Swords, Backpack, Store, Gamepad2
 } from "lucide-react";
 
 interface GameSidebarProps {

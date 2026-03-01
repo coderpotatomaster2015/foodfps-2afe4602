@@ -25,6 +25,7 @@ interface GameSidebarProps {
   onShowRanked: () => void;
   onShowInventory?: () => void;
   onShowItemShop?: () => void;
+  onShowGamemodeCreator?: () => void;
 }
 
 export const GameSidebar = ({

@@ -1785,10 +1785,18 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           />
         </div>
 
-        {spawnImmunity && (
+      {spawnImmunity && (
           <div className="flex items-center gap-2 text-yellow-500 text-sm">
             <Shield className="w-4 h-4" />
             <span>Spawn Protection</span>
+          </div>
+        )}
+
+        {/* Active Power Indicator */}
+        {specialPowerRef.current && (
+          <div className="flex items-center gap-2 text-sm px-2 py-1 rounded bg-primary/20 border border-primary/30">
+            <span className="text-xs">⚡</span>
+            <span className="font-medium text-primary capitalize">{specialPowerRef.current.replace(/_/g, " ")}</span>
           </div>
         )}
 

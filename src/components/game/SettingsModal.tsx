@@ -103,6 +103,45 @@ const playSound = (soundType: "click" | "shoot" | "hit" | "pickup" | "gameOver" 
 // Export sound utility for use in other components
 export { playSound };
 
+const CURSOR_COLORS = [
+  { name: "Default", value: "default", color: "" },
+  { name: "Red", value: "red", color: "#EF4444" },
+  { name: "Blue", value: "blue", color: "#3B82F6" },
+  { name: "Green", value: "green", color: "#22C55E" },
+  { name: "Yellow", value: "yellow", color: "#EAB308" },
+  { name: "Purple", value: "purple", color: "#A855F7" },
+  { name: "Pink", value: "pink", color: "#EC4899" },
+  { name: "Orange", value: "orange", color: "#F97316" },
+  { name: "Cyan", value: "cyan", color: "#06B6D4" },
+  { name: "White", value: "white", color: "#FFFFFF" },
+];
+
+const generateCursorSVG = (color: string) => {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path d='M5 3l14 8-6 2-4 6z' fill='${color}' stroke='black' stroke-width='1'/></svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 0 0, auto`;
+};
+
+const applyCursor = (cursorId: string) => {
+  const cursor = CURSOR_COLORS.find(c => c.value === cursorId);
+  if (!cursor || cursorId === "default") {
+    document.documentElement.style.removeProperty("cursor");
+    document.body.style.removeProperty("cursor");
+    // Remove all cursor overrides
+    const style = document.getElementById("foodfps-cursor-style");
+    if (style) style.remove();
+    return;
+  }
+  // Apply globally with a style tag
+  let style = document.getElementById("foodfps-cursor-style");
+  if (!style) {
+    style = document.createElement("style");
+    style.id = "foodfps-cursor-style";
+    document.head.appendChild(style);
+  }
+  const cursorValue = generateCursorSVG(cursor.color);
+  style.textContent = `*, *::before, *::after { cursor: ${cursorValue} !important; } button, a, [role="button"], input, select, textarea { cursor: ${cursorValue} !important; }`;
+};
+
 export const SettingsModal = ({ 
   open, 
   onOpenChange, 
@@ -117,6 +156,7 @@ export const SettingsModal = ({
   const [threeDModeLocal, setThreeDModeLocal] = useState(threeDModeProp);
   const [tapCount, setTapCount] = useState(0);
   const [tapTimer, setTapTimer] = useState<NodeJS.Timeout | null>(null);
+  const [cursorColor, setCursorColor] = useState("default");
 
 
   useEffect(() => {

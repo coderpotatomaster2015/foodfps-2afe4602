@@ -1156,9 +1156,16 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         }
         const vx = player.x - e.x, vy = player.y - e.y;
         const d = Math.hypot(vx, vy);
+        
+        // Slow motion aura: enemies within 200px move at 40% speed
+        let enemySpeedMult = 1;
+        if (specialPowerRef.current === "slow_motion_aura" && d < 200) {
+          enemySpeedMult = 0.4;
+        }
+        
         if (d > 0) {
-          e.x += (vx / d) * e.speed * dt;
-          e.y += (vy / d) * e.speed * dt;
+          e.x += (vx / d) * e.speed * enemySpeedMult * dt;
+          e.y += (vy / d) * e.speed * enemySpeedMult * dt;
         }
 
         // Enemy collision damage

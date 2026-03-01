@@ -48,6 +48,7 @@ export const GameSidebar = ({
   onShowRanked,
   onShowInventory,
   onShowItemShop,
+  onShowGamemodeCreator,
 }: GameSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
 

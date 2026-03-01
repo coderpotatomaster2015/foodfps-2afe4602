@@ -332,6 +332,7 @@ const Index = () => {
           onShowInventory={() => setShowInventory(true)} onShowItemShop={() => setShowItemShop(true)} onShowRedeemCodes={() => setShowRedeemCodes(true)}
           onShowEventSchedule={() => setShowEventSchedule(true)} onShowFoodPass={() => setShowFoodPass(true)} onShowProfile={() => setShowProfile(true)}
           onShowGamemodeCreator={() => setShowGamemodeCreator(true)}
+          onShowRanked={() => setGameMode("ranked")}
         />
       )}
 

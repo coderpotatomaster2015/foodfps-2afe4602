@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useNavigate, useParams } from "react-router-dom";
+main
 import { UsernameModal } from "@/components/game/UsernameModal";
 import { GameModeSelector } from "@/components/game/GameModeSelector";
 import { GameCanvas } from "@/components/game/GameCanvas";
@@ -69,9 +72,58 @@ import { applyRainbowToDocument, removeRainbowFromDocument } from "@/utils/rainb
 
 export type GameMode = "solo" | "3d-solo" | "host" | "join" | "offline" | "boss" | "timed-host" | "timed-join" | "ranked" | "youvsme" | "school" | "survival" | "zombie" | "arena" | "infection" | "ctf" | "koth" | "gungame" | "vip" | "lms" | "dodgeball" | "payload" | "sniper" | "tag" | "bounty" | "demolition" | "medic" | "blitz" | "juggernaut" | "stealth" | "mirror" | "lowgrav" | "chaos" | "headhunter" | "vampire" | "frostbite" | "titan" | "quickplay" | null;
 
+const MODE_TO_SLUG: Record<Exclude<GameMode, null>, string> = {
+  solo: "solo",
+  "3d-solo": "3d-solo",
+  host: "host",
+  join: "join",
+  offline: "offline",
+  boss: "boss",
+  "timed-host": "timed-host",
+  "timed-join": "timed-join",
+  ranked: "ranked",
+  youvsme: "youvsme",
+  school: "school",
+  survival: "survival",
+  zombie: "zombie",
+  arena: "arena",
+  infection: "infection",
+  ctf: "ctf",
+  koth: "koth",
+  gungame: "gungame",
+  vip: "vip",
+  lms: "lms",
+  dodgeball: "dodgeball",
+  payload: "payload",
+  sniper: "sniper",
+  tag: "tag",
+  bounty: "bounty",
+  demolition: "demolition",
+  medic: "medic",
+  blitz: "blitz",
+  juggernaut: "juggernaut",
+  stealth: "stealth",
+  mirror: "mirror",
+  lowgrav: "lowgrav",
+  chaos: "chaos",
+  headhunter: "headhunter",
+  vampire: "vampire",
+  frostbite: "frostbite",
+  titan: "titan",
+  quickplay: "quickplay",
+};
+
+const SLUG_TO_MODE: Record<string, Exclude<GameMode, null>> = Object.fromEntries(
+  Object.entries(MODE_TO_SLUG).map(([mode, slug]) => [slug, mode as Exclude<GameMode, null>])
+);
+
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+ codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
+  const location = useLocation();
+
+  main
   const { gamemode: routeGamemode, username: routeUsername, role: routeRole } = useParams();
   const [username, setUsername] = useState<string>("");
   const [gameMode, setGameMode] = useState<GameMode>(null);
@@ -167,6 +219,10 @@ const Index = () => {
       return;
     }
 
+ codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
+    const normalizedMode = routeGamemode.toLowerCase();
+    const mode = SLUG_TO_MODE[normalizedMode];
+
     const modeFromUrlMap: Record<string, GameMode> = {
       solo: "solo",
       "3d-solo": "3d-solo",
@@ -204,6 +260,7 @@ const Index = () => {
 
     const normalizedMode = routeGamemode.toLowerCase();
     const mode = modeFromUrlMap[normalizedMode];
+ main
     if (!mode) {
       toast.error(`Unknown game mode in URL: ${routeGamemode}`);
       return;
@@ -219,6 +276,21 @@ const Index = () => {
     toast.success(`Loaded ${normalizedMode.toUpperCase()} from play URL for ${normalizedUsername}`);
   }, [loading, routeGamemode, routeRole, routeUsername]);
 
+ codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
+  useEffect(() => {
+    if (!gameMode || loading) return;
+
+    const role = isOwner ? "owner" : isAdmin ? "admin" : isTeacher ? "teacher" : "user";
+    const slug = MODE_TO_SLUG[gameMode as Exclude<GameMode, null>];
+    const playerName = (username || localStorage.getItem("foodfps_username") || "player").trim();
+    const expectedPath = `/${slug}/${encodeURIComponent(playerName)}/play/${role}`;
+
+    if (location.pathname !== expectedPath) {
+      navigate(expectedPath, { replace: true });
+    }
+  }, [gameMode, isAdmin, isOwner, isTeacher, loading, location.pathname, navigate, username]);
+
+ main
 
   const checkClassMemberStatus = async () => {
     if (!user) return;
@@ -305,9 +377,36 @@ const Index = () => {
     await handleLogout();
   };
   const handleUsernameSet = (name: string) => { setUsername(name); localStorage.setItem("foodfps_username", name); setShowUsernameModal(false); };
+
+  const getCurrentRole = () => {
+    if (isOwner) return "owner";
+    if (isAdmin) return "admin";
+    if (isTeacher) return "teacher";
+    return "user";
+  };
+
+  const launchModeWithRoute = (mode: GameMode, options?: { code?: string; timedMinutes?: number }) => {
+    if (!mode) return;
+
+    const finalMode = options?.timedMinutes && options.timedMinutes > 0 ? "timed-host" : mode;
+    const playerName = (username || localStorage.getItem("foodfps_username") || "player").trim();
+    const role = getCurrentRole();
+    const slug = MODE_TO_SLUG[finalMode as Exclude<GameMode, null>];
+
+    if (options?.timedMinutes && options.timedMinutes > 0) {
+      setTimedMinutes(options.timedMinutes);
+    }
+
+    if (options?.code) {
+      setRoomCode(options.code);
+    }
+
+    setGameMode(finalMode);
+    navigate(`/${slug}/${encodeURIComponent(playerName)}/play/${role}`);
+  };
+
   const handleModeSelect = (mode: GameMode, code?: string, timed?: number) => {
-    if (timed && timed > 0) { setGameMode("timed-host"); setTimedMinutes(timed); } else { setGameMode(mode); }
-    if (code) setRoomCode(code);
+    launchModeWithRoute(mode, { code, timedMinutes: timed });
   };
   const handleStartGame = () => setIsInGame(true);
   const handleTimedStartGame = (minutes: number) => { setTimedMinutes(minutes); setIsInGame(true); };
@@ -396,8 +495,12 @@ const Index = () => {
           onShowBetaPanel={() => setShowBetaPanel(true)} onShowSettings={() => setShowSettings(true)} onShowGlobalChat={() => setShowGlobalChat(true)}
           onShowInventory={() => setShowInventory(true)} onShowItemShop={() => setShowItemShop(true)} onShowRedeemCodes={() => setShowRedeemCodes(true)}
           onShowEventSchedule={() => setShowEventSchedule(true)} onShowFoodPass={() => setShowFoodPass(true)} onShowProfile={() => setShowProfile(true)}
+ codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
+          onShowRanked={() => launchModeWithRoute("ranked")}
+=======
           onShowGamemodeCreator={() => setShowGamemodeCreator(true)}
           onShowRanked={() => setGameMode("ranked")}
+main
         />
       )}
 
@@ -449,7 +552,7 @@ const Index = () => {
       <OwnerPanel
         open={showOwnerPanel}
         onClose={() => setShowOwnerPanel(false)}
-        onSetGameMode={(mode: GameMode) => { setShowOwnerPanel(false); setGameMode(mode); }}
+        onSetGameMode={(mode: GameMode) => { setShowOwnerPanel(false); launchModeWithRoute(mode); }}
         onBackToMenu={handleBackToMenu}
         onOpenGlobalChat={() => { setShowOwnerPanel(false); setShowGlobalChat(true); }}
         onOpenSocial={() => { setShowOwnerPanel(false); setShowSocial(true); }}

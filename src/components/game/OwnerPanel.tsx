@@ -321,6 +321,14 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
       return;
     }
 
+codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
+    const notes = (reviewNotesById[request.id] || "").trim();
+    const shareUrl = buildPlayUrl(request.gamemode_slug, request.username, request.role);
+
+    const { error } = await supabase
+      .from("custom_gamemode_requests")
+      .delete()
+
     const notes = (reviewNotesById[request.id] || "").trim() || null;
     const shareUrl = approve ? buildPlayUrl(request.gamemode_slug, request.username, request.role) : null;
 
@@ -334,6 +342,7 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
         share_url: shareUrl,
         updated_at: new Date().toISOString(),
       })
+    main
       .eq("id", request.id);
 
     if (error) {
@@ -341,7 +350,23 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
       toast.error("Failed to review custom game mode request");
       return;
     }
+ codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
+    setReviewNotesById((previous) => {
+      const next = { ...previous };
+      delete next[request.id];
+      return next;
+    });
 
+    if (approve) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success(notes ? `Approved and removed request. Notes: ${notes}` : "Approved and removed request. URL copied.");
+      } catch {
+        toast.success(notes ? `Approved and removed request. Notes: ${notes}` : "Approved and removed request.");
+      }
+    } else {
+      toast.success(notes ? `Declined and removed request. Notes: ${notes}` : "Declined and removed request.");
+        
     if (approve && shareUrl) {
       try {
         await navigator.clipboard.writeText(shareUrl);
@@ -351,6 +376,7 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
       }
     } else {
       toast.success("Custom game mode request declined");
+ main
     }
 
     await loadCustomGameModeRequests();

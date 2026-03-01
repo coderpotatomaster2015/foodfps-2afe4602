@@ -67,12 +67,14 @@ const App = () => (
               <Route path="/userishackingorbanned" element={<AdminAccountViewer />} />
               <Route path="/adminpasswordreset" element={<AdminPasswordReset />} />
               <Route path="/privatestuffpasswordsandmore" element={<PrivateStuff />} />
- codex/remove-game-recordings-and-add-anti-cheat-602csl
+
+              {/* Dynamic gamemode route */}
               <Route path="/:gamemode/:username/play/:role" element={<Index />} />
-=======
+
+              {/* Custom gamemode page */}
               <Route path="/custom/:slug" element={<CustomGamemodePage />} />
-main
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
+              {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

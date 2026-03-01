@@ -56,6 +56,7 @@ import { InventoryModal } from "@/components/game/InventoryModal";
 import { ShopModal } from "@/components/game/ShopModal";
 import { ServicePanel } from "@/components/game/ServicePanel";
 import { ImpersonationBanner } from "@/components/game/ImpersonationBanner";
+import { GamemodeCreator } from "@/components/game/GamemodeCreator";
 import { LoginStreakTracker } from "@/components/game/LoginStreakTracker";
 import { TermsModal } from "@/components/game/TermsModal";
 import { useAuth } from "@/hooks/useAuth";

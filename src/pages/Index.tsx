@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+main
 import { UsernameModal } from "@/components/game/UsernameModal";
 import { GameModeSelector } from "@/components/game/GameModeSelector";
 import { GameCanvas } from "@/components/game/GameCanvas";
@@ -56,6 +59,7 @@ import { InventoryModal } from "@/components/game/InventoryModal";
 import { ShopModal } from "@/components/game/ShopModal";
 import { ServicePanel } from "@/components/game/ServicePanel";
 import { ImpersonationBanner } from "@/components/game/ImpersonationBanner";
+import { GamemodeCreator } from "@/components/game/GamemodeCreator";
 import { LoginStreakTracker } from "@/components/game/LoginStreakTracker";
 import { TermsModal } from "@/components/game/TermsModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -116,7 +120,10 @@ const SLUG_TO_MODE: Record<string, Exclude<GameMode, null>> = Object.fromEntries
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+ codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
   const location = useLocation();
+
+  main
   const { gamemode: routeGamemode, username: routeUsername, role: routeRole } = useParams();
   const [username, setUsername] = useState<string>("");
   const [gameMode, setGameMode] = useState<GameMode>(null);
@@ -149,6 +156,7 @@ const Index = () => {
   const [showInventory, setShowInventory] = useState(false);
   const [showItemShop, setShowItemShop] = useState(false);
   const [showServicePanel, setShowServicePanel] = useState(false);
+  const [showGamemodeCreator, setShowGamemodeCreator] = useState(false);
   const [touchscreenMode, setTouchscreenMode] = useState(false);
   const [threeDMode, setThreeDMode] = useState(false);
   const [websiteEnabled, setWebsiteEnabled] = useState(true);
@@ -211,8 +219,48 @@ const Index = () => {
       return;
     }
 
+ codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
     const normalizedMode = routeGamemode.toLowerCase();
     const mode = SLUG_TO_MODE[normalizedMode];
+
+    const modeFromUrlMap: Record<string, GameMode> = {
+      solo: "solo",
+      "3d-solo": "3d-solo",
+      survival: "survival",
+      zombie: "zombie",
+      arena: "arena",
+      infection: "infection",
+      ctf: "ctf",
+      koth: "koth",
+      gungame: "gungame",
+      vip: "vip",
+      lms: "lms",
+      dodgeball: "dodgeball",
+      payload: "payload",
+      sniper: "sniper",
+      tag: "tag",
+      bounty: "bounty",
+      demolition: "demolition",
+      medic: "medic",
+      ranked: "ranked",
+      school: "school",
+      boss: "boss",
+      blitz: "blitz",
+      juggernaut: "juggernaut",
+      stealth: "stealth",
+      mirror: "mirror",
+      lowgrav: "lowgrav",
+      chaos: "chaos",
+      headhunter: "headhunter",
+      vampire: "vampire",
+      frostbite: "frostbite",
+      titan: "titan",
+      quickplay: "quickplay",
+    };
+
+    const normalizedMode = routeGamemode.toLowerCase();
+    const mode = modeFromUrlMap[normalizedMode];
+ main
     if (!mode) {
       toast.error(`Unknown game mode in URL: ${routeGamemode}`);
       return;
@@ -228,6 +276,7 @@ const Index = () => {
     toast.success(`Loaded ${normalizedMode.toUpperCase()} from play URL for ${normalizedUsername}`);
   }, [loading, routeGamemode, routeRole, routeUsername]);
 
+ codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
   useEffect(() => {
     if (!gameMode || loading) return;
 
@@ -241,6 +290,7 @@ const Index = () => {
     }
   }, [gameMode, isAdmin, isOwner, isTeacher, loading, location.pathname, navigate, username]);
 
+ main
 
   const checkClassMemberStatus = async () => {
     if (!user) return;
@@ -445,7 +495,12 @@ const Index = () => {
           onShowBetaPanel={() => setShowBetaPanel(true)} onShowSettings={() => setShowSettings(true)} onShowGlobalChat={() => setShowGlobalChat(true)}
           onShowInventory={() => setShowInventory(true)} onShowItemShop={() => setShowItemShop(true)} onShowRedeemCodes={() => setShowRedeemCodes(true)}
           onShowEventSchedule={() => setShowEventSchedule(true)} onShowFoodPass={() => setShowFoodPass(true)} onShowProfile={() => setShowProfile(true)}
+ codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
           onShowRanked={() => launchModeWithRoute("ranked")}
+=======
+          onShowGamemodeCreator={() => setShowGamemodeCreator(true)}
+          onShowRanked={() => setGameMode("ranked")}
+main
         />
       )}
 
@@ -527,6 +582,7 @@ const Index = () => {
       <InventoryModal open={showInventory} onOpenChange={setShowInventory} onEquipPower={(power) => setEquippedPower(power)} />
       <ShopModal open={showItemShop} onOpenChange={setShowItemShop} />
       <ServicePanel open={showServicePanel} onOpenChange={setShowServicePanel} />
+      <GamemodeCreator open={showGamemodeCreator} onOpenChange={setShowGamemodeCreator} />
       
       {user && username && !gameMode && <LoginStreakTracker userId={user.id} username={username} />}
       {user && username && <GlobalChatModal open={showGlobalChat} onOpenChange={setShowGlobalChat} userId={user.id} username={username} />}

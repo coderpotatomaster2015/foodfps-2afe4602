@@ -4,7 +4,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, Smartphone, Volume2, Palette, Check, Box } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Settings, Smartphone, Volume2, Palette, Check, Box, MousePointer } from "lucide-react";
 
 interface SettingsModalProps {
   open: boolean;
@@ -102,6 +103,45 @@ const playSound = (soundType: "click" | "shoot" | "hit" | "pickup" | "gameOver" 
 // Export sound utility for use in other components
 export { playSound };
 
+const CURSOR_COLORS = [
+  { name: "Default", value: "default", color: "" },
+  { name: "Red", value: "red", color: "#EF4444" },
+  { name: "Blue", value: "blue", color: "#3B82F6" },
+  { name: "Green", value: "green", color: "#22C55E" },
+  { name: "Yellow", value: "yellow", color: "#EAB308" },
+  { name: "Purple", value: "purple", color: "#A855F7" },
+  { name: "Pink", value: "pink", color: "#EC4899" },
+  { name: "Orange", value: "orange", color: "#F97316" },
+  { name: "Cyan", value: "cyan", color: "#06B6D4" },
+  { name: "White", value: "white", color: "#FFFFFF" },
+];
+
+const generateCursorSVG = (color: string) => {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path d='M5 3l14 8-6 2-4 6z' fill='${color}' stroke='black' stroke-width='1'/></svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 0 0, auto`;
+};
+
+const applyCursor = (cursorId: string) => {
+  const cursor = CURSOR_COLORS.find(c => c.value === cursorId);
+  if (!cursor || cursorId === "default") {
+    document.documentElement.style.removeProperty("cursor");
+    document.body.style.removeProperty("cursor");
+    // Remove all cursor overrides
+    const style = document.getElementById("foodfps-cursor-style");
+    if (style) style.remove();
+    return;
+  }
+  // Apply globally with a style tag
+  let style = document.getElementById("foodfps-cursor-style");
+  if (!style) {
+    style = document.createElement("style");
+    style.id = "foodfps-cursor-style";
+    document.head.appendChild(style);
+  }
+  const cursorValue = generateCursorSVG(cursor.color);
+  style.textContent = `*, *::before, *::after { cursor: ${cursorValue} !important; } button, a, [role="button"], input, select, textarea { cursor: ${cursorValue} !important; }`;
+};
+
 export const SettingsModal = ({ 
   open, 
   onOpenChange, 
@@ -116,6 +156,7 @@ export const SettingsModal = ({
   const [threeDModeLocal, setThreeDModeLocal] = useState(threeDModeProp);
   const [tapCount, setTapCount] = useState(0);
   const [tapTimer, setTapTimer] = useState<NodeJS.Timeout | null>(null);
+  const [cursorColor, setCursorColor] = useState("default");
 
 
   useEffect(() => {
@@ -130,6 +171,12 @@ export const SettingsModal = ({
     if (savedTheme) {
       setSelectedTheme(savedTheme);
       applyTheme(savedTheme);
+    }
+
+    const savedCursor = localStorage.getItem("foodfps_cursor");
+    if (savedCursor) {
+      setCursorColor(savedCursor);
+      applyCursor(savedCursor);
     }
 
     const saved3D = localStorage.getItem("foodfps_3d");
@@ -209,6 +256,7 @@ export const SettingsModal = ({
           </DialogDescription>
         </DialogHeader>
 
+        <ScrollArea className="h-[60vh]">
         <div className="space-y-4 py-4">
           {/* Touchscreen Mode */}
           <Card className="p-4">
@@ -267,6 +315,53 @@ export const SettingsModal = ({
             </div>
           </Card>
 
+          {/* Cursor Color */}
+          <Card className="p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <MousePointer className="w-5 h-5 text-primary" />
+              <div>
+                <Label className="font-medium">Cursor Color</Label>
+                <p className="text-xs text-muted-foreground">
+                  Choose a custom cursor color
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-5 gap-2">
+              {CURSOR_COLORS.map((cursor) => {
+                const isSelected = cursorColor === cursor.value;
+                return (
+                  <Button
+                    key={cursor.value}
+                    variant="outline"
+                    size="sm"
+                    className={`relative h-10 p-1 ${isSelected ? "ring-2 ring-primary" : ""}`}
+                    onClick={() => {
+                      setCursorColor(cursor.value);
+                      localStorage.setItem("foodfps_cursor", cursor.value);
+                      applyCursor(cursor.value);
+                      playSound("click");
+                    }}
+                    title={cursor.name}
+                  >
+                    {cursor.value === "default" ? (
+                      <span className="text-xs">Default</span>
+                    ) : (
+                      <div className="w-full h-full rounded" style={{ backgroundColor: cursor.color }} />
+                    )}
+                    {isSelected && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Check className="w-3 h-3 text-white drop-shadow-lg" />
+                      </div>
+                    )}
+                  </Button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              {CURSOR_COLORS.find(c => c.value === cursorColor)?.name || "Default"}
+            </p>
+          </Card>
+
           {/* UI Color Theme */}
           <Card className="p-4">
             <div className="flex items-center gap-3 mb-3">
@@ -308,6 +403,7 @@ export const SettingsModal = ({
             </p>
           </Card>
         </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

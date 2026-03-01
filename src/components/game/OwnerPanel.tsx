@@ -321,12 +321,28 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
       return;
     }
 
+codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
     const notes = (reviewNotesById[request.id] || "").trim();
     const shareUrl = buildPlayUrl(request.gamemode_slug, request.username, request.role);
 
     const { error } = await supabase
       .from("custom_gamemode_requests")
       .delete()
+
+    const notes = (reviewNotesById[request.id] || "").trim() || null;
+    const shareUrl = approve ? buildPlayUrl(request.gamemode_slug, request.username, request.role) : null;
+
+    const { error } = await supabase
+      .from("custom_gamemode_requests")
+      .update({
+        status: approve ? "approved" : "declined",
+        approval_notes: notes,
+        approved_by: userId,
+        approved_at: new Date().toISOString(),
+        share_url: shareUrl,
+        updated_at: new Date().toISOString(),
+      })
+    main
       .eq("id", request.id);
 
     if (error) {
@@ -334,7 +350,7 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
       toast.error("Failed to review custom game mode request");
       return;
     }
-
+ codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
     setReviewNotesById((previous) => {
       const next = { ...previous };
       delete next[request.id];
@@ -350,6 +366,17 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
       }
     } else {
       toast.success(notes ? `Declined and removed request. Notes: ${notes}` : "Declined and removed request.");
+        
+    if (approve && shareUrl) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Custom game mode approved and URL copied to clipboard");
+      } catch {
+        toast.success("Custom game mode approved");
+      }
+    } else {
+      toast.success("Custom game mode request declined");
+ main
     }
 
     await loadCustomGameModeRequests();

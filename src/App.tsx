@@ -14,6 +14,7 @@ import Hacks from "./pages/Hacks";
 import AdminAccountViewer from "./pages/AdminAccountViewer";
 import AdminPasswordReset from "./pages/AdminPasswordReset";
 import PrivateStuff from "./pages/PrivateStuff";
+import CustomGamemodePage from "./pages/CustomGamemodePage";
 import { BanCheck } from "./components/BanCheck";
 import { SEOHead, StructuredData } from "./components/SEOHead";
 import { toast } from "sonner";
@@ -66,8 +67,14 @@ const App = () => (
               <Route path="/userishackingorbanned" element={<AdminAccountViewer />} />
               <Route path="/adminpasswordreset" element={<AdminPasswordReset />} />
               <Route path="/privatestuffpasswordsandmore" element={<PrivateStuff />} />
+
+              {/* Dynamic gamemode route */}
               <Route path="/:gamemode/:username/play/:role" element={<Index />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
+              {/* Custom gamemode page */}
+              <Route path="/custom/:slug" element={<CustomGamemodePage />} />
+
+              {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

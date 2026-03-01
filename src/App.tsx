@@ -14,6 +14,7 @@ import Hacks from "./pages/Hacks";
 import AdminAccountViewer from "./pages/AdminAccountViewer";
 import AdminPasswordReset from "./pages/AdminPasswordReset";
 import PrivateStuff from "./pages/PrivateStuff";
+import CustomGamemodePage from "./pages/CustomGamemodePage";
 import { BanCheck } from "./components/BanCheck";
 import { SEOHead, StructuredData } from "./components/SEOHead";
 import { toast } from "sonner";

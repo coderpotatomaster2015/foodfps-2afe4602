@@ -414,6 +414,7 @@ const Index = () => {
       <InventoryModal open={showInventory} onOpenChange={setShowInventory} onEquipPower={(power) => setEquippedPower(power)} />
       <ShopModal open={showItemShop} onOpenChange={setShowItemShop} />
       <ServicePanel open={showServicePanel} onOpenChange={setShowServicePanel} />
+      <GamemodeCreator open={showGamemodeCreator} onOpenChange={setShowGamemodeCreator} />
       
       {user && username && !gameMode && <LoginStreakTracker userId={user.id} username={username} />}
       {user && username && <GlobalChatModal open={showGlobalChat} onOpenChange={setShowGlobalChat} userId={user.id} username={username} />}

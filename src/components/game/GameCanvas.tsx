@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useCanvasRecording } from "@/hooks/useCanvasRecording";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, MessageSquare, Shield } from "lucide-react";
 import { AdminChat } from "./AdminChat";
@@ -70,6 +69,14 @@ const WEAPONS: Record<Weapon, WeaponConfig> = {
 };
 
 const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "rifle", "sniper", "smg", "knife", "rpg", "axe", "flamethrower", "minigun", "railgun", "crossbow", "laser_pistol", "grenade_launcher", "katana", "dual_pistols", "plasma_rifle", "boomerang", "whip", "freeze_ray", "harpoon_gun"];
+
+const ANTI_CHEAT = {
+  maxSessionScore: 10000,
+  maxScorePerMinute: 2200,
+  maxMapBoundsMultiplier: 4,
+  maxAfkMs: 2 * 60 * 1000,
+  banHours: 24 * 365 * 10,
+} as const;
 
 
 type CustomSoloMode = "blitz" | "juggernaut" | "stealth" | "mirror" | "lowgrav" | "chaos" | "headhunter" | "vampire" | "frostbite" | "titan";
@@ -152,10 +159,39 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const gameLoopRef = useRef<number | null>(null);
   const specialPowerRef = useRef<string | null>(null);
   const teleportCooldownRef = useRef(0);
+  const lastActivityRef = useRef(Date.now());
+  const gameStartTimeRef = useRef(Date.now());
+  const antiCheatBanTriggeredRef = useRef(false);
   
   const { players, updatePlayerPosition, broadcastBullet, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode } = useMultiplayer(mode, roomCode, username);
   const soloVariant = SOLO_MODE_VARIANTS[mode as CustomSoloMode];
-  const { startRecording, stopRecording, isRecording } = useCanvasRecording(username, mode);
+
+  const banForCheating = useCallback(async (reason: string) => {
+    if (antiCheatBanTriggeredRef.current) return;
+    antiCheatBanTriggeredRef.current = true;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + ANTI_CHEAT.banHours);
+
+      await supabase.from("bans").insert({
+        user_id: user.id,
+        banned_by: user.id,
+        hours: ANTI_CHEAT.banHours,
+        reason: `Anti-cheat ban: ${reason}`,
+        expires_at: expiresAt.toISOString(),
+      });
+
+      toast.error("Anti-cheat triggered. Account banned until further notice.");
+      setGameOver(true);
+      onBack();
+    } catch (error) {
+      console.error("Anti-cheat ban failed:", error);
+    }
+  }, [onBack]);
 
   // Load special power from localStorage - check both equippedPower and selectedCustomSkin
   useEffect(() => {
@@ -370,6 +406,17 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || newScore <= 0) return;
+
+      if (newScore > ANTI_CHEAT.maxSessionScore) {
+        await banForCheating(`session score too high (${newScore})`);
+        return;
+      }
+
+      const elapsedMinutes = Math.max((Date.now() - gameStartTimeRef.current) / 60000, 1 / 6);
+      if (newScore / elapsedMinutes > ANTI_CHEAT.maxScorePerMinute) {
+        await banForCheating(`score rate too high (${Math.round(newScore / elapsedMinutes)}/min)`);
+        return;
+      }
 
       // Fetch current score from database to avoid stale state issues
       const { data: currentProfile } = await supabase
@@ -684,17 +731,14 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     gameStateRef.current.H = H;
 
     spawnTimeRef.current = performance.now();
+    gameStartTimeRef.current = Date.now();
+    lastActivityRef.current = Date.now();
     spawnImmunityRef.current = true;
     setSpawnImmunity(true);
     setTimeout(() => {
       spawnImmunityRef.current = false;
       setSpawnImmunity(false);
     }, 5000);
-
-    // Auto-start canvas recording
-    if (canvas) {
-      startRecording(canvas);
-    }
 
     let keys: Record<string, boolean> = {};
     let mouse = { x: W / 2, y: H / 2, down: false };
@@ -882,6 +926,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      lastActivityRef.current = Date.now();
       keys[e.key.toLowerCase()] = true;
       if (e.key.toLowerCase() === "r" && player.ammo < player.maxAmmo && !WEAPONS[player.weapon].isMelee) {
         player.ammo = player.maxAmmo;
@@ -941,20 +986,24 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
+      lastActivityRef.current = Date.now();
       keys[e.key.toLowerCase()] = false;
     };
 
     const handleMouseMove = (e: MouseEvent) => {
+      lastActivityRef.current = Date.now();
       const rect = canvas.getBoundingClientRect();
       mouse.x = (e.clientX - rect.left) * (canvas.width / rect.width);
       mouse.y = (e.clientY - rect.top) * (canvas.height / rect.height);
     };
 
     const handleMouseDown = (e: MouseEvent) => {
+      lastActivityRef.current = Date.now();
       if (e.button === 0) mouse.down = true;
     };
 
     const handleMouseUp = (e: MouseEvent) => {
+      lastActivityRef.current = Date.now();
       if (e.button === 0) mouse.down = false;
     };
 
@@ -971,6 +1020,24 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       const dt = Math.min(0.033, (now - last) / 1000);
       last = now;
       time += dt;
+
+      if (!antiCheatBanTriggeredRef.current) {
+        const afkDuration = Date.now() - lastActivityRef.current;
+        if (afkDuration > ANTI_CHEAT.maxAfkMs) {
+          banForCheating("AFK abuse detected");
+          return;
+        }
+
+        if (!Number.isFinite(player.x) || !Number.isFinite(player.y)) {
+          banForCheating("invalid player coordinates (possible glitch/bug abuse)");
+          return;
+        }
+
+        if (gameStateRef.current.mapBoundsMultiplier > ANTI_CHEAT.maxMapBoundsMultiplier) {
+          banForCheating(`map bounds exploit detected (${gameStateRef.current.mapBoundsMultiplier.toFixed(2)})`);
+          return;
+        }
+      }
 
       // Check if game over
       if (player.hp <= 0 && !adminStateRef.current.godMode) {
@@ -1676,12 +1743,9 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       canvas.removeEventListener("mouseup", handleMouseUp);
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
-  }, [unlockedWeapons, mode, soloVariant, deviceProfile, broadcastBullet, players, username, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode, playerSkin]);
+  }, [unlockedWeapons, mode, soloVariant, deviceProfile, broadcastBullet, players, username, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode, playerSkin, banForCheating]);
 
   const handleBackWithScoreboard = async () => {
-    // Stop recording and save
-    await stopRecording(score, kills);
-    
     // Save progress when leaving the game
     if (score > 0) {
       saveProgress(score);

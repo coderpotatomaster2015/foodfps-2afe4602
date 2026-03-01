@@ -11,6 +11,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import type { GameMode } from "@/pages/Index";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface GameModeSelectorProps {
   username: string;
@@ -83,6 +84,9 @@ export const GameModeSelector = ({
   const [search, setSearch] = useState("");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recentModes, setRecentModes] = useState<string[]>([]);
+  const [requestMode, setRequestMode] = useState(ALL_MODES[0]?.mode || "solo");
+  const [requestRole, setRequestRole] = useState("user");
+  const [submittingRequest, setSubmittingRequest] = useState(false);
 
   useEffect(() => {
     const savedFavorites = localStorage.getItem(FAVORITES_KEY);
@@ -124,6 +128,42 @@ export const GameModeSelector = ({
   const handleHostTimed = (minutes: number) => { onModeSelect("host", undefined, minutes); setShowHostOptions(false); };
   const toggleFavorite = (mode: string) => { setFavorites((current) => current.includes(mode) ? current.filter((m) => m !== mode) : [...current, mode]); };
   const launchRandomMode = () => { const available = ALL_MODES.filter((mode) => !isModeDisabled(mode)); const pick = available[Math.floor(Math.random() * available.length)]; toast.success(`Random mode selected: ${pick.title}`); startMode(pick.mode); };
+
+  const submitGameModeRequest = async () => {
+    setSubmittingRequest(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("You need to be signed in to send a request.");
+        return;
+      }
+
+      const normalizedMode = requestMode.toLowerCase();
+      const normalizedRole = requestRole.toLowerCase();
+      const allowedRoles = ["user", "teacher", "admin", "owner"];
+      if (!allowedRoles.includes(normalizedRole)) {
+        toast.error("Role must be user, teacher, admin, or owner.");
+        return;
+      }
+
+      const { error } = await supabase.from("custom_gamemode_requests").insert({
+        user_id: user.id,
+        username,
+        gamemode_slug: normalizedMode,
+        role: normalizedRole,
+      });
+
+      if (error) {
+        console.error("Failed to submit custom gamemode request:", error);
+        toast.error("Could not submit request. Please try again.");
+        return;
+      }
+
+      toast.success("Game mode request sent for owner approval.");
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
 
   useEffect(() => {
     const handleHotkeys = (event: KeyboardEvent) => {
@@ -182,6 +222,42 @@ export const GameModeSelector = ({
           <div><p className="text-xs text-muted-foreground">Daily spotlight</p><p className="font-semibold">{dailySpotlight.title} · {dailySpotlight.description}</p></div>
           <Button variant="outline" size="sm" onClick={() => startMode(dailySpotlight.mode)}>Play spotlight</Button>
         </div>
+      </Card>
+
+      <Card className="p-4 bg-card border-primary/30 space-y-3">
+        <div>
+          <p className="text-xs text-muted-foreground">Need a share link?</p>
+          <h3 className="font-semibold">Request game mode URL approval</h3>
+        </div>
+        <div className="grid md:grid-cols-3 gap-2">
+          <Input
+            value={requestMode}
+            onChange={(event) => setRequestMode(event.target.value.toLowerCase().trim())}
+            placeholder="gamemode-name"
+            list="gamemode-request-options"
+          />
+          <datalist id="gamemode-request-options">
+            {ALL_MODES.map((mode) => (
+              <option key={mode.mode} value={mode.mode} />
+            ))}
+          </datalist>
+          <Input
+            value={requestRole}
+            onChange={(event) => setRequestRole(event.target.value.toLowerCase().trim())}
+            placeholder="role (user/admin/teacher/owner)"
+            list="gamemode-request-role-options"
+          />
+          <datalist id="gamemode-request-role-options">
+            <option value="user" />
+            <option value="teacher" />
+            <option value="admin" />
+            <option value="owner" />
+          </datalist>
+          <Button onClick={submitGameModeRequest} disabled={submittingRequest || !requestMode || !requestRole} className="md:col-span-1">
+            {submittingRequest ? "Sending..." : "Send Request"}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">Stored in DB table <span className="font-mono">custom_gamemode_requests</span> for owner review.</p>
       </Card>
 
       {recentModes.length > 0 && (

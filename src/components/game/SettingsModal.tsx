@@ -173,6 +173,12 @@ export const SettingsModal = ({
       applyTheme(savedTheme);
     }
 
+    const savedCursor = localStorage.getItem("foodfps_cursor");
+    if (savedCursor) {
+      setCursorColor(savedCursor);
+      applyCursor(savedCursor);
+    }
+
     const saved3D = localStorage.getItem("foodfps_3d");
     const isSaved3DEnabled = saved3D === "true";
     setThreeDModeLocal(isSaved3DEnabled);

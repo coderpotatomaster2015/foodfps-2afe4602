@@ -331,7 +331,7 @@ const Index = () => {
           onShowBetaPanel={() => setShowBetaPanel(true)} onShowSettings={() => setShowSettings(true)} onShowGlobalChat={() => setShowGlobalChat(true)}
           onShowInventory={() => setShowInventory(true)} onShowItemShop={() => setShowItemShop(true)} onShowRedeemCodes={() => setShowRedeemCodes(true)}
           onShowEventSchedule={() => setShowEventSchedule(true)} onShowFoodPass={() => setShowFoodPass(true)} onShowProfile={() => setShowProfile(true)}
-          onShowRanked={() => setGameMode("ranked")}
+          onShowGamemodeCreator={() => setShowGamemodeCreator(true)}
         />
       )}
 

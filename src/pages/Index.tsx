@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { UsernameModal } from "@/components/game/UsernameModal";
 import { GameModeSelector } from "@/components/game/GameModeSelector";
 import { GameCanvas } from "@/components/game/GameCanvas";
@@ -71,6 +71,7 @@ export type GameMode = "solo" | "3d-solo" | "host" | "join" | "offline" | "boss"
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const { gamemode: routeGamemode, username: routeUsername, role: routeRole } = useParams();
   const [username, setUsername] = useState<string>("");
   const [gameMode, setGameMode] = useState<GameMode>(null);
   const [roomCode, setRoomCode] = useState<string>("");
@@ -152,6 +153,70 @@ const Index = () => {
     if (!user) { navigate("/auth"); return; }
     checkAdminRole(); checkTeacherRole(); checkBetaTester(); checkClassMemberStatus(); loadUserProfile(); loadUnreadMessages();
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!routeGamemode || !routeUsername || !routeRole) return;
+
+    const role = routeRole.toLowerCase();
+    const allowedRoles = ["owner", "admin", "teacher", "user"];
+    if (!allowedRoles.includes(role)) {
+      toast.error("Invalid play URL role.");
+      return;
+    }
+
+    const modeFromUrlMap: Record<string, GameMode> = {
+      solo: "solo",
+      "3d-solo": "3d-solo",
+      survival: "survival",
+      zombie: "zombie",
+      arena: "arena",
+      infection: "infection",
+      ctf: "ctf",
+      koth: "koth",
+      gungame: "gungame",
+      vip: "vip",
+      lms: "lms",
+      dodgeball: "dodgeball",
+      payload: "payload",
+      sniper: "sniper",
+      tag: "tag",
+      bounty: "bounty",
+      demolition: "demolition",
+      medic: "medic",
+      ranked: "ranked",
+      school: "school",
+      boss: "boss",
+      blitz: "blitz",
+      juggernaut: "juggernaut",
+      stealth: "stealth",
+      mirror: "mirror",
+      lowgrav: "lowgrav",
+      chaos: "chaos",
+      headhunter: "headhunter",
+      vampire: "vampire",
+      frostbite: "frostbite",
+      titan: "titan",
+      quickplay: "quickplay",
+    };
+
+    const normalizedMode = routeGamemode.toLowerCase();
+    const mode = modeFromUrlMap[normalizedMode];
+    if (!mode) {
+      toast.error(`Unknown game mode in URL: ${routeGamemode}`);
+      return;
+    }
+
+    const normalizedUsername = routeUsername.trim();
+    if (normalizedUsername.length > 0) {
+      setUsername(normalizedUsername);
+      localStorage.setItem("foodfps_username", normalizedUsername);
+    }
+
+    setGameMode(mode);
+    toast.success(`Loaded ${normalizedMode.toUpperCase()} from play URL for ${normalizedUsername}`);
+  }, [loading, routeGamemode, routeRole, routeUsername]);
+
 
   const checkClassMemberStatus = async () => {
     if (!user) return;

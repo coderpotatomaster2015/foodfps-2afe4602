@@ -1576,6 +1576,52 @@ export type Database = {
         }
         Relationships: []
       }
+
+      custom_gamemode_requests: {
+        Row: {
+          approval_notes: string | null
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          gamemode_slug: string
+          id: string
+          role: string
+          share_url: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          approval_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          gamemode_slug: string
+          id?: string
+          role?: string
+          share_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          approval_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          gamemode_slug?: string
+          id?: string
+          role?: string
+          share_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

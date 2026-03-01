@@ -566,6 +566,96 @@ export type Database = {
           },
         ]
       }
+      custom_gamemodes: {
+        Row: {
+          allowed_weapons: string[]
+          bg_color_bottom: string
+          bg_color_top: string
+          created_at: string
+          creator_id: string
+          creator_username: string
+          description: string | null
+          enemy_color: string
+          enemy_health: number
+          enemy_speed_mult: number
+          id: string
+          is_public: boolean
+          map_background: string | null
+          max_enemies: number
+          name: string
+          pickup_chance: number
+          player_health: number
+          player_speed_mult: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          score_multiplier: number
+          show_health_gui: boolean
+          show_score: boolean
+          slug: string
+          spawn_interval: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_weapons?: string[]
+          bg_color_bottom?: string
+          bg_color_top?: string
+          created_at?: string
+          creator_id: string
+          creator_username: string
+          description?: string | null
+          enemy_color?: string
+          enemy_health?: number
+          enemy_speed_mult?: number
+          id?: string
+          is_public?: boolean
+          map_background?: string | null
+          max_enemies?: number
+          name: string
+          pickup_chance?: number
+          player_health?: number
+          player_speed_mult?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          score_multiplier?: number
+          show_health_gui?: boolean
+          show_score?: boolean
+          slug: string
+          spawn_interval?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_weapons?: string[]
+          bg_color_bottom?: string
+          bg_color_top?: string
+          created_at?: string
+          creator_id?: string
+          creator_username?: string
+          description?: string | null
+          enemy_color?: string
+          enemy_health?: number
+          enemy_speed_mult?: number
+          id?: string
+          is_public?: boolean
+          map_background?: string | null
+          max_enemies?: number
+          name?: string
+          pickup_chance?: number
+          player_health?: number
+          player_speed_mult?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          score_multiplier?: number
+          show_health_gui?: boolean
+          show_score?: boolean
+          slug?: string
+          spawn_interval?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       custom_skins: {
         Row: {
           created_at: string

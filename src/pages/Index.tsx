@@ -56,6 +56,7 @@ import { InventoryModal } from "@/components/game/InventoryModal";
 import { ShopModal } from "@/components/game/ShopModal";
 import { ServicePanel } from "@/components/game/ServicePanel";
 import { ImpersonationBanner } from "@/components/game/ImpersonationBanner";
+import { GamemodeCreator } from "@/components/game/GamemodeCreator";
 import { LoginStreakTracker } from "@/components/game/LoginStreakTracker";
 import { TermsModal } from "@/components/game/TermsModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -103,6 +104,7 @@ const Index = () => {
   const [showInventory, setShowInventory] = useState(false);
   const [showItemShop, setShowItemShop] = useState(false);
   const [showServicePanel, setShowServicePanel] = useState(false);
+  const [showGamemodeCreator, setShowGamemodeCreator] = useState(false);
   const [touchscreenMode, setTouchscreenMode] = useState(false);
   const [threeDMode, setThreeDMode] = useState(false);
   const [websiteEnabled, setWebsiteEnabled] = useState(true);
@@ -394,6 +396,7 @@ const Index = () => {
           onShowBetaPanel={() => setShowBetaPanel(true)} onShowSettings={() => setShowSettings(true)} onShowGlobalChat={() => setShowGlobalChat(true)}
           onShowInventory={() => setShowInventory(true)} onShowItemShop={() => setShowItemShop(true)} onShowRedeemCodes={() => setShowRedeemCodes(true)}
           onShowEventSchedule={() => setShowEventSchedule(true)} onShowFoodPass={() => setShowFoodPass(true)} onShowProfile={() => setShowProfile(true)}
+          onShowGamemodeCreator={() => setShowGamemodeCreator(true)}
           onShowRanked={() => setGameMode("ranked")}
         />
       )}
@@ -476,6 +479,7 @@ const Index = () => {
       <InventoryModal open={showInventory} onOpenChange={setShowInventory} onEquipPower={(power) => setEquippedPower(power)} />
       <ShopModal open={showItemShop} onOpenChange={setShowItemShop} />
       <ServicePanel open={showServicePanel} onOpenChange={setShowServicePanel} />
+      <GamemodeCreator open={showGamemodeCreator} onOpenChange={setShowGamemodeCreator} />
       
       {user && username && !gameMode && <LoginStreakTracker userId={user.id} username={username} />}
       {user && username && <GlobalChatModal open={showGlobalChat} onOpenChange={setShowGlobalChat} userId={user.id} username={username} />}

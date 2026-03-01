@@ -2,7 +2,7 @@ import { useState } from "react";
 import { 
   Mail, Sparkles, Globe, Palette, Trophy, Gift, FlaskConical, 
   Settings, ChevronLeft, ChevronRight, MessageCircle, Ticket, CalendarDays,
-  Utensils, User, Swords, Backpack, Store
+  Utensils, User, Swords, Backpack, Store, Gamepad2
 } from "lucide-react";
 
 interface GameSidebarProps {
@@ -25,6 +25,7 @@ interface GameSidebarProps {
   onShowRanked: () => void;
   onShowInventory?: () => void;
   onShowItemShop?: () => void;
+  onShowGamemodeCreator?: () => void;
 }
 
 export const GameSidebar = ({
@@ -47,6 +48,7 @@ export const GameSidebar = ({
   onShowRanked,
   onShowInventory,
   onShowItemShop,
+  onShowGamemodeCreator,
 }: GameSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -77,6 +79,7 @@ export const GameSidebar = ({
 
   const otherItems = [
     { icon: User, label: "My Profile", onClick: onShowProfile },
+    { icon: Gamepad2, label: "Create Mode", onClick: onShowGamemodeCreator },
     { icon: Sparkles, label: "Updates", onClick: onShowUpdates },
     ...(isBetaTester || isAdmin ? [{ icon: FlaskConical, label: "Beta", onClick: onShowBetaPanel }] : []),
     { icon: Settings, label: "Settings", onClick: onShowSettings },

@@ -103,6 +103,7 @@ const Index = () => {
   const [showInventory, setShowInventory] = useState(false);
   const [showItemShop, setShowItemShop] = useState(false);
   const [showServicePanel, setShowServicePanel] = useState(false);
+  const [showGamemodeCreator, setShowGamemodeCreator] = useState(false);
   const [touchscreenMode, setTouchscreenMode] = useState(false);
   const [threeDMode, setThreeDMode] = useState(false);
   const [websiteEnabled, setWebsiteEnabled] = useState(true);

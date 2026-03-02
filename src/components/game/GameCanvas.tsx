@@ -6,6 +6,7 @@ import { OnlinePlayersModal } from "./OnlinePlayersModal";
 import { BanModal } from "./BanModal";
 import { Scoreboard } from "./Scoreboard";
 import { TouchControls } from "./TouchControls";
+import { OwnerDebugPanel } from "./OwnerDebugPanel";
 import type { GameMode } from "@/pages/Index";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";

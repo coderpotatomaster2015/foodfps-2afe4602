@@ -101,6 +101,8 @@ interface GameSettings {
 }
 
 export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenGlobalChat, onOpenSocial, onOpenMessages, onOpenInventory, onOpenProfile, onOpenSkinsShop, onOpenItemShop, onOpenFoodPass, onOpenLeaderboard, onReopenOwnerPanel, currentGameMode }: OwnerPanelProps) => {
+  const [pendingGamemodes, setPendingGamemodes] = useState<any[]>([]);
+
   const [ads, setAds] = useState<Ad[]>([]);
   const [adSignups, setAdSignups] = useState<AdSignup[]>([]);
   const [ipBans, setIPBans] = useState<IPBan[]>([]);

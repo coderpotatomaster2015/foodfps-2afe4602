@@ -1990,6 +1990,29 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           }}
         />
       )}
+
+      {isOwnerUser && (
+        <OwnerDebugPanel
+          values={{
+            enemyHealth: debugOverridesRef.current.enemyHealth || 100,
+            playerHealth: debugOverridesRef.current.playerHealth || 100,
+            maxEnemies: debugOverridesRef.current.maxEnemies || 10,
+            enemySpeed: debugOverridesRef.current.enemySpeed,
+            playerSpeed: debugOverridesRef.current.playerSpeed,
+            spawnInterval: debugOverridesRef.current.spawnInterval || 2,
+            enemyHostile: debugOverridesRef.current.enemyHostile,
+            godMode: debugOverridesRef.current.godMode,
+            infiniteAmmo: debugOverridesRef.current.infiniteAmmo,
+            scoreMultiplier: debugOverridesRef.current.scoreMultiplier,
+          }}
+          onChange={(partial) => {
+            debugOverridesRef.current = { ...debugOverridesRef.current, ...partial, active: true };
+          }}
+          enemyCount={debugEnemyCount}
+          playerPos={debugPlayerPos}
+          fps={debugFps}
+        />
+      )}
     </div>
   );
 };

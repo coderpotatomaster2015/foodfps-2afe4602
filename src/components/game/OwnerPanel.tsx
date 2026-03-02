@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Megaphone, Image, Check, X as XIcon, Loader2, Crown, Sparkles, Users, 
          Ban, Paintbrush, Coins, Gift, MessageCircle, Zap, Shield, GraduationCap, 
-         Swords, Calculator, Trophy, Radio, Cake, Settings, Crosshair, Bot, Play, Square } from "lucide-react";
+         Swords, Calculator, Trophy, Radio, Cake, Settings, Crosshair, Bot, Play, Square, Gamepad2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SkinEditor } from "./SkinEditor";

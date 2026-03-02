@@ -1381,7 +1381,10 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         }
       }
       
-      if (shouldSpawn && time - lastSpawn > enemySpawnInterval && !modeWon) {
+      const dbgSpawnInterval = debugOverridesRef.current.active && debugOverridesRef.current.spawnInterval > 0 ? debugOverridesRef.current.spawnInterval : enemySpawnInterval;
+      const dbgMaxEnemies = debugOverridesRef.current.active && debugOverridesRef.current.maxEnemies > 0 ? debugOverridesRef.current.maxEnemies : 999;
+      
+      if (shouldSpawn && time - lastSpawn > dbgSpawnInterval && !modeWon && enemies.length < dbgMaxEnemies) {
         // In survival mode, only spawn if there are wave enemies remaining
         if (mode === "survival") {
           if (waveEnemiesRemaining > 0) {

@@ -1106,6 +1106,9 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
             <TabsTrigger value="aiplay" className="gap-1 text-xs">
               <Bot className="w-3 h-3" /> AI Player
             </TabsTrigger>
+            <TabsTrigger value="gamemodes" className="gap-1 text-xs">
+              <Gamepad2 className="w-3 h-3" /> Custom Modes ({pendingGamemodes.filter(m => m.status === "pending").length})
+            </TabsTrigger>
           </TabsList>
 
           <ScrollArea className="flex-1 p-4">

@@ -1038,10 +1038,38 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
 
     let last = performance.now();
 
+    let fpsFrames = 0;
+    let fpsTime = 0;
+
     const loop = (now: number) => {
       const dt = Math.min(0.033, (now - last) / 1000);
       last = now;
       time += dt;
+
+      // FPS counter for debug
+      fpsFrames++;
+      fpsTime += dt;
+      if (fpsTime >= 1) {
+        setDebugFps(fpsFrames);
+        fpsFrames = 0;
+        fpsTime = 0;
+      }
+
+      // Apply debug overrides
+      const dbg = debugOverridesRef.current;
+      if (dbg.active) {
+        adminStateRef.current.godMode = dbg.godMode;
+        adminStateRef.current.infiniteAmmo = dbg.infiniteAmmo;
+        if (dbg.playerHealth > 0 && player.maxHp !== dbg.playerHealth) {
+          player.maxHp = dbg.playerHealth;
+          if (player.hp > dbg.playerHealth) { player.hp = dbg.playerHealth; setHealth(dbg.playerHealth); }
+        }
+        player.speed = 180 * (soloVariant?.playerSpeedMult ?? 1) * dbg.playerSpeed;
+      }
+
+      // Update debug state for UI
+      setDebugEnemyCount(enemies.length);
+      setDebugPlayerPos({ x: player.x, y: player.y });
 
       if (!antiCheatBanTriggeredRef.current) {
         const afkDuration = Date.now() - lastActivityRef.current;

@@ -145,6 +145,38 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
     }
   };
 
+  const currentConfig = {
+    name: name || "Test Mode",
+    enemy_health: enemyHealth, player_health: playerHealth, allowed_weapons: allowedWeapons,
+    show_score: showScore, show_health_gui: showHealthGui, enemy_speed_mult: enemySpeedMult,
+    player_speed_mult: playerSpeedMult, spawn_interval: spawnInterval, score_multiplier: scoreMultiplier,
+    enemy_color: enemyColor, bg_color_top: bgColorTop, bg_color_bottom: bgColorBottom,
+    max_enemies: maxEnemies, pickup_chance: pickupChance,
+  };
+
+  if (testing) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-5xl h-[90vh] flex flex-col p-2">
+          <div className="flex items-center justify-between px-2">
+            <h3 className="font-bold text-sm">Testing: {name || "Unnamed"}</h3>
+            <Button size="sm" variant="outline" onClick={() => setTesting(false)}>
+              <ArrowLeft className="w-3 h-3 mr-1" /> Back to Editor
+            </Button>
+          </div>
+          <div className="flex-1 flex items-center justify-center">
+            <CustomGamemodeCanvas
+              config={currentConfig}
+              username="Creator"
+              onBack={() => setTesting(false)}
+              playerSkin={localStorage.getItem("foodfps_skin") || "#FFF3D6"}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl h-[85vh] flex flex-col">

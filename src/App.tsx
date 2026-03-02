@@ -67,14 +67,8 @@ const App = () => (
               <Route path="/userishackingorbanned" element={<AdminAccountViewer />} />
               <Route path="/adminpasswordreset" element={<AdminPasswordReset />} />
               <Route path="/privatestuffpasswordsandmore" element={<PrivateStuff />} />
-
-              {/* Dynamic gamemode route */}
-              <Route path="/:gamemode/:username/play/:role" element={<Index />} />
-
-              {/* Custom gamemode page */}
               <Route path="/custom/:slug" element={<CustomGamemodePage />} />
-
-              {/* Catch-all */}
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Megaphone, Image, Check, X as XIcon, Loader2, Crown, Sparkles, Users, 
          Ban, Paintbrush, Coins, Gift, MessageCircle, Zap, Shield, GraduationCap, 
-         Swords, Calculator, Trophy, Radio, Cake, Settings, Crosshair, Bot, Play, Square, Link2, Clipboard } from "lucide-react";
+         Swords, Calculator, Trophy, Radio, Cake, Settings, Crosshair, Bot, Play, Square } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SkinEditor } from "./SkinEditor";
@@ -100,21 +100,6 @@ interface GameSettings {
   normal_disabled_message: string | null;
 }
 
-interface CustomGameModeRequest {
-  id: string;
-  user_id: string;
-  username: string;
-  gamemode_slug: string;
-  role: string;
-  status: string;
-  approval_notes: string | null;
-  approved_by: string | null;
-  approved_at: string | null;
-  created_at: string;
-  updated_at: string;
-  share_url: string | null;
-}
-
 export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenGlobalChat, onOpenSocial, onOpenMessages, onOpenInventory, onOpenProfile, onOpenSkinsShop, onOpenItemShop, onOpenFoodPass, onOpenLeaderboard, onReopenOwnerPanel, currentGameMode }: OwnerPanelProps) => {
   const [ads, setAds] = useState<Ad[]>([]);
   const [adSignups, setAdSignups] = useState<AdSignup[]>([]);
@@ -129,8 +114,6 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
     school_disabled_message: null,
     normal_disabled_message: null
   });
-  const [customGameModeRequests, setCustomGameModeRequests] = useState<CustomGameModeRequest[]>([]);
-  const [reviewNotesById, setReviewNotesById] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [userId, setUserId] = useState<string>("");
@@ -196,8 +179,7 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
       loadChatBannedUsers(),
       loadUsers(),
       loadBroadcasts(),
-      loadGameSettings(),
-      loadCustomGameModeRequests()
+      loadGameSettings()
     ]);
   };
 
@@ -291,95 +273,6 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
       setSchoolDisabledMsg((data as any).school_disabled_message || "");
       setNormalDisabledMsg((data as any).normal_disabled_message || "");
     }
-  };
-
-  const loadCustomGameModeRequests = async () => {
-    const { data, error } = await supabase
-      .from("custom_gamemode_requests")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(100);
-
-    if (error) {
-      console.error("Error loading custom gamemode requests:", error);
-      return;
-    }
-
-    setCustomGameModeRequests((data || []) as CustomGameModeRequest[]);
-  };
-
-  const buildPlayUrl = (gamemodeSlug: string, usernameValue: string, role: string) => {
-    const safeMode = encodeURIComponent(gamemodeSlug.toLowerCase());
-    const safeUser = encodeURIComponent(usernameValue);
-    const safeRole = encodeURIComponent(role.toLowerCase());
-    return `${window.location.origin}/${safeMode}/${safeUser}/play/${safeRole}`;
-  };
-
-  const reviewCustomGameModeRequest = async (request: CustomGameModeRequest, approve: boolean) => {
-    if (!userId) {
-      toast.error("Unable to review request: missing owner session");
-      return;
-    }
-
-codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
-    const notes = (reviewNotesById[request.id] || "").trim();
-    const shareUrl = buildPlayUrl(request.gamemode_slug, request.username, request.role);
-
-    const { error } = await supabase
-      .from("custom_gamemode_requests")
-      .delete()
-
-    const notes = (reviewNotesById[request.id] || "").trim() || null;
-    const shareUrl = approve ? buildPlayUrl(request.gamemode_slug, request.username, request.role) : null;
-
-    const { error } = await supabase
-      .from("custom_gamemode_requests")
-      .update({
-        status: approve ? "approved" : "declined",
-        approval_notes: notes,
-        approved_by: userId,
-        approved_at: new Date().toISOString(),
-        share_url: shareUrl,
-        updated_at: new Date().toISOString(),
-      })
-    main
-      .eq("id", request.id);
-
-    if (error) {
-      console.error("Error reviewing custom gamemode request:", error);
-      toast.error("Failed to review custom game mode request");
-      return;
-    }
- codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
-    setReviewNotesById((previous) => {
-      const next = { ...previous };
-      delete next[request.id];
-      return next;
-    });
-
-    if (approve) {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        toast.success(notes ? `Approved and removed request. Notes: ${notes}` : "Approved and removed request. URL copied.");
-      } catch {
-        toast.success(notes ? `Approved and removed request. Notes: ${notes}` : "Approved and removed request.");
-      }
-    } else {
-      toast.success(notes ? `Declined and removed request. Notes: ${notes}` : "Declined and removed request.");
-        
-    if (approve && shareUrl) {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        toast.success("Custom game mode approved and URL copied to clipboard");
-      } catch {
-        toast.success("Custom game mode approved");
-      }
-    } else {
-      toast.success("Custom game mode request declined");
- main
-    }
-
-    await loadCustomGameModeRequests();
   };
 
   const generateAdImage = async () => {
@@ -1169,9 +1062,6 @@ codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
             <TabsTrigger value="settings" className="gap-1 text-xs">
               <Settings className="w-3 h-3" /> Mode Settings
             </TabsTrigger>
-            <TabsTrigger value="custom-gamemodes" className="gap-1 text-xs">
-              <Link2 className="w-3 h-3" /> Custom Modes ({customGameModeRequests.filter((request) => request.status === "pending").length})
-            </TabsTrigger>
             <TabsTrigger value="updates" className="gap-1 text-xs">
               <Sparkles className="w-3 h-3" /> Updates
             </TabsTrigger>
@@ -1859,95 +1749,6 @@ codex/remove-game-recordings-and-add-anti-cheat-1wcn0v
             {/* Class Codes Tab */}
             <TabsContent value="classes" className="mt-0">
               <ClassCodePanel />
-            </TabsContent>
-
-            {/* Custom Gamemode Approval Tab */}
-            <TabsContent value="custom-gamemodes" className="mt-0 space-y-4">
-              <Card className="p-4 space-y-2">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Link2 className="w-4 h-4 text-primary" />
-                  Custom Gamemode Approval Queue
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Review requests and approve URLs using the pattern <span className="font-mono text-xs">/gamemode-name/username/play/role</span>.
-                </p>
-              </Card>
-
-              {customGameModeRequests.length === 0 ? (
-                <Card className="p-6 text-sm text-muted-foreground text-center">No custom gamemode requests found.</Card>
-              ) : (
-                customGameModeRequests.map((request) => {
-                  const generatedUrl = buildPlayUrl(request.gamemode_slug, request.username, request.role);
-                  const notes = reviewNotesById[request.id] || "";
-                  const statusClass = request.status === "approved"
-                    ? "text-green-500"
-                    : request.status === "declined"
-                      ? "text-red-500"
-                      : "text-yellow-500";
-
-                  return (
-                    <Card key={request.id} className="p-4 space-y-3">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold">{request.gamemode_slug} · {request.username}</p>
-                          <p className="text-xs text-muted-foreground">Role: {request.role} • Requested: {new Date(request.created_at).toLocaleString()}</p>
-                        </div>
-                        <span className={`text-xs font-semibold uppercase ${statusClass}`}>{request.status}</span>
-                      </div>
-
-                      <div className="rounded-md bg-secondary/60 p-2 text-xs font-mono break-all">{request.share_url || generatedUrl}</div>
-
-                      <Textarea
-                        value={notes}
-                        onChange={(e) => setReviewNotesById((prev) => ({ ...prev, [request.id]: e.target.value }))}
-                        placeholder="Approval notes (optional)"
-                        rows={2}
-                      />
-
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(request.share_url || generatedUrl);
-                              toast.success("Play URL copied");
-                            } catch {
-                              toast.error("Could not copy URL");
-                            }
-                          }}
-                          className="gap-1"
-                        >
-                          <Clipboard className="w-4 h-4" /> Copy URL
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          onClick={() => reviewCustomGameModeRequest(request, true)}
-                          className="gap-1 bg-green-600 hover:bg-green-700"
-                          disabled={request.status === "approved"}
-                        >
-                          <Check className="w-4 h-4" /> Approve
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => reviewCustomGameModeRequest(request, false)}
-                          className="gap-1"
-                          disabled={request.status === "declined"}
-                        >
-                          <XIcon className="w-4 h-4" /> Decline
-                        </Button>
-                      </div>
-
-                      {request.approval_notes && (
-                        <p className="text-xs text-muted-foreground">Last note: {request.approval_notes}</p>
-                      )}
-                    </Card>
-                  );
-                })
-              )}
             </TabsContent>
 
             {/* Pre-Made Updates Tab */}

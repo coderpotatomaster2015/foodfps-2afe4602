@@ -807,6 +807,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     };
 
     const getEnemyHp = () => {
+      const dbg = debugOverridesRef.current;
+      if (dbg.active && dbg.enemyHealth > 0) return dbg.enemyHealth;
       const baseHp = mode === "survival" ? 60 + waveNumber * 15 : mode === "zombie" ? 40 : mode === "infection" ? 80 : 60;
       return baseHp * (soloVariant?.enemyHpMult ?? 1);
     };

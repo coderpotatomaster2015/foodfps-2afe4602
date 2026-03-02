@@ -51,6 +51,7 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
   const [submitting, setSubmitting] = useState(false);
   const [myModes, setMyModes] = useState<any[]>([]);
   const [tab, setTab] = useState("create");
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     if (open) loadMyModes();

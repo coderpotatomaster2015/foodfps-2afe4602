@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,10 +11,11 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CustomGamemodeCanvas } from "./CustomGamemodeCanvas";
 import { 
   Gamepad2, Heart, Crosshair, Zap, Users, Palette, Eye, 
   Send, ArrowLeft, Sparkles, Shield, Timer, Target, Save,
-  Loader2, Check, X, Clock
+  Loader2, Check, X, Clock, Play
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";

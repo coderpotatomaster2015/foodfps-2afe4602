@@ -235,10 +235,18 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     }
   }, []);
 
-  // Check command permissions
+  // Check command permissions & owner status
   useEffect(() => {
     checkPermissions();
+    checkOwnerStatus();
   }, []);
+
+  const checkOwnerStatus = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "owner").maybeSingle();
+    if (data) setIsOwnerUser(true);
+  };
 
   // Ctrl key listener for crosshair cursor
   useEffect(() => {

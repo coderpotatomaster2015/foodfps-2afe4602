@@ -1900,6 +1900,94 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
                 </p>
               </Card>
             </TabsContent>
+
+            {/* Custom Gamemodes Approval Tab */}
+            <TabsContent value="gamemodes" className="mt-0 space-y-4">
+              <Card className="p-4 space-y-4">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Gamepad2 className="w-5 h-5 text-primary" />
+                  Custom Gamemode Submissions
+                </h3>
+                <p className="text-sm text-muted-foreground">Review and approve user-created gamemodes.</p>
+              </Card>
+
+              {pendingGamemodes.length === 0 ? (
+                <Card className="p-8 text-center text-muted-foreground">
+                  <Gamepad2 className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                  <p>No custom gamemodes submitted yet</p>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {pendingGamemodes.map(gm => (
+                    <Card key={gm.id} className="p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-semibold">{gm.name}</h4>
+                          <p className="text-xs text-muted-foreground">by {gm.creator_username} • /custom/{gm.slug}</p>
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                          gm.status === "pending" ? "bg-yellow-500/20 text-yellow-400" :
+                          gm.status === "approved" ? "bg-green-500/20 text-green-400" :
+                          "bg-red-500/20 text-red-400"
+                        }`}>{gm.status}</span>
+                      </div>
+                      {gm.description && <p className="text-sm text-muted-foreground">{gm.description}</p>}
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="bg-secondary rounded p-2">
+                          <span className="text-muted-foreground">Player HP</span>
+                          <div className="font-bold">{gm.player_health}</div>
+                        </div>
+                        <div className="bg-secondary rounded p-2">
+                          <span className="text-muted-foreground">Enemy HP</span>
+                          <div className="font-bold">{gm.enemy_health}</div>
+                        </div>
+                        <div className="bg-secondary rounded p-2">
+                          <span className="text-muted-foreground">Max Enemies</span>
+                          <div className="font-bold">{gm.max_enemies}</div>
+                        </div>
+                        <div className="bg-secondary rounded p-2">
+                          <span className="text-muted-foreground">Weapons</span>
+                          <div className="font-bold">{gm.allowed_weapons?.length || 0}</div>
+                        </div>
+                        <div className="bg-secondary rounded p-2">
+                          <span className="text-muted-foreground">Speed</span>
+                          <div className="font-bold">{gm.player_speed_mult}x / {gm.enemy_speed_mult}x</div>
+                        </div>
+                        <div className="bg-secondary rounded p-2">
+                          <span className="text-muted-foreground">Score Mult</span>
+                          <div className="font-bold">{gm.score_multiplier}x</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded" style={{ background: `linear-gradient(${gm.bg_color_top}, ${gm.bg_color_bottom})` }} />
+                        <div className="w-6 h-6 rounded" style={{ backgroundColor: gm.enemy_color }} />
+                        <span className="text-xs text-muted-foreground ml-1">BG + Enemy color</span>
+                      </div>
+                      <div className="flex gap-2">
+                        {gm.status === "pending" && (
+                          <>
+                            <Button size="sm" onClick={() => reviewGamemode(gm.id, true)} className="gap-1">
+                              <Check className="w-3 h-3" /> Approve
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={() => reviewGamemode(gm.id, false)} className="gap-1">
+                              <XIcon className="w-3 h-3" /> Reject
+                            </Button>
+                          </>
+                        )}
+                        {gm.status === "approved" && (
+                          <Button size="sm" variant="outline" onClick={() => reviewGamemode(gm.id, false)} className="gap-1">
+                            <XIcon className="w-3 h-3" /> Revoke
+                          </Button>
+                        )}
+                        <Button size="sm" variant="destructive" onClick={() => deleteGamemode(gm.id)} className="gap-1">
+                          <X className="w-3 h-3" /> Delete
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
           </ScrollArea>
         </Tabs>
       </DialogContent>

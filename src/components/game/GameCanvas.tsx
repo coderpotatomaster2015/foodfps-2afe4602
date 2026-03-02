@@ -6,6 +6,7 @@ import { OnlinePlayersModal } from "./OnlinePlayersModal";
 import { BanModal } from "./BanModal";
 import { Scoreboard } from "./Scoreboard";
 import { TouchControls } from "./TouchControls";
+import { OwnerDebugPanel } from "./OwnerDebugPanel";
 import type { GameMode } from "@/pages/Index";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -146,6 +147,15 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const [isMobile, setIsMobile] = useState(false);
   const [ctrlHeld, setCtrlHeld] = useState(false);
   const [deviceProfile, setDeviceProfile] = useState(getDeviceProfile());
+  const [isOwnerUser, setIsOwnerUser] = useState(false);
+  const [debugEnemyCount, setDebugEnemyCount] = useState(0);
+  const [debugPlayerPos, setDebugPlayerPos] = useState({ x: 0, y: 0 });
+  const [debugFps, setDebugFps] = useState(60);
+  const debugOverridesRef = useRef({
+    enemyHealth: 0, playerHealth: 0, maxEnemies: 0, enemySpeed: 1,
+    playerSpeed: 1, spawnInterval: 0, enemyHostile: true, godMode: false,
+    infiniteAmmo: false, scoreMultiplier: 1, active: false,
+  });
   const touchMoveRef = useRef({ x: 0, y: 0 });
   const touchAimRef = useRef({ x: 480, y: 320 });
   const touchShootingRef = useRef(false);
@@ -225,10 +235,18 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     }
   }, []);
 
-  // Check command permissions
+  // Check command permissions & owner status
   useEffect(() => {
     checkPermissions();
+    checkOwnerStatus();
   }, []);
+
+  const checkOwnerStatus = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "owner").maybeSingle();
+    if (data) setIsOwnerUser(true);
+  };
 
   // Ctrl key listener for crosshair cursor
   useEffect(() => {
@@ -789,13 +807,17 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     };
 
     const getEnemyHp = () => {
+      const dbg = debugOverridesRef.current;
+      if (dbg.active && dbg.enemyHealth > 0) return dbg.enemyHealth;
       const baseHp = mode === "survival" ? 60 + waveNumber * 15 : mode === "zombie" ? 40 : mode === "infection" ? 80 : 60;
       return baseHp * (soloVariant?.enemyHpMult ?? 1);
     };
 
     const getEnemySpeed = () => {
+      const dbg = debugOverridesRef.current;
       const baseSpeed = mode === "zombie" ? rand(20, 50) : mode === "survival" ? rand(40 + waveNumber * 3, 80 + waveNumber * 5) : mode === "infection" ? rand(50, 90) : rand(40, 80);
-      return baseSpeed * (soloVariant?.enemySpeedMult ?? 1);
+      const speed = baseSpeed * (soloVariant?.enemySpeedMult ?? 1);
+      return dbg.active ? speed * dbg.enemySpeed : speed;
     };
 
     const getEnemyColor = () => {
@@ -1016,10 +1038,38 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
 
     let last = performance.now();
 
+    let fpsFrames = 0;
+    let fpsTime = 0;
+
     const loop = (now: number) => {
       const dt = Math.min(0.033, (now - last) / 1000);
       last = now;
       time += dt;
+
+      // FPS counter for debug
+      fpsFrames++;
+      fpsTime += dt;
+      if (fpsTime >= 1) {
+        setDebugFps(fpsFrames);
+        fpsFrames = 0;
+        fpsTime = 0;
+      }
+
+      // Apply debug overrides
+      const dbg = debugOverridesRef.current;
+      if (dbg.active) {
+        adminStateRef.current.godMode = dbg.godMode;
+        adminStateRef.current.infiniteAmmo = dbg.infiniteAmmo;
+        if (dbg.playerHealth > 0 && player.maxHp !== dbg.playerHealth) {
+          player.maxHp = dbg.playerHealth;
+          if (player.hp > dbg.playerHealth) { player.hp = dbg.playerHealth; setHealth(dbg.playerHealth); }
+        }
+        player.speed = 180 * (soloVariant?.playerSpeedMult ?? 1) * dbg.playerSpeed;
+      }
+
+      // Update debug state for UI
+      setDebugEnemyCount(enemies.length);
+      setDebugPlayerPos({ x: player.x, y: player.y });
 
       if (!antiCheatBanTriggeredRef.current) {
         const afkDuration = Date.now() - lastActivityRef.current;
@@ -1215,6 +1265,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       }
 
       // Update enemies
+      const dbgHostile = !debugOverridesRef.current.active || debugOverridesRef.current.enemyHostile;
       for (let i = enemies.length - 1; i >= 0; i--) {
         const e = enemies[i];
         if (e.stun > 0) {
@@ -1230,20 +1281,20 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           enemySpeedMult = 0.4;
         }
         
-        if (d > 0) {
+        if (d > 0 && dbgHostile) {
           e.x += (vx / d) * e.speed * enemySpeedMult * dt;
           e.y += (vy / d) * e.speed * enemySpeedMult * dt;
         }
 
         // Enemy collision damage
-        if (d < player.r + e.r) {
+        if (d < player.r + e.r && dbgHostile) {
           if (!adminStateRef.current.godMode && !isImmune) {
             player.hp -= 5 * dt;
             setHealth(Math.max(0, player.hp));
           }
         }
 
-        if (d < 350 && time - e.lastShot >= 3.5) {
+        if (d < 350 && time - e.lastShot >= 3.5 && dbgHostile) {
           e.lastShot = time;
           const ang = Math.atan2(player.y - e.y, player.x - e.x);
           const enemyBulletSpeed = soloVariant?.enemyBulletSlow ? 140 : 200;
@@ -1330,7 +1381,10 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         }
       }
       
-      if (shouldSpawn && time - lastSpawn > enemySpawnInterval && !modeWon) {
+      const dbgSpawnInterval = debugOverridesRef.current.active && debugOverridesRef.current.spawnInterval > 0 ? debugOverridesRef.current.spawnInterval : enemySpawnInterval;
+      const dbgMaxEnemies = debugOverridesRef.current.active && debugOverridesRef.current.maxEnemies > 0 ? debugOverridesRef.current.maxEnemies : 999;
+      
+      if (shouldSpawn && time - lastSpawn > dbgSpawnInterval && !modeWon && enemies.length < dbgMaxEnemies) {
         // In survival mode, only spawn if there are wave enemies remaining
         if (mode === "survival") {
           if (waveEnemiesRemaining > 0) {
@@ -1934,6 +1988,29 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
             setShowScoreboard(false);
             onBack();
           }}
+        />
+      )}
+
+      {isOwnerUser && (
+        <OwnerDebugPanel
+          values={{
+            enemyHealth: debugOverridesRef.current.enemyHealth || 100,
+            playerHealth: debugOverridesRef.current.playerHealth || 100,
+            maxEnemies: debugOverridesRef.current.maxEnemies || 10,
+            enemySpeed: debugOverridesRef.current.enemySpeed,
+            playerSpeed: debugOverridesRef.current.playerSpeed,
+            spawnInterval: debugOverridesRef.current.spawnInterval || 2,
+            enemyHostile: debugOverridesRef.current.enemyHostile,
+            godMode: debugOverridesRef.current.godMode,
+            infiniteAmmo: debugOverridesRef.current.infiniteAmmo,
+            scoreMultiplier: debugOverridesRef.current.scoreMultiplier,
+          }}
+          onChange={(partial) => {
+            debugOverridesRef.current = { ...debugOverridesRef.current, ...partial, active: true };
+          }}
+          enemyCount={debugEnemyCount}
+          playerPos={debugPlayerPos}
+          fps={debugFps}
         />
       )}
     </div>

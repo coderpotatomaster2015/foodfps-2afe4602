@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,10 +11,11 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CustomGamemodeCanvas } from "./CustomGamemodeCanvas";
 import { 
   Gamepad2, Heart, Crosshair, Zap, Users, Palette, Eye, 
   Send, ArrowLeft, Sparkles, Shield, Timer, Target, Save,
-  Loader2, Check, X, Clock
+  Loader2, Check, X, Clock, Play
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -50,6 +51,7 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
   const [submitting, setSubmitting] = useState(false);
   const [myModes, setMyModes] = useState<any[]>([]);
   const [tab, setTab] = useState("create");
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     if (open) loadMyModes();
@@ -142,6 +144,38 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
       default: return <Badge variant="secondary">{status}</Badge>;
     }
   };
+
+  const currentConfig = {
+    name: name || "Test Mode",
+    enemy_health: enemyHealth, player_health: playerHealth, allowed_weapons: allowedWeapons,
+    show_score: showScore, show_health_gui: showHealthGui, enemy_speed_mult: enemySpeedMult,
+    player_speed_mult: playerSpeedMult, spawn_interval: spawnInterval, score_multiplier: scoreMultiplier,
+    enemy_color: enemyColor, bg_color_top: bgColorTop, bg_color_bottom: bgColorBottom,
+    max_enemies: maxEnemies, pickup_chance: pickupChance,
+  };
+
+  if (testing) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-5xl h-[90vh] flex flex-col p-2">
+          <div className="flex items-center justify-between px-2">
+            <h3 className="font-bold text-sm">Testing: {name || "Unnamed"}</h3>
+            <Button size="sm" variant="outline" onClick={() => setTesting(false)}>
+              <ArrowLeft className="w-3 h-3 mr-1" /> Back to Editor
+            </Button>
+          </div>
+          <div className="flex-1 flex items-center justify-center">
+            <CustomGamemodeCanvas
+              config={currentConfig}
+              username="Creator"
+              onBack={() => setTesting(false)}
+              playerSkin={localStorage.getItem("foodfps_skin") || "#FFF3D6"}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -304,10 +338,15 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
                   </div>
                 </Card>
 
-                <Button onClick={handleSubmit} disabled={submitting} className="w-full gap-2" size="lg">
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  Submit for Approval
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={() => setTesting(true)} variant="outline" className="flex-1 gap-2" size="lg">
+                    <Play className="w-4 h-4" /> Test Play
+                  </Button>
+                  <Button onClick={handleSubmit} disabled={submitting} className="flex-1 gap-2" size="lg">
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    Submit for Approval
+                  </Button>
+                </div>
               </div>
             </ScrollArea>
           </TabsContent>

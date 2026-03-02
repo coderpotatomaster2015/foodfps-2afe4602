@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Megaphone, Image, Check, X as XIcon, Loader2, Crown, Sparkles, Users, 
          Ban, Paintbrush, Coins, Gift, MessageCircle, Zap, Shield, GraduationCap, 
-         Swords, Calculator, Trophy, Radio, Cake, Settings, Crosshair, Bot, Play, Square } from "lucide-react";
+         Swords, Calculator, Trophy, Radio, Cake, Settings, Crosshair, Bot, Play, Square, Gamepad2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SkinEditor } from "./SkinEditor";
@@ -101,6 +101,8 @@ interface GameSettings {
 }
 
 export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenGlobalChat, onOpenSocial, onOpenMessages, onOpenInventory, onOpenProfile, onOpenSkinsShop, onOpenItemShop, onOpenFoodPass, onOpenLeaderboard, onReopenOwnerPanel, currentGameMode }: OwnerPanelProps) => {
+  const [pendingGamemodes, setPendingGamemodes] = useState<any[]>([]);
+
   const [ads, setAds] = useState<Ad[]>([]);
   const [adSignups, setAdSignups] = useState<AdSignup[]>([]);
   const [ipBans, setIPBans] = useState<IPBan[]>([]);
@@ -179,8 +181,38 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
       loadChatBannedUsers(),
       loadUsers(),
       loadBroadcasts(),
-      loadGameSettings()
+      loadGameSettings(),
+      loadPendingGamemodes()
     ]);
+  };
+
+  const loadPendingGamemodes = async () => {
+    const { data } = await supabase
+      .from("custom_gamemodes")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) setPendingGamemodes(data);
+  };
+
+  const reviewGamemode = async (id: string, approve: boolean) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase.from("custom_gamemodes").update({
+      status: approve ? "approved" : "rejected",
+      is_public: approve,
+      reviewed_by: user.id,
+      reviewed_at: new Date().toISOString(),
+    }).eq("id", id);
+    if (error) { toast.error("Failed to review gamemode"); return; }
+    toast.success(approve ? "Gamemode approved!" : "Gamemode rejected");
+    loadPendingGamemodes();
+  };
+
+  const deleteGamemode = async (id: string) => {
+    const { error } = await supabase.from("custom_gamemodes").delete().eq("id", id);
+    if (error) { toast.error("Failed to delete"); return; }
+    toast.success("Gamemode deleted");
+    loadPendingGamemodes();
   };
 
   const loadAds = async () => {
@@ -1074,6 +1106,9 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
             <TabsTrigger value="aiplay" className="gap-1 text-xs">
               <Bot className="w-3 h-3" /> AI Player
             </TabsTrigger>
+            <TabsTrigger value="gamemodes" className="gap-1 text-xs">
+              <Gamepad2 className="w-3 h-3" /> Custom Modes ({pendingGamemodes.filter(m => m.status === "pending").length})
+            </TabsTrigger>
           </TabsList>
 
           <ScrollArea className="flex-1 p-4">
@@ -1864,6 +1899,94 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
                   This feature is exclusive to owners. Score and currency are added to your account in real-time.
                 </p>
               </Card>
+            </TabsContent>
+
+            {/* Custom Gamemodes Approval Tab */}
+            <TabsContent value="gamemodes" className="mt-0 space-y-4">
+              <Card className="p-4 space-y-4">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Gamepad2 className="w-5 h-5 text-primary" />
+                  Custom Gamemode Submissions
+                </h3>
+                <p className="text-sm text-muted-foreground">Review and approve user-created gamemodes.</p>
+              </Card>
+
+              {pendingGamemodes.length === 0 ? (
+                <Card className="p-8 text-center text-muted-foreground">
+                  <Gamepad2 className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                  <p>No custom gamemodes submitted yet</p>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {pendingGamemodes.map(gm => (
+                    <Card key={gm.id} className="p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-semibold">{gm.name}</h4>
+                          <p className="text-xs text-muted-foreground">by {gm.creator_username} • /custom/{gm.slug}</p>
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                          gm.status === "pending" ? "bg-yellow-500/20 text-yellow-400" :
+                          gm.status === "approved" ? "bg-green-500/20 text-green-400" :
+                          "bg-red-500/20 text-red-400"
+                        }`}>{gm.status}</span>
+                      </div>
+                      {gm.description && <p className="text-sm text-muted-foreground">{gm.description}</p>}
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="bg-secondary rounded p-2">
+                          <span className="text-muted-foreground">Player HP</span>
+                          <div className="font-bold">{gm.player_health}</div>
+                        </div>
+                        <div className="bg-secondary rounded p-2">
+                          <span className="text-muted-foreground">Enemy HP</span>
+                          <div className="font-bold">{gm.enemy_health}</div>
+                        </div>
+                        <div className="bg-secondary rounded p-2">
+                          <span className="text-muted-foreground">Max Enemies</span>
+                          <div className="font-bold">{gm.max_enemies}</div>
+                        </div>
+                        <div className="bg-secondary rounded p-2">
+                          <span className="text-muted-foreground">Weapons</span>
+                          <div className="font-bold">{gm.allowed_weapons?.length || 0}</div>
+                        </div>
+                        <div className="bg-secondary rounded p-2">
+                          <span className="text-muted-foreground">Speed</span>
+                          <div className="font-bold">{gm.player_speed_mult}x / {gm.enemy_speed_mult}x</div>
+                        </div>
+                        <div className="bg-secondary rounded p-2">
+                          <span className="text-muted-foreground">Score Mult</span>
+                          <div className="font-bold">{gm.score_multiplier}x</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded" style={{ background: `linear-gradient(${gm.bg_color_top}, ${gm.bg_color_bottom})` }} />
+                        <div className="w-6 h-6 rounded" style={{ backgroundColor: gm.enemy_color }} />
+                        <span className="text-xs text-muted-foreground ml-1">BG + Enemy color</span>
+                      </div>
+                      <div className="flex gap-2">
+                        {gm.status === "pending" && (
+                          <>
+                            <Button size="sm" onClick={() => reviewGamemode(gm.id, true)} className="gap-1">
+                              <Check className="w-3 h-3" /> Approve
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={() => reviewGamemode(gm.id, false)} className="gap-1">
+                              <XIcon className="w-3 h-3" /> Reject
+                            </Button>
+                          </>
+                        )}
+                        {gm.status === "approved" && (
+                          <Button size="sm" variant="outline" onClick={() => reviewGamemode(gm.id, false)} className="gap-1">
+                            <XIcon className="w-3 h-3" /> Revoke
+                          </Button>
+                        )}
+                        <Button size="sm" variant="destructive" onClick={() => deleteGamemode(gm.id)} className="gap-1">
+                          <X className="w-3 h-3" /> Delete
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </TabsContent>
           </ScrollArea>
         </Tabs>

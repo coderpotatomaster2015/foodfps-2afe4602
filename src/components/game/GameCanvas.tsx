@@ -814,8 +814,10 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     };
 
     const getEnemySpeed = () => {
+      const dbg = debugOverridesRef.current;
       const baseSpeed = mode === "zombie" ? rand(20, 50) : mode === "survival" ? rand(40 + waveNumber * 3, 80 + waveNumber * 5) : mode === "infection" ? rand(50, 90) : rand(40, 80);
-      return baseSpeed * (soloVariant?.enemySpeedMult ?? 1);
+      const speed = baseSpeed * (soloVariant?.enemySpeedMult ?? 1);
+      return dbg.active ? speed * dbg.enemySpeed : speed;
     };
 
     const getEnemyColor = () => {

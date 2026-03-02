@@ -338,10 +338,15 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
                   </div>
                 </Card>
 
-                <Button onClick={handleSubmit} disabled={submitting} className="w-full gap-2" size="lg">
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  Submit for Approval
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={() => setTesting(true)} variant="outline" className="flex-1 gap-2" size="lg">
+                    <Play className="w-4 h-4" /> Test Play
+                  </Button>
+                  <Button onClick={handleSubmit} disabled={submitting} className="flex-1 gap-2" size="lg">
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    Submit for Approval
+                  </Button>
+                </div>
               </div>
             </ScrollArea>
           </TabsContent>

@@ -181,8 +181,38 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
       loadChatBannedUsers(),
       loadUsers(),
       loadBroadcasts(),
-      loadGameSettings()
+      loadGameSettings(),
+      loadPendingGamemodes()
     ]);
+  };
+
+  const loadPendingGamemodes = async () => {
+    const { data } = await supabase
+      .from("custom_gamemodes")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) setPendingGamemodes(data);
+  };
+
+  const reviewGamemode = async (id: string, approve: boolean) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase.from("custom_gamemodes").update({
+      status: approve ? "approved" : "rejected",
+      is_public: approve,
+      reviewed_by: user.id,
+      reviewed_at: new Date().toISOString(),
+    }).eq("id", id);
+    if (error) { toast.error("Failed to review gamemode"); return; }
+    toast.success(approve ? "Gamemode approved!" : "Gamemode rejected");
+    loadPendingGamemodes();
+  };
+
+  const deleteGamemode = async (id: string) => {
+    const { error } = await supabase.from("custom_gamemodes").delete().eq("id", id);
+    if (error) { toast.error("Failed to delete"); return; }
+    toast.success("Gamemode deleted");
+    loadPendingGamemodes();
   };
 
   const loadAds = async () => {

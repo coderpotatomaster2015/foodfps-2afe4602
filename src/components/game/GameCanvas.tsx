@@ -147,6 +147,15 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const [isMobile, setIsMobile] = useState(false);
   const [ctrlHeld, setCtrlHeld] = useState(false);
   const [deviceProfile, setDeviceProfile] = useState(getDeviceProfile());
+  const [isOwnerUser, setIsOwnerUser] = useState(false);
+  const [debugEnemyCount, setDebugEnemyCount] = useState(0);
+  const [debugPlayerPos, setDebugPlayerPos] = useState({ x: 0, y: 0 });
+  const [debugFps, setDebugFps] = useState(60);
+  const debugOverridesRef = useRef({
+    enemyHealth: 0, playerHealth: 0, maxEnemies: 0, enemySpeed: 1,
+    playerSpeed: 1, spawnInterval: 0, enemyHostile: true, godMode: false,
+    infiniteAmmo: false, scoreMultiplier: 1, active: false,
+  });
   const touchMoveRef = useRef({ x: 0, y: 0 });
   const touchAimRef = useRef({ x: 480, y: 320 });
   const touchShootingRef = useRef(false);

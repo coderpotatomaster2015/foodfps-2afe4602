@@ -1265,6 +1265,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       }
 
       // Update enemies
+      const dbgHostile = !debugOverridesRef.current.active || debugOverridesRef.current.enemyHostile;
       for (let i = enemies.length - 1; i >= 0; i--) {
         const e = enemies[i];
         if (e.stun > 0) {
@@ -1280,20 +1281,20 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           enemySpeedMult = 0.4;
         }
         
-        if (d > 0) {
+        if (d > 0 && dbgHostile) {
           e.x += (vx / d) * e.speed * enemySpeedMult * dt;
           e.y += (vy / d) * e.speed * enemySpeedMult * dt;
         }
 
         // Enemy collision damage
-        if (d < player.r + e.r) {
+        if (d < player.r + e.r && dbgHostile) {
           if (!adminStateRef.current.godMode && !isImmune) {
             player.hp -= 5 * dt;
             setHealth(Math.max(0, player.hp));
           }
         }
 
-        if (d < 350 && time - e.lastShot >= 3.5) {
+        if (d < 350 && time - e.lastShot >= 3.5 && dbgHostile) {
           e.lastShot = time;
           const ang = Math.atan2(player.y - e.y, player.x - e.x);
           const enemyBulletSpeed = soloVariant?.enemyBulletSlow ? 140 : 200;

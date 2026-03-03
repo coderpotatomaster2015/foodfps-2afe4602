@@ -1414,9 +1414,16 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                         onClick={async () => {
                           const amount = prompt("Enter score amount to add:");
                           if (amount && !isNaN(parseInt(amount))) {
-                            await supabase.from("profiles").update({ total_score: user.total_score + parseInt(amount) }).eq("user_id", user.user_id);
-                            toast.success(`Added ${amount} score to ${user.username}`);
-                            loadLeaderboard();
+                            const { data: fresh } = await supabase.from("profiles").select("total_score").eq("user_id", user.user_id).single();
+                            const currentScore = fresh?.total_score ?? user.total_score;
+                            const { error } = await supabase.from("profiles").update({ total_score: currentScore + parseInt(amount) }).eq("user_id", user.user_id);
+                            if (error) {
+                              toast.error("Failed to add score: " + error.message);
+                            } else {
+                              toast.success(`Added ${amount} score to ${user.username} (${currentScore} → ${currentScore + parseInt(amount)})`);
+                              loadLeaderboard();
+                              loadUsers();
+                            }
                           }
                         }}
                       >+</Button>

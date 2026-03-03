@@ -108,13 +108,52 @@ const RANK_THRESHOLDS = [
   { rank: "grandmaster", minWaves: 9, tier: 1 },
   { rank: "grandmaster", minWaves: 9, tier: 2 },
   { rank: "grandmaster", minWaves: 9, tier: 3 },
-  { rank: "pro", minWaves: 10, tier: 1 },
-  { rank: "pro", minWaves: 10, tier: 2 },
-  { rank: "pro", minWaves: 10, tier: 3 },
-  { rank: "legend", minWaves: 10, tier: 4 },
+  { rank: "champion", minWaves: 10, tier: 1 },
+  { rank: "champion", minWaves: 10, tier: 2 },
+  { rank: "champion", minWaves: 10, tier: 3 },
+  { rank: "pro", minWaves: 10, tier: 4 },
   { rank: "legend", minWaves: 10, tier: 5 },
-  { rank: "mythic", minWaves: 10, tier: 5 },
+  { rank: "mythic", minWaves: 10, tier: 6 },
+  { rank: "immortal", minWaves: 10, tier: 7 },
+  { rank: "titan", minWaves: 10, tier: 8 },
+  { rank: "apex", minWaves: 10, tier: 9 },
+  { rank: "transcendent", minWaves: 10, tier: 10 },
 ];
+
+// Ranks at or above master earn weekly rewards
+const WEEKLY_REWARD_RANKS: Record<string, { coins: number; gems: number; gold: number }> = {
+  master: { coins: 500, gems: 100, gold: 50 },
+  grandmaster: { coins: 1000, gems: 250, gold: 100 },
+  champion: { coins: 1500, gems: 400, gold: 200 },
+  pro: { coins: 2000, gems: 500, gold: 300 },
+  legend: { coins: 3000, gems: 750, gold: 500 },
+  mythic: { coins: 5000, gems: 1000, gold: 750 },
+  immortal: { coins: 7500, gems: 1500, gold: 1000 },
+  titan: { coins: 10000, gems: 2000, gold: 1500 },
+  apex: { coins: 15000, gems: 3000, gold: 2000 },
+  transcendent: { coins: 25000, gems: 5000, gold: 3000 },
+};
+
+const RANK_COLORS: Record<string, string> = {
+  unranked: "#6B7280",
+  rookie: "#9CA3AF",
+  iron: "#78716C",
+  bronze: "#CD7F32",
+  silver: "#C0C0C0",
+  gold: "#FFD700",
+  platinum: "#00CED1",
+  diamond: "#B9F2FF",
+  master: "#FF6B6B",
+  grandmaster: "#FF4500",
+  champion: "#DC143C",
+  pro: "#8B5CF6",
+  legend: "#F59E0B",
+  mythic: "#EC4899",
+  immortal: "#06B6D4",
+  titan: "#64748B",
+  apex: "#EF4444",
+  transcendent: "#FFFFFF",
+};
 
 interface Enemy {
   id: string;
@@ -423,7 +462,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
             .eq("user_id", user.id)
             .single();
 
-          const rankOrder = ["unranked", "rookie", "iron", "bronze", "silver", "gold", "platinum", "diamond", "master", "grandmaster", "pro", "legend", "mythic"];
+          const rankOrder = ["unranked", "rookie", "iron", "bronze", "silver", "gold", "platinum", "diamond", "master", "grandmaster", "champion", "pro", "legend", "mythic", "immortal", "titan", "apex", "transcendent"];
           // getRankColor is also updated below
           const currentRankIndex = currentProfile?.ranked_rank ? rankOrder.indexOf(currentProfile.ranked_rank) : -1;
           const newRankIndex = rankOrder.indexOf(rankResult.rank);
@@ -1011,21 +1050,11 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
   }, [gameState, unlockedWeapons, currentWave, playerSkin, touchscreenMode]);
 
   const getRankColor = (rank: string) => {
-    switch (rank) {
-      case "rookie": return "text-gray-400";
-      case "iron": return "text-gray-500";
-      case "bronze": return "text-amber-600";
-      case "silver": return "text-gray-300";
-      case "gold": return "text-yellow-400";
-      case "platinum": return "text-teal-400";
-      case "diamond": return "text-cyan-400";
-      case "master": return "text-indigo-400";
-      case "grandmaster": return "text-pink-400";
-      case "pro": return "text-purple-500";
-      case "legend": return "text-orange-400";
-      case "mythic": return "text-red-500";
-      default: return "text-muted-foreground";
-    }
+    return RANK_COLORS[rank] ? `text-[${RANK_COLORS[rank]}]` : "text-muted-foreground";
+  };
+
+  const getRankStyle = (rank: string) => {
+    return { color: RANK_COLORS[rank] || "#6B7280" };
   };
 
   // Ready screen
@@ -1114,9 +1143,22 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
           {earnedRank && (
             <div className="space-y-2">
               <p className="text-muted-foreground">Rank Earned</p>
-              <div className={`text-4xl font-bold ${getRankColor(earnedRank)}`}>
+              <div className="text-4xl font-bold" style={getRankStyle(earnedRank)}>
                 {earnedRank.toUpperCase()} {earnedTier}
               </div>
+              {WEEKLY_REWARD_RANKS[earnedRank] && (
+                <div className="mt-2 p-3 rounded-lg bg-primary/10 border border-primary/30 text-sm">
+                  <p className="font-semibold text-primary">🎁 Weekly Rank Reward</p>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    As a <span className="font-bold" style={getRankStyle(earnedRank)}>{earnedRank.toUpperCase()}</span> player, you earn weekly:
+                  </p>
+                  <div className="flex gap-3 justify-center mt-2 text-xs">
+                    <span className="text-yellow-400">🪙 {WEEKLY_REWARD_RANKS[earnedRank].coins}</span>
+                    <span className="text-purple-400">💎 {WEEKLY_REWARD_RANKS[earnedRank].gems}</span>
+                    <span className="text-amber-400">⭐ {WEEKLY_REWARD_RANKS[earnedRank].gold}</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <div className="grid grid-cols-3 gap-4 text-sm">

@@ -761,28 +761,32 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     let keys: Record<string, boolean> = {};
     let mouse = { x: W / 2, y: H / 2, down: false };
 
+    // Preserve player position across re-initializations to prevent teleportation bug
+    const prevPlayer = playerRef.current;
     const player = {
-      x: W / 2,
-      y: H / 2,
+      x: prevPlayer ? prevPlayer.x : W / 2,
+      y: prevPlayer ? prevPlayer.y : H / 2,
       r: soloVariant?.playerRadius ?? 14,
       speed: 180 * (soloVariant?.playerSpeedMult ?? 1),
-      angle: 0,
-      weapon: "pistol" as Weapon,
-      lastShot: -1,
-      lastMelee: -1,
-      hp: 100,
-      maxHp: 100,
-      score: 0,
-      ammo: 10,
-      maxAmmo: 10,
+      angle: prevPlayer ? prevPlayer.angle : 0,
+      weapon: prevPlayer ? prevPlayer.weapon : "pistol" as Weapon,
+      lastShot: prevPlayer ? prevPlayer.lastShot : -1,
+      lastMelee: prevPlayer ? prevPlayer.lastMelee : -1,
+      hp: prevPlayer ? prevPlayer.hp : 100,
+      maxHp: prevPlayer ? prevPlayer.maxHp : 100,
+      score: prevPlayer ? prevPlayer.score : 0,
+      ammo: prevPlayer ? prevPlayer.ammo : 10,
+      maxAmmo: prevPlayer ? prevPlayer.maxAmmo : 10,
+      cloaked: prevPlayer ? prevPlayer.cloaked : false,
     };
 
     playerRef.current = player;
 
+    // Preserve enemies and game state across re-initializations
     let bullets: any[] = [];
     let enemyBullets: any[] = [];
-    let enemies: any[] = [];
-    let pickups: any[] = [];
+    let enemies: any[] = gameStateRef.current.enemies?.length > 0 ? gameStateRef.current.enemies : [];
+    let pickups: any[] = gameStateRef.current.pickups?.length > 0 ? gameStateRef.current.pickups : [];
     let particles: any[] = [];
     let time = 0;
     let lastSpawn = 0;

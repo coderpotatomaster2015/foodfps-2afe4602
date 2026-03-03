@@ -2,7 +2,7 @@ import { useState } from "react";
 import { 
   Mail, Sparkles, Globe, Palette, Trophy, Gift, FlaskConical, 
   Settings, ChevronLeft, ChevronRight, MessageCircle, Ticket, CalendarDays,
-  Utensils, User, Swords, Backpack, Store, Gamepad2
+  Utensils, User, Swords, Backpack, Store, Gamepad2, Package
 } from "lucide-react";
 
 interface GameSidebarProps {
@@ -26,6 +26,7 @@ interface GameSidebarProps {
   onShowInventory?: () => void;
   onShowItemShop?: () => void;
   onShowGamemodeCreator?: () => void;
+  onShowMysteryBox?: () => void;
 }
 
 export const GameSidebar = ({
@@ -49,6 +50,7 @@ export const GameSidebar = ({
   onShowInventory,
   onShowItemShop,
   onShowGamemodeCreator,
+  onShowMysteryBox,
 }: GameSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -62,6 +64,7 @@ export const GameSidebar = ({
   const shopItems = [
     { icon: Palette, label: "Skins", onClick: onShowSkinsShop },
     ...(onShowItemShop ? [{ icon: Store, label: "Item Shop", onClick: onShowItemShop }] : []),
+    ...(onShowMysteryBox ? [{ icon: Package, label: "Mystery Box", onClick: onShowMysteryBox }] : []),
     ...(onShowInventory ? [{ icon: Backpack, label: "Inventory", onClick: onShowInventory }] : []),
   ];
 

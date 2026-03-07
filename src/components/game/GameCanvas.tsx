@@ -1023,8 +1023,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       }
       
       const keyNum = parseInt(e.key);
-      if (keyNum >= 1 && keyNum <= unlockedWeapons.length) {
-        const weapon = unlockedWeapons[keyNum - 1];
+      if (keyNum >= 1 && keyNum <= unlockedWeaponsRef.current.length) {
+        const weapon = unlockedWeaponsRef.current[keyNum - 1];
         if (weapon) {
           player.weapon = weapon;
           const weaponConfig = WEAPONS[weapon];

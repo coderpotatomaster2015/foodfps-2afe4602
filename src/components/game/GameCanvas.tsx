@@ -920,7 +920,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
                 }
                 // Broadcast enemy kill in coop mode
                 if (isMultiplayerCoopMelee && e.id) {
-                  broadcastEnemyKilled(e.id, username);
+                  broadcastEnemyKilledRef.current(e.id, username);
                 }
                 enemies.splice(i, 1);
               }

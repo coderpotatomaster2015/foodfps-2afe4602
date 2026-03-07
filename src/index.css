@@ -8,23 +8,23 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 220 15% 8%;
+    --background: 222 47% 13%;
     --foreground: 40 100% 97%;
 
-    --card: 220 15% 10%;
+    --card: 222 40% 18%;
     --card-foreground: 40 100% 97%;
 
-    --popover: 220 15% 10%;
+    --popover: 222 40% 18%;
     --popover-foreground: 40 100% 97%;
 
     --primary: 35 100% 65%;
     --primary-foreground: 220 15% 8%;
     --primary-glow: 35 100% 75%;
 
-    --secondary: 220 15% 15%;
+    --secondary: 222 32% 24%;
     --secondary-foreground: 40 100% 97%;
 
-    --muted: 220 10% 20%;
+    --muted: 222 24% 28%;
     --muted-foreground: 40 20% 65%;
 
     --accent: 140 70% 60%;
@@ -34,8 +34,8 @@ All colors MUST be HSL.
     --destructive: 0 70% 60%;
     --destructive-foreground: 40 100% 97%;
 
-    --border: 220 15% 18%;
-    --input: 220 15% 15%;
+    --border: 222 26% 31%;
+    --input: 222 32% 24%;
     --ring: 35 100% 65%;
 
     --radius: 0.5rem;
@@ -59,6 +59,8 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    background-image: radial-gradient(circle at top, hsl(222 60% 20%), hsl(var(--background)) 55%);
+    background-attachment: fixed;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 }
@@ -89,4 +91,3 @@ All colors MUST be HSL.
     }
   }
 }
-

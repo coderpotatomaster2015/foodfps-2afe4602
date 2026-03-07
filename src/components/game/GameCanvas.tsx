@@ -176,6 +176,32 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const { players, updatePlayerPosition, broadcastBullet, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode } = useMultiplayer(mode, roomCode, username);
   const soloVariant = SOLO_MODE_VARIANTS[mode as CustomSoloMode];
 
+  // Use refs for volatile values to prevent game loop re-initialization
+  const unlockedWeaponsRef = useRef(unlockedWeapons);
+  unlockedWeaponsRef.current = unlockedWeapons;
+  const playersRef = useRef(players);
+  playersRef.current = players;
+  const otherPlayersBulletsRef = useRef(otherPlayersBullets);
+  otherPlayersBulletsRef.current = otherPlayersBullets;
+  const isHostRef = useRef(isHost);
+  isHostRef.current = isHost;
+  const sharedEnemiesRef = useRef(sharedEnemies);
+  sharedEnemiesRef.current = sharedEnemies;
+  const coopModeRef = useRef(coopMode);
+  coopModeRef.current = coopMode;
+  const broadcastBulletRef = useRef(broadcastBullet);
+  broadcastBulletRef.current = broadcastBullet;
+  const broadcastEnemyUpdateRef = useRef(broadcastEnemyUpdate);
+  broadcastEnemyUpdateRef.current = broadcastEnemyUpdate;
+  const broadcastEnemyKilledRef = useRef(broadcastEnemyKilled);
+  broadcastEnemyKilledRef.current = broadcastEnemyKilled;
+  const playerSkinRef = useRef(playerSkin);
+  playerSkinRef.current = playerSkin;
+  const scoreRef = useRef(score);
+  scoreRef.current = score;
+  const killsRef = useRef(kills);
+  killsRef.current = kills;
+
   const banForCheating = useCallback(async (reason: string) => {
     if (antiCheatBanTriggeredRef.current) return;
     antiCheatBanTriggeredRef.current = true;

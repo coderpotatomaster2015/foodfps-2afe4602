@@ -1808,10 +1808,13 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
 
     // Only spawn initial enemies if not joining coop (host or solo spawn)
     const shouldSpawnInitial = mode === "solo" || mode === "host" || !coopModeRef.current;
-    if (shouldSpawnInitial) {
+    const hasExistingEnemies = gameStateRef.current.enemies?.length > 0;
+    if (shouldSpawnInitial && !hasExistingEnemies) {
       for (let i = 0; i < 3; i++) spawnEnemy();
     }
-    for (let i = 0; i < 2; i++) spawnPickup();
+    if (!hasExistingEnemies) {
+      for (let i = 0; i < 2; i++) spawnPickup();
+    }
 
     gameLoopRef.current = requestAnimationFrame(loop);
 

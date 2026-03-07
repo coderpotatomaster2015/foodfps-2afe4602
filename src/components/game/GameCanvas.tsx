@@ -1756,7 +1756,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
 
         // Draw other players' bullets
         const now = Date.now();
-        otherPlayersBullets.forEach((playerBullets) => {
+        otherPlayersBulletsRef.current.forEach((playerBullets) => {
           playerBullets.forEach(b => {
             const age = (now - b.timestamp) / 1000;
             if (age < b.life) {

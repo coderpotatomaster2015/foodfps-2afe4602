@@ -1370,8 +1370,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       }
 
       // Spawn enemies (only host spawns in coop multiplayer)
-      const isMultiplayerCoop = (mode === "host" || mode === "join") && coopMode;
-      const shouldSpawn = !isMultiplayerCoop || (isMultiplayerCoop && isHost);
+      const isMultiplayerCoop = (mode === "host" || mode === "join") && coopModeRef.current;
+      const shouldSpawn = !isMultiplayerCoop || (isMultiplayerCoop && isHostRef.current);
       
       // Survival wave logic
       if (mode === "survival" && enemies.length === 0 && waveEnemiesRemaining <= 0 && time > 3) {

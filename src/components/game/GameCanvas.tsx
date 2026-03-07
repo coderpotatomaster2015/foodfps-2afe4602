@@ -961,7 +961,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           bullets.push(newBullet);
           
           if (mode === "host" || mode === "join") {
-            broadcastBullet({
+            broadcastBulletRef.current({
               x: newBullet.x,
               y: newBullet.y,
               vx: newBullet.vx,

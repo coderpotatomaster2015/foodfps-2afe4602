@@ -1195,7 +1195,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       tryShoot(time);
 
       // Update bullets
-      const isMultiplayerCoopBullets = (mode === "host" || mode === "join") && coopMode;
+      const isMultiplayerCoopBullets = (mode === "host" || mode === "join") && coopModeRef.current;
       
       for (let i = bullets.length - 1; i >= 0; i--) {
         const b = bullets[i];

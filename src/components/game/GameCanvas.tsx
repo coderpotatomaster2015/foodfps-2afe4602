@@ -883,7 +883,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
 
     const tryShoot = (t: number) => {
       const weapon = WEAPONS[player.weapon];
-      const isMultiplayerCoopMelee = (mode === "host" || mode === "join") && coopMode;
+      const isMultiplayerCoopMelee = (mode === "host" || mode === "join") && coopModeRef.current;
       
       if (weapon.isMelee) {
         if (mouse.down && t - player.lastMelee >= weapon.fireRate) {

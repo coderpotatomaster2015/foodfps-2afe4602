@@ -1225,7 +1225,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
               if (Math.random() < 0.35) pickups.push({ x: e.x, y: e.y, r: 10, amt: 2, ttl: 18 });
               // Broadcast enemy kill in coop mode
               if (isMultiplayerCoopBullets && e.id) {
-                broadcastEnemyKilled(e.id, username);
+                broadcastEnemyKilledRef.current(e.id, username);
               }
               enemies.splice(j, 1);
             }

@@ -47,6 +47,8 @@ export const LastManStandingMode = ({ username, onBack, adminAbuseEvents = [], t
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [score, setScore] = useState(0);
+  const scoreRef = useRef(score);
+  scoreRef.current = score;
   const [ammo, setAmmo] = useState(10);
   const [maxAmmo, setMaxAmmo] = useState(10);
   const [currentWeapon, setCurrentWeapon] = useState<Weapon>("pistol");
@@ -160,7 +162,7 @@ export const LastManStandingMode = ({ username, onBack, adminAbuseEvents = [], t
       zoneRadius = Math.max(80, 400 - time * zoneShrinkRate);
 
       if (player.hp <= 0 && !adminStateRef.current.godMode) {
-        if (!gameOver) { setGameOver(true); setPlacement(alive + 1); saveProgress(score); }
+        if (!gameOver) { setGameOver(true); setPlacement(alive + 1); saveProgress(scoreRef.current); }
         ctx.save(); ctx.fillStyle = "rgba(0,0,0,0.85)"; ctx.fillRect(0, 0, W, H);
         ctx.fillStyle = "#FF4444"; ctx.font = "bold 48px sans-serif"; ctx.textAlign = "center"; ctx.fillText("ELIMINATED!", W / 2, H / 2 - 30);
         ctx.fillStyle = "#fff"; ctx.font = "24px sans-serif"; ctx.fillText(`#${alive + 1} • Kills: ${kills} • Score: ${score}`, W / 2, H / 2 + 20);
@@ -285,7 +287,7 @@ export const LastManStandingMode = ({ username, onBack, adminAbuseEvents = [], t
       </div>
       <canvas ref={canvasRef} width={960} height={640} className="border-2 border-red-500/30 rounded-lg shadow-2xl" />
       <div className="mt-4 flex gap-2">
-        <Button variant="outline" onClick={() => { if (score > 0) saveProgress(score); onBack(); }}><ArrowLeft className="w-4 h-4 mr-2" />Back to Menu</Button>
+        <Button variant="outline" onClick={() => { if (score > 0) saveProgress(scoreRef.current); onBack(); }}><ArrowLeft className="w-4 h-4 mr-2" />Back to Menu</Button>
         <Button variant="outline" onClick={() => setChatOpen(!chatOpen)}><MessageSquare className="w-4 h-4 mr-2" />Console</Button>
       </div>
       <AdminChat open={chatOpen} onOpenChange={setChatOpen} onCommand={handleCommand} onShowOnlinePlayers={() => {}} />

@@ -17,6 +17,8 @@ export const MedicMode = ({ username, onBack, adminAbuseEvents = [], touchscreen
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [score, setScore] = useState(0);
+  const scoreRef = useRef(score);
+  scoreRef.current = score;
   const [ammo, setAmmo] = useState(10);
   const [maxAmmo, setMaxAmmo] = useState(10);
   const [currentWeapon, setCurrentWeapon] = useState<Weapon>("pistol");
@@ -113,7 +115,7 @@ export const MedicMode = ({ username, onBack, adminAbuseEvents = [], touchscreen
     const loop = (now: number) => {
       const dt = Math.min(0.033, (now - last) / 1000); last = now; time += dt;
       if (player.hp <= 0 && !adminStateRef.current.godMode) {
-        if (!gameOver) { setGameOver(true); saveProgress(score); }
+        if (!gameOver) { setGameOver(true); saveProgress(scoreRef.current); }
         ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0, 0, W, H);
         ctx.fillStyle = "#22D3EE"; ctx.font = "bold 48px sans-serif"; ctx.textAlign = "center"; ctx.fillText("MISSION FAILED", W / 2, H / 2 - 30);
         ctx.fillStyle = "#fff"; ctx.font = "24px sans-serif"; ctx.fillText(`Allies Saved: ${alliesAlive} • Score: ${score}`, W / 2, H / 2 + 20);
@@ -122,7 +124,7 @@ export const MedicMode = ({ username, onBack, adminAbuseEvents = [], touchscreen
       }
 
       if (alliesAlive <= 0) {
-        if (!gameOver) { setGameOver(true); saveProgress(score); toast.error("All allies have fallen!"); }
+        if (!gameOver) { setGameOver(true); saveProgress(scoreRef.current); toast.error("All allies have fallen!"); }
         ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0, 0, W, H);
         ctx.fillStyle = "#22D3EE"; ctx.font = "bold 48px sans-serif"; ctx.textAlign = "center"; ctx.fillText("ALL ALLIES LOST", W / 2, H / 2 - 30);
         ctx.fillStyle = "#fff"; ctx.font = "24px sans-serif"; ctx.fillText(`Score: ${score} • Kills: ${kills}`, W / 2, H / 2 + 20);
@@ -267,7 +269,7 @@ export const MedicMode = ({ username, onBack, adminAbuseEvents = [], touchscreen
       </div>
       <canvas ref={canvasRef} width={960} height={640} className="border-2 border-cyan-500/30 rounded-lg shadow-2xl" />
       <div className="mt-4 flex gap-2">
-        <Button variant="outline" onClick={() => { if (score > 0) saveProgress(score); onBack(); }}><ArrowLeft className="w-4 h-4 mr-2" />Back to Menu</Button>
+        <Button variant="outline" onClick={() => { if (score > 0) saveProgress(scoreRef.current); onBack(); }}><ArrowLeft className="w-4 h-4 mr-2" />Back to Menu</Button>
         <Button variant="outline" onClick={() => setChatOpen(!chatOpen)}><MessageSquare className="w-4 h-4 mr-2" />Console</Button>
       </div>
       <AdminChat open={chatOpen} onOpenChange={setChatOpen} onCommand={handleCommand} onShowOnlinePlayers={() => {}} />

@@ -257,16 +257,19 @@ export const GlobalChat = ({ userId, username }: GlobalChatProps) => {
           .delete()
           .neq("id", "00000000-0000-0000-0000-000000000000"); // Delete all
         
-        if (!clearError) {
-          setMessages([]);
-          toast.success("Chat cleared");
-          // Send system message
-          await supabase.from("global_chat").insert({
-            user_id: userId,
-            username: "SYSTEM",
-            message: `🛡️ Chat was cleared by ${username}`,
-          });
+        if (clearError) {
+          toast.error("Failed to clear chat");
+          break;
         }
+
+        setMessages([]);
+        toast.success("Chat cleared");
+        // Send system message
+        await supabase.from("global_chat").insert({
+          user_id: userId,
+          username: "SYSTEM",
+          message: `🛡️ Chat was cleared by ${username}`,
+        });
         break;
 
       case "/announce":

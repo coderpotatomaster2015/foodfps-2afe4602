@@ -3,11 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Gift, Sparkles, Coins, Gem, Star, Zap, Loader2 } from "lucide-react";
+import { Gift, Sparkles, Coins, Gem, Star, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 
 interface MysteryBoxModalProps {
@@ -16,7 +15,7 @@ interface MysteryBoxModalProps {
 }
 
 interface BoxReward {
-  type: "coins" | "gems" | "gold" | "weapon" | "power";
+  type: "coins" | "gems" | "gold";
   name: string;
   amount: number;
   rarity: "common" | "uncommon" | "rare" | "epic" | "legendary";
@@ -42,19 +41,11 @@ const POSSIBLE_REWARDS: BoxReward[] = [
 ];
 
 const RARITY_WEIGHTS: Record<string, number> = {
-  common: 40,
-  uncommon: 30,
-  rare: 18,
-  epic: 9,
-  legendary: 3,
+  common: 40, uncommon: 30, rare: 18, epic: 9, legendary: 3,
 };
 
 const RARITY_COLORS: Record<string, string> = {
-  common: "#9CA3AF",
-  uncommon: "#22C55E",
-  rare: "#3B82F6",
-  epic: "#A855F7",
-  legendary: "#F59E0B",
+  common: "#9CA3AF", uncommon: "#22C55E", rare: "#3B82F6", epic: "#A855F7", legendary: "#F59E0B",
 };
 
 const RARITY_GLOW: Record<string, string> = {
@@ -77,44 +68,245 @@ function pickReward(): BoxReward {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+// 3D Particle system
+function Particles({ active, color, burst }: { active: boolean; color: string; burst: boolean }) {
+  const meshRef = useRef<THREE.InstancedMesh>(null);
+  const particleCount = 60;
+  const particlesRef = useRef<{ pos: THREE.Vector3; vel: THREE.Vector3; life: number; maxLife: number }[]>([]);
+  const dummy = useRef(new THREE.Object3D());
+  const colorObj = useRef(new THREE.Color(color));
+
+  useEffect(() => {
+    colorObj.current.set(color);
+  }, [color]);
+
+  useEffect(() => {
+    if (burst && meshRef.current) {
+      particlesRef.current = Array.from({ length: particleCount }, () => {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.random() * Math.PI;
+        const speed = 2 + Math.random() * 4;
+        return {
+          pos: new THREE.Vector3(0, 0, 0),
+          vel: new THREE.Vector3(
+            Math.sin(phi) * Math.cos(theta) * speed,
+            Math.sin(phi) * Math.sin(theta) * speed,
+            Math.cos(phi) * speed
+          ),
+          life: 0.8 + Math.random() * 1.2,
+          maxLife: 0.8 + Math.random() * 1.2,
+        };
+      });
+    }
+  }, [burst]);
+
+  useFrame((_, delta) => {
+    if (!meshRef.current || !active) return;
+    const particles = particlesRef.current;
+    for (let i = 0; i < particleCount; i++) {
+      const p = particles[i];
+      if (!p || p.life <= 0) {
+        dummy.current.scale.set(0, 0, 0);
+      } else {
+        p.pos.add(p.vel.clone().multiplyScalar(delta));
+        p.vel.multiplyScalar(0.96);
+        p.life -= delta;
+        const scale = Math.max(0, (p.life / p.maxLife) * 0.12);
+        dummy.current.position.copy(p.pos);
+        dummy.current.scale.set(scale, scale, scale);
+      }
+      dummy.current.updateMatrix();
+      meshRef.current.setMatrixAt(i, dummy.current.matrix);
+    }
+    meshRef.current.instanceMatrix.needsUpdate = true;
+  });
+
+  return (
+    <instancedMesh ref={meshRef} args={[undefined, undefined, particleCount]}>
+      <sphereGeometry args={[1, 8, 8]} />
+      <meshStandardMaterial color={colorObj.current} emissive={colorObj.current} emissiveIntensity={2} toneMapped={false} />
+    </instancedMesh>
+  );
+}
+
+// 3D Mystery Box
+function MysteryBox3D({ phase, rarityColor }: { phase: "idle" | "opening" | "reveal"; rarityColor: string }) {
+  const boxRef = useRef<THREE.Group>(null);
+  const lidRef = useRef<THREE.Mesh>(null);
+  const glowRef = useRef<THREE.Mesh>(null);
+  const timeRef = useRef(0);
+  const [showBurst, setShowBurst] = useState(false);
+
+  useEffect(() => {
+    timeRef.current = 0;
+    setShowBurst(false);
+  }, [phase]);
+
+  useFrame((_, delta) => {
+    timeRef.current += delta;
+    const t = timeRef.current;
+
+    if (!boxRef.current || !lidRef.current) return;
+
+    if (phase === "idle") {
+      // Gentle float and rotate
+      boxRef.current.rotation.y = t * 0.5;
+      boxRef.current.position.y = Math.sin(t * 1.5) * 0.15;
+      lidRef.current.rotation.x = 0;
+      lidRef.current.position.y = 0.52;
+    } else if (phase === "opening") {
+      // Intense shake, then lid opens
+      const shakeIntensity = Math.min(t * 2, 1);
+      const shake = Math.sin(t * 30) * 0.1 * shakeIntensity;
+      boxRef.current.rotation.y = t * 3;
+      boxRef.current.position.x = shake;
+      boxRef.current.position.z = shake * 0.7;
+
+      // Lid opens after 1 second
+      if (t > 1) {
+        const lidOpen = Math.min((t - 1) * 2, 1);
+        lidRef.current.rotation.x = -lidOpen * Math.PI * 0.7;
+        lidRef.current.position.y = 0.52 + lidOpen * 0.3;
+
+        if (!showBurst && lidOpen > 0.3) {
+          setShowBurst(true);
+        }
+      }
+
+      // Scale up glow
+      if (glowRef.current) {
+        const glowScale = Math.min(t * 0.8, 2);
+        glowRef.current.scale.set(glowScale, glowScale, glowScale);
+        (glowRef.current.material as THREE.MeshStandardMaterial).opacity = Math.min(t * 0.3, 0.6);
+      }
+    } else if (phase === "reveal") {
+      // Slow majestic rotation
+      boxRef.current.rotation.y = t * 0.3;
+      boxRef.current.position.y = 0;
+      boxRef.current.position.x = 0;
+      boxRef.current.position.z = 0;
+      lidRef.current.rotation.x = -Math.PI * 0.7;
+      lidRef.current.position.y = 0.82;
+
+      if (glowRef.current) {
+        const pulse = 1.5 + Math.sin(t * 2) * 0.3;
+        glowRef.current.scale.set(pulse, pulse, pulse);
+        (glowRef.current.material as THREE.MeshStandardMaterial).opacity = 0.4 + Math.sin(t * 3) * 0.15;
+      }
+    }
+  });
+
+  const boxColor = new THREE.Color(rarityColor);
+
+  return (
+    <>
+      {/* Ambient + directional lights */}
+      <ambientLight intensity={0.3} />
+      <directionalLight position={[3, 5, 2]} intensity={1} />
+      <pointLight position={[0, 2, 0]} intensity={0.8} color={rarityColor} />
+
+      <group ref={boxRef}>
+        {/* Box body */}
+        <mesh position={[0, 0, 0]}>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial color="#1a1040" metalness={0.7} roughness={0.2} />
+        </mesh>
+
+        {/* Edges / trim */}
+        <lineSegments>
+          <edgesGeometry args={[new THREE.BoxGeometry(1.01, 1.01, 1.01)]} />
+          <lineBasicMaterial color={rarityColor} linewidth={2} />
+        </lineSegments>
+
+        {/* Question mark decal (front face) */}
+        <mesh position={[0, 0.05, 0.51]}>
+          <planeGeometry args={[0.5, 0.5]} />
+          <meshStandardMaterial color={rarityColor} emissive={rarityColor} emissiveIntensity={1} transparent opacity={0.8} />
+        </mesh>
+
+        {/* Lid */}
+        <mesh ref={lidRef} position={[0, 0.52, 0]}>
+          <boxGeometry args={[1.05, 0.15, 1.05]} />
+          <meshStandardMaterial color="#2a1860" metalness={0.6} roughness={0.3} />
+        </mesh>
+
+        {/* Inner glow */}
+        <mesh ref={glowRef} position={[0, 0.3, 0]}>
+          <sphereGeometry args={[0.6, 16, 16]} />
+          <meshStandardMaterial
+            color={rarityColor}
+            emissive={rarityColor}
+            emissiveIntensity={3}
+            transparent
+            opacity={0}
+            toneMapped={false}
+          />
+        </mesh>
+      </group>
+
+      <Particles active={phase === "opening" || phase === "reveal"} color={rarityColor} burst={showBurst} />
+    </>
+  );
+}
+
 export const MysteryBoxModal = ({ open, onOpenChange }: MysteryBoxModalProps) => {
   const [phase, setPhase] = useState<"idle" | "opening" | "reveal">("idle");
   const [reward, setReward] = useState<BoxReward | null>(null);
-  const [currencies, setCurrencies] = useState({ coins: 0, gems: 0, gold: 0 });
+  const [currencies, setCurrencies] = useState<{ coins: number; gems: number; gold: number } | null>(null);
   const [purchasing, setPurchasing] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animFrameRef = useRef<number>();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (open) {
       setPhase("idle");
       setReward(null);
+      setLoading(true);
       loadCurrencies();
     }
-    return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
   }, [open]);
 
   const loadCurrencies = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase.from("player_currencies").select("*").eq("user_id", user.id).maybeSingle();
-    if (data) setCurrencies({ coins: data.coins, gems: data.gems, gold: data.gold });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
+      const { data } = await supabase.from("player_currencies").select("coins, gems, gold").eq("user_id", user.id).maybeSingle();
+      if (data) {
+        setCurrencies({ coins: data.coins, gems: data.gems, gold: data.gold });
+      } else {
+        // Create a row if none exists
+        await supabase.from("player_currencies").insert({ user_id: user.id, coins: 0, gems: 0, gold: 0 });
+        setCurrencies({ coins: 0, gems: 0, gold: 0 });
+      }
+    } catch (e) {
+      console.error("Failed to load currencies:", e);
+      setCurrencies({ coins: 0, gems: 0, gold: 0 });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const canAfford = currencies.coins >= 1000 && currencies.gems >= 1000 && currencies.gold >= 1000;
+  const canAfford = currencies ? currencies.coins >= 1000 && currencies.gems >= 1000 && currencies.gold >= 1000 : false;
 
   const openBox = async () => {
-    if (!canAfford || purchasing) return;
+    if (!canAfford || purchasing || !currencies) return;
     setPurchasing(true);
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setPurchasing(false); return; }
 
-    // Deduct cost
+    // Re-fetch to avoid stale data
+    const { data: fresh } = await supabase.from("player_currencies").select("coins, gems, gold").eq("user_id", user.id).maybeSingle();
+    if (!fresh || fresh.coins < 1000 || fresh.gems < 1000 || fresh.gold < 1000) {
+      toast.error("Not enough currency!");
+      if (fresh) setCurrencies({ coins: fresh.coins, gems: fresh.gems, gold: fresh.gold });
+      setPurchasing(false);
+      return;
+    }
+
     const newCurr = {
-      coins: currencies.coins - 1000,
-      gems: currencies.gems - 1000,
-      gold: currencies.gold - 1000,
+      coins: fresh.coins - 1000,
+      gems: fresh.gems - 1000,
+      gold: fresh.gold - 1000,
     };
     const { error } = await supabase.from("player_currencies").update(newCurr).eq("user_id", user.id);
     if (error) { toast.error("Purchase failed"); setPurchasing(false); return; }
@@ -124,215 +316,16 @@ export const MysteryBoxModal = ({ open, onOpenChange }: MysteryBoxModalProps) =>
     setReward(won);
     setPhase("opening");
 
-    // Run opening animation
-    runOpeningAnimation(won);
-  };
-
-  const runOpeningAnimation = (won: BoxReward) => {
-    const canvas = canvasRef.current;
-    if (!canvas) { finishReveal(won); return; }
-    const ctx = canvas.getContext("2d");
-    if (!ctx) { finishReveal(won); return; }
-
-    canvas.width = 400;
-    canvas.height = 400;
-    const W = 400, H = 400;
-    const cx = W / 2, cy = H / 2;
-    const startTime = performance.now();
-    const duration = 2500; // 2.5 seconds
-
-    interface Particle { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number; }
-    const particles: Particle[] = [];
-
-    const loop = (now: number) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      ctx.clearRect(0, 0, W, H);
-
-      // Dark background
-      ctx.fillStyle = "#0a0a1a";
-      ctx.fillRect(0, 0, W, H);
-
-      // Phase 1: Box spinning and shaking (0 - 0.6)
-      if (progress < 0.6) {
-        const shake = Math.sin(progress * 60) * (progress * 15);
-        const scale = 1 + Math.sin(progress * 20) * 0.05;
-        const rotation = progress * Math.PI * 4;
-
-        // Particle emission during shake
-        if (Math.random() < progress * 2) {
-          const angle = Math.random() * Math.PI * 2;
-          const speed = 50 + Math.random() * 100;
-          particles.push({
-            x: cx, y: cy,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
-            life: 1, maxLife: 1,
-            color: RARITY_COLORS[won.rarity],
-            size: 2 + Math.random() * 4,
-          });
-        }
-
-        ctx.save();
-        ctx.translate(cx + shake, cy);
-        ctx.rotate(rotation);
-        ctx.scale(scale, scale);
-
-        // Box body
-        const boxSize = 60;
-        const grad = ctx.createLinearGradient(-boxSize, -boxSize, boxSize, boxSize);
-        grad.addColorStop(0, "#2a1f4e");
-        grad.addColorStop(0.5, "#4a2f8e");
-        grad.addColorStop(1, "#2a1f4e");
-        ctx.fillStyle = grad;
-        ctx.fillRect(-boxSize, -boxSize, boxSize * 2, boxSize * 2);
-
-        // Box border glow
-        ctx.strokeStyle = RARITY_COLORS[won.rarity];
-        ctx.lineWidth = 3;
-        ctx.shadowColor = RARITY_COLORS[won.rarity];
-        ctx.shadowBlur = 15 + progress * 30;
-        ctx.strokeRect(-boxSize, -boxSize, boxSize * 2, boxSize * 2);
-
-        // Question mark
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 48px sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("?", 0, 0);
-
-        ctx.restore();
-      }
-      // Phase 2: Explosion burst (0.6 - 0.75)
-      else if (progress < 0.75) {
-        const burstProgress = (progress - 0.6) / 0.15;
-
-        // Create burst particles
-        if (burstProgress < 0.1) {
-          for (let i = 0; i < 80; i++) {
-            const angle = (i / 80) * Math.PI * 2;
-            const speed = 150 + Math.random() * 300;
-            particles.push({
-              x: cx, y: cy,
-              vx: Math.cos(angle) * speed,
-              vy: Math.sin(angle) * speed,
-              life: 1.5, maxLife: 1.5,
-              color: RARITY_COLORS[won.rarity],
-              size: 3 + Math.random() * 6,
-            });
-          }
-        }
-
-        // Flash
-        const flashAlpha = Math.max(0, 1 - burstProgress * 3);
-        ctx.fillStyle = `rgba(255,255,255,${flashAlpha})`;
-        ctx.fillRect(0, 0, W, H);
-
-        // Ring expansion
-        ctx.save();
-        ctx.strokeStyle = RARITY_COLORS[won.rarity];
-        ctx.lineWidth = Math.max(1, 8 - burstProgress * 8);
-        ctx.globalAlpha = 1 - burstProgress;
-        ctx.beginPath();
-        ctx.arc(cx, cy, burstProgress * 200, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-      // Phase 3: Reward reveal (0.75 - 1.0)
-      else {
-        const revealProgress = (progress - 0.75) / 0.25;
-        const scale = 0.5 + revealProgress * 0.5;
-        const alpha = revealProgress;
-
-        // Ambient glow
-        ctx.save();
-        const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 150);
-        glowGrad.addColorStop(0, RARITY_COLORS[won.rarity] + "40");
-        glowGrad.addColorStop(1, "transparent");
-        ctx.fillStyle = glowGrad;
-        ctx.fillRect(0, 0, W, H);
-        ctx.restore();
-
-        // Rotating rays
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(progress * 2);
-        ctx.globalAlpha = alpha * 0.3;
-        for (let i = 0; i < 12; i++) {
-          const rayAngle = (i / 12) * Math.PI * 2;
-          ctx.fillStyle = RARITY_COLORS[won.rarity];
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.lineTo(Math.cos(rayAngle - 0.08) * 200, Math.sin(rayAngle - 0.08) * 200);
-          ctx.lineTo(Math.cos(rayAngle + 0.08) * 200, Math.sin(rayAngle + 0.08) * 200);
-          ctx.closePath();
-          ctx.fill();
-        }
-        ctx.restore();
-
-        // Reward icon/text
-        ctx.save();
-        ctx.translate(cx, cy - 20);
-        ctx.scale(scale, scale);
-        ctx.globalAlpha = alpha;
-        ctx.shadowColor = RARITY_COLORS[won.rarity];
-        ctx.shadowBlur = 30;
-        ctx.fillStyle = RARITY_COLORS[won.rarity];
-        ctx.font = "bold 56px sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        const icon = won.type === "coins" ? "🪙" : won.type === "gems" ? "💎" : "⭐";
-        ctx.fillText(icon, 0, 0);
-        ctx.restore();
-
-        // Reward name
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 24px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(won.name, cx, cy + 50);
-        ctx.fillStyle = RARITY_COLORS[won.rarity];
-        ctx.font = "bold 16px sans-serif";
-        ctx.fillText(won.rarity.toUpperCase(), cx, cy + 80);
-        ctx.restore();
-      }
-
-      // Update & draw particles
-      const dt = 1 / 60;
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
-        p.vx *= 0.97;
-        p.vy *= 0.97;
-        p.life -= dt;
-        if (p.life <= 0) { particles.splice(i, 1); continue; }
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * (p.life / p.maxLife), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-
-      if (progress < 1) {
-        animFrameRef.current = requestAnimationFrame(loop);
-      } else {
-        finishReveal(won);
-      }
-    };
-
-    animFrameRef.current = requestAnimationFrame(loop);
+    // After 2.5s, reveal
+    setTimeout(() => {
+      finishReveal(won);
+    }, 2500);
   };
 
   const finishReveal = async (won: BoxReward) => {
     setPhase("reveal");
     setPurchasing(false);
 
-    // Grant reward
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -347,14 +340,16 @@ export const MysteryBoxModal = ({ open, onOpenChange }: MysteryBoxModalProps) =>
       _gold: addGold,
     });
 
-    setCurrencies(prev => ({
+    setCurrencies(prev => prev ? ({
       coins: prev.coins + addCoins,
       gems: prev.gems + addGems,
       gold: prev.gold + addGold,
-    }));
+    }) : null);
 
     toast.success(`You won: ${won.name}!`);
   };
+
+  const rarityColor = reward ? RARITY_COLORS[reward.rarity] : "#A855F7";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -371,29 +366,33 @@ export const MysteryBoxModal = ({ open, onOpenChange }: MysteryBoxModalProps) =>
 
         {/* Currency display */}
         <div className="flex gap-4 justify-center py-2 border-b border-border">
-          <div className="flex items-center gap-1 text-sm">
-            <Coins className="w-4 h-4 text-yellow-400" />
-            <span className="font-bold">{currencies.coins}</span>
-          </div>
-          <div className="flex items-center gap-1 text-sm">
-            <Gem className="w-4 h-4 text-purple-400" />
-            <span className="font-bold">{currencies.gems}</span>
-          </div>
-          <div className="flex items-center gap-1 text-sm">
-            <Star className="w-4 h-4 text-amber-400" />
-            <span className="font-bold">{currencies.gold}</span>
-          </div>
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          ) : (
+            <>
+              <div className="flex items-center gap-1 text-sm">
+                <Coins className="w-4 h-4 text-yellow-400" />
+                <span className="font-bold">{currencies?.coins ?? 0}</span>
+              </div>
+              <div className="flex items-center gap-1 text-sm">
+                <Gem className="w-4 h-4 text-purple-400" />
+                <span className="font-bold">{currencies?.gems ?? 0}</span>
+              </div>
+              <div className="flex items-center gap-1 text-sm">
+                <Star className="w-4 h-4 text-amber-400" />
+                <span className="font-bold">{currencies?.gold ?? 0}</span>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Animation canvas */}
-        <div className="flex justify-center">
-          <canvas
-            ref={canvasRef}
-            width={400}
-            height={400}
-            className="rounded-lg"
-            style={{ width: "100%", maxWidth: 400, aspectRatio: "1/1" }}
-          />
+        {/* 3D Box */}
+        <div className="rounded-lg overflow-hidden" style={{ height: 280, background: "#0a0a1a" }}>
+          <Canvas camera={{ position: [0, 1.2, 3], fov: 45 }}>
+            <Suspense fallback={null}>
+              <MysteryBox3D phase={phase} rarityColor={rarityColor} />
+            </Suspense>
+          </Canvas>
         </div>
 
         {/* Reward display after reveal */}
@@ -417,12 +416,12 @@ export const MysteryBoxModal = ({ open, onOpenChange }: MysteryBoxModalProps) =>
               </div>
               <Button
                 onClick={openBox}
-                disabled={!canAfford || purchasing}
+                disabled={loading || !canAfford || purchasing}
                 className="w-full gap-2"
                 size="lg"
               >
                 <Sparkles className="w-5 h-5" />
-                {!canAfford ? "Not Enough Currency" : "Open Mystery Box"}
+                {loading ? "Loading..." : !canAfford ? "Not Enough Currency" : "Open Mystery Box"}
               </Button>
             </>
           )}
@@ -432,7 +431,7 @@ export const MysteryBoxModal = ({ open, onOpenChange }: MysteryBoxModalProps) =>
             </div>
           )}
           {phase === "reveal" && (
-            <Button onClick={() => setPhase("idle")} variant="outline" className="w-full">
+            <Button onClick={() => { setPhase("idle"); setReward(null); }} variant="outline" className="w-full">
               Open Another
             </Button>
           )}

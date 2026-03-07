@@ -1238,7 +1238,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       // Process other players' bullets hitting enemies in coop mode
       if (isMultiplayerCoopBullets) {
         const now = Date.now();
-        otherPlayersBullets.forEach((playerBullets, playerId) => {
+        otherPlayersBulletsRef.current.forEach((playerBullets, playerId) => {
           playerBullets.forEach(b => {
             const age = (now - b.timestamp) / 1000;
             if (age < b.life) {
@@ -1249,8 +1249,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
                 const e = enemies[j];
                 const dx = bx - e.x, dy = by - e.y;
                 if (dx * dx + dy * dy <= (b.r + e.r) * (b.r + e.r)) {
-                  // Only process if we're host (to avoid double damage)
-                  if (isHost) {
+                  if (isHostRef.current) {
                     e.hp -= b.dmg;
                     e.stun = 0.6;
                     spawnParticles(bx, by, "#FFF3D6", 8);
@@ -1258,7 +1257,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
                       spawnParticles(e.x, e.y, "#FF6B6B", 16);
                       if (Math.random() < 0.35) pickups.push({ x: e.x, y: e.y, r: 10, amt: 2, ttl: 18 });
                       if (e.id) {
-                        broadcastEnemyKilled(e.id, playerId);
+                        broadcastEnemyKilledRef.current(e.id, playerId);
                       }
                       enemies.splice(j, 1);
                     }

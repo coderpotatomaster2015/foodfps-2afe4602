@@ -1823,7 +1823,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       canvas.removeEventListener("mouseup", handleMouseUp);
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
-  }, [unlockedWeapons, mode, soloVariant, deviceProfile, broadcastBullet, players, username, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode, playerSkin, banForCheating]);
+  }, [mode, soloVariant, deviceProfile, username, banForCheating]);
 
   const handleBackWithScoreboard = async () => {
     // Save progress when leaving the game

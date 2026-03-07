@@ -46,6 +46,17 @@ const WEAPONS: Record<Weapon, WeaponConfig> = {
 const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "rifle", "sniper", "smg", "knife", "rpg", "axe", "flamethrower", "minigun", "railgun", "crossbow", "laser_pistol", "grenade_launcher", "katana", "dual_pistols", "plasma_rifle", "boomerang", "whip", "freeze_ray", "harpoon_gun"];
 
 const KILL_TARGET = 25;
+const ARENA_QUEUE_TIMEOUT_MS = 30000;
+const ARENA_SYNC_MS = 50;
+
+interface TeammateState {
+  id: string;
+  username: string;
+  x: number;
+  y: number;
+  angle: number;
+  isBot: boolean;
+}
 
 export const ArenaDeathmatch = ({ username, onBack, adminAbuseEvents = [], touchscreenMode = false, playerSkin = "#FFF3D6" }: ArenaDeathmatchProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -62,6 +73,9 @@ export const ArenaDeathmatch = ({ username, onBack, adminAbuseEvents = [], touch
   const [kills, setKills] = useState(0);
   const [victory, setVictory] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
+  const [isQueueing, setIsQueueing] = useState(true);
+  const [queueSeconds, setQueueSeconds] = useState(0);
+  const [teammate, setTeammate] = useState<TeammateState | null>(null);
 
   const adminStateRef = useRef({ active: false, godMode: false, speedMultiplier: 1, infiniteAmmo: false });
   const gameStateRef = useRef<any>({ enemies: [], pickups: [] });
@@ -71,6 +85,97 @@ export const ArenaDeathmatch = ({ username, onBack, adminAbuseEvents = [], touch
   const touchMoveRef = useRef({ x: 0, y: 0 });
   const touchAimRef = useRef({ x: 480, y: 320 });
   const touchShootingRef = useRef(false);
+  const movementLogsRef = useRef<Array<{ t: number; me: { x: number; y: number }; teammate: { x: number; y: number } | null }>>([]);
+  const localPlayerIdRef = useRef(`arena_${crypto.randomUUID()}`);
+  const teammateRef = useRef<TeammateState | null>(null);
+  const teamChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const localPositionRef = useRef({ x: 480, y: 320, angle: 0 });
+
+  useEffect(() => { teammateRef.current = teammate; }, [teammate]);
+
+  useEffect(() => {
+    let active = true;
+    let queueTimeout: ReturnType<typeof setTimeout> | null = null;
+    let queueTicker: ReturnType<typeof setInterval> | null = null;
+    const queueChannel = supabase.channel("arena-matchmaking");
+
+    const finalizeWithBot = () => {
+      if (!active || teammateRef.current) return;
+      const botMate: TeammateState = { id: "arena_bot", username: "ArenaBot", x: 400, y: 300, angle: 0, isBot: true };
+      setTeammate(botMate);
+      setIsQueueing(false);
+      toast.info("No player found in 30s — teamed up with ArenaBot.");
+    };
+
+    queueChannel
+      .on("broadcast", { event: "arena_queue" }, ({ payload }) => {
+        if (!active || teammateRef.current || payload.playerId === localPlayerIdRef.current) return;
+        if (payload.matchId !== "arena-coop") return;
+        if (String(payload.playerId) < localPlayerIdRef.current) {
+          const foundMate: TeammateState = { id: payload.playerId, username: payload.username, x: 480, y: 320, angle: 0, isBot: false };
+          setTeammate(foundMate);
+          setIsQueueing(false);
+          toast.success(`Matched with ${payload.username}!`);
+        }
+      })
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          queueChannel.send({
+            type: "broadcast",
+            event: "arena_queue",
+            payload: { matchId: "arena-coop", playerId: localPlayerIdRef.current, username },
+          });
+        }
+      });
+
+    queueTicker = setInterval(() => {
+      setQueueSeconds((prev) => prev + 1);
+      if (teammateRef.current) return;
+      queueChannel.send({ type: "broadcast", event: "arena_queue", payload: { matchId: "arena-coop", playerId: localPlayerIdRef.current, username } });
+    }, 1000);
+
+    queueTimeout = setTimeout(finalizeWithBot, ARENA_QUEUE_TIMEOUT_MS);
+
+    return () => {
+      active = false;
+      if (queueTimeout) clearTimeout(queueTimeout);
+      if (queueTicker) clearInterval(queueTicker);
+      supabase.removeChannel(queueChannel);
+    };
+  }, [username]);
+
+  useEffect(() => {
+    if (!teammate || teammate.isBot || !teamChannelRef.current) return;
+    const interval = setInterval(() => {
+      teamChannelRef.current?.send({
+        type: "broadcast",
+        event: "arena_move",
+        payload: {
+          playerId: localPlayerIdRef.current,
+          x: localPositionRef.current.x,
+          y: localPositionRef.current.y,
+          angle: localPositionRef.current.angle,
+        },
+      });
+    }, ARENA_SYNC_MS);
+    return () => clearInterval(interval);
+  }, [teammate]);
+
+  useEffect(() => {
+    if (!teammate || teammate.isBot) return;
+    const pairId = [localPlayerIdRef.current, teammate.id].sort().join("_");
+    const channel = supabase.channel(`arena-team-${pairId}`)
+      .on("broadcast", { event: "arena_move" }, ({ payload }) => {
+        if (payload.playerId === localPlayerIdRef.current || payload.playerId !== teammate.id) return;
+        setTeammate((current) => current ? { ...current, x: payload.x, y: payload.y, angle: payload.angle } : current);
+      })
+      .subscribe();
+    teamChannelRef.current = channel;
+    return () => {
+      supabase.removeChannel(channel);
+      teamChannelRef.current = null;
+    };
+  }, [teammate]);
 
   useEffect(() => { checkPermissions(); loadUserProgress(); }, []);
   useEffect(() => {
@@ -211,14 +316,24 @@ export const ArenaDeathmatch = ({ username, onBack, adminAbuseEvents = [], touch
     const loop = (now: number) => {
       const dt = Math.min(0.033, (now - last) / 1000); last = now; time += dt;
 
+      if (isQueueing) {
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = "#100505"; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = "#fff"; ctx.textAlign = "center";
+        ctx.font = "bold 28px sans-serif"; ctx.fillText("Queueing Arena Co-op...", W / 2, H / 2 - 20);
+        ctx.font = "20px sans-serif"; ctx.fillText(`Time: ${queueSeconds}s`, W / 2, H / 2 + 20);
+        gameLoopRef.current = requestAnimationFrame(loop);
+        return;
+      }
+
       // Victory check
       if (killCount >= KILL_TARGET && !won) {
-        won = true; setVictory(true); saveProgress(score);
+        won = true; setVictory(true); movementLogsRef.current = []; saveProgress(score);
         toast.success(`🏆 Arena Victory! ${KILL_TARGET} kills reached!`);
       }
 
       if (player.hp <= 0 && !adminStateRef.current.godMode) {
-        if (!gameOver) { setGameOver(true); saveProgress(score); }
+        if (!gameOver) { setGameOver(true); movementLogsRef.current = []; saveProgress(score); }
         ctx.fillStyle = "rgba(20,0,0,0.85)"; ctx.fillRect(0, 0, W, H);
         ctx.fillStyle = "#E53935"; ctx.font = "bold 48px sans-serif"; ctx.textAlign = "center";
         ctx.fillText("DEFEATED", W / 2, H / 2 - 30);
@@ -233,6 +348,23 @@ export const ArenaDeathmatch = ({ username, onBack, adminAbuseEvents = [], touch
       else { if (keys["w"]) dy -= 1; if (keys["s"]) dy += 1; if (keys["a"]) dx -= 1; if (keys["d"]) dx += 1; }
       player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
       if (dx !== 0 || dy !== 0) { const l = Math.hypot(dx, dy); dx /= l; dy /= l; player.x = Math.max(20, Math.min(W - 20, player.x + dx * player.speed * dt)); player.y = Math.max(20, Math.min(H - 20, player.y + dy * player.speed * dt)); }
+      localPositionRef.current = { x: player.x, y: player.y, angle: player.angle };
+
+      if (teammateRef.current) {
+        if (teammateRef.current.isBot) {
+          const target = enemies[0] || player;
+          const tvx = target.x - teammateRef.current.x;
+          const tvy = target.y - teammateRef.current.y;
+          const td = Math.hypot(tvx, tvy) || 1;
+          teammateRef.current.x = Math.max(20, Math.min(W - 20, teammateRef.current.x + (tvx / td) * 120 * dt));
+          teammateRef.current.y = Math.max(20, Math.min(H - 20, teammateRef.current.y + (tvy / td) * 120 * dt));
+          teammateRef.current.angle = Math.atan2(tvy, tvx);
+          setTeammate({ ...teammateRef.current });
+        }
+      }
+
+      movementLogsRef.current.push({ t: now, me: { x: player.x, y: player.y }, teammate: teammateRef.current ? { x: teammateRef.current.x, y: teammateRef.current.y } : null });
+      if (movementLogsRef.current.length > 240) movementLogsRef.current.shift();
 
       if (!won) tryShoot(time);
 
@@ -303,6 +435,16 @@ export const ArenaDeathmatch = ({ username, onBack, adminAbuseEvents = [], touch
       for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
       ctx.restore();
 
+      if (teammateRef.current) {
+        ctx.save();
+        ctx.translate(teammateRef.current.x, teammateRef.current.y);
+        ctx.rotate(teammateRef.current.angle);
+        ctx.fillStyle = teammateRef.current.isBot ? "#60A5FA" : "#34D399";
+        ctx.beginPath(); ctx.arc(0, 0, player.r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#1f2937"; ctx.fillRect(player.r - 2, -5, 16, 10);
+        ctx.restore();
+      }
+
       // Kill progress bar at top
       ctx.save();
       ctx.fillStyle = "rgba(229,57,53,0.15)"; ctx.fillRect(W / 2 - 120, 8, 240, 34);
@@ -349,11 +491,12 @@ export const ArenaDeathmatch = ({ username, onBack, adminAbuseEvents = [], touch
     for (let i = 0; i < 2; i++) pickups.push({ x: rand(80, W - 80), y: rand(80, H - 80), r: 10, amt: 3, ttl: 20 });
     gameLoopRef.current = requestAnimationFrame(loop);
     return () => {
+      if (gameOver || victory) movementLogsRef.current = [];
       window.removeEventListener("keydown", handleKeyDown); window.removeEventListener("keyup", handleKeyUp);
       canvas.removeEventListener("mousemove", handleMouseMove); canvas.removeEventListener("mousedown", handleMouseDown); canvas.removeEventListener("mouseup", handleMouseUp);
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
-  }, [unlockedWeapons, playerSkin, touchscreenMode]);
+  }, [unlockedWeapons, playerSkin, touchscreenMode, isQueueing, queueSeconds]);
 
   return (
     <div className="relative">
@@ -362,11 +505,13 @@ export const ArenaDeathmatch = ({ username, onBack, adminAbuseEvents = [], touch
         <div className="text-sm text-muted-foreground space-y-1">
           <div><span className="text-red-400 font-mono">WASD</span> move</div>
           <div><span className="text-red-400 font-mono">Mouse</span> aim & shoot</div>
+          <div><span className="text-red-400 font-mono">Arena Co-op</span> auto queue</div>
           <div className="text-red-300 text-xs mt-2">First to {KILL_TARGET} kills wins!</div>
         </div>
       </div>
       <div className="fixed right-4 top-4 bg-card/80 backdrop-blur-sm border border-red-500/30 rounded-lg p-4 space-y-3 min-w-[180px]">
         <div className="text-center font-bold text-red-400">{victory ? "🏆 VICTORY!" : `${kills}/${KILL_TARGET} Kills`}</div>
+        <div className="text-xs text-muted-foreground">Teammate: <span className="text-foreground">{teammate ? `${teammate.username}${teammate.isBot ? " (Bot)" : ""}` : "Queueing..."}</span></div>
         <div className="flex justify-between"><span className="text-sm text-muted-foreground">Health</span><span className="font-bold">{Math.round(health)}</span></div>
         <div className="w-full bg-secondary rounded-full h-3 overflow-hidden"><div className="bg-gradient-to-r from-red-700 to-red-400 h-full transition-all" style={{ width: `${(health / maxHealth) * 100}%` }} /></div>
         {spawnImmunity && <div className="flex items-center gap-2 text-red-400 text-sm"><Shield className="w-4 h-4" /><span>Protected</span></div>}

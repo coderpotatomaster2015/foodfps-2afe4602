@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import {
   Biohazard, Bot, Circle, Crown, Crosshair, Dumbbell, Flag, FlipHorizontal, Gauge,
   Ghost, GraduationCap, Heart, Lock, Mountain, Orbit, Shield, Skull, Snowflake,
-  Sparkles, Swords, Target, Timer, Trophy, User, UserCheck, Users, Wifi, Zap,
+  Sparkles, Swords, Target, User, UserCheck, Zap,
   Droplets, Shuffle, Star, Box, HeartPulse, Bomb, Coins, UserMinus
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -16,7 +16,6 @@ interface GameModeSelectorProps {
   username: string;
   onModeSelect: (mode: GameMode, roomCode?: string, timedMinutes?: number) => void;
   soloDisabled?: boolean;
-  multiplayerDisabled?: boolean;
   bossDisabled?: boolean;
   isClassMode?: boolean;
 }
@@ -74,12 +73,9 @@ export const GameModeSelector = ({
   username,
   onModeSelect,
   soloDisabled = false,
-  multiplayerDisabled = false,
   bossDisabled = false,
   isClassMode = false,
 }: GameModeSelectorProps) => {
-  const [joinCode, setJoinCode] = useState("");
-  const [showHostOptions, setShowHostOptions] = useState(false);
   const [search, setSearch] = useState("");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recentModes, setRecentModes] = useState<string[]>([]);
@@ -120,8 +116,6 @@ export const GameModeSelector = ({
     if (!found || isModeDisabled(found)) { toast.error("That mode is currently disabled."); return; }
     onModeSelect(mode); addRecentMode(mode);
   };
-  const handleJoinGame = () => { if (joinCode.length === 5) { onModeSelect("join", joinCode); } };
-  const handleHostTimed = (minutes: number) => { onModeSelect("host", undefined, minutes); setShowHostOptions(false); };
   const toggleFavorite = (mode: string) => { setFavorites((current) => current.includes(mode) ? current.filter((m) => m !== mode) : [...current, mode]); };
   const launchRandomMode = () => { const available = ALL_MODES.filter((mode) => !isModeDisabled(mode)); const pick = available[Math.floor(Math.random() * available.length)]; toast.success(`Random mode selected: ${pick.title}`); startMode(pick.mode); };
 
@@ -217,31 +211,6 @@ export const GameModeSelector = ({
         })}
       </div>
 
-      <Card className={`p-4 bg-card border-border ${multiplayerDisabled ? "opacity-50" : ""}`}>
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center"><Users className="w-5 h-5" /></div><div><h3 className="font-bold">Multiplayer</h3><p className="text-xs text-muted-foreground">Compete for kills</p></div></div>
-          <div className="flex gap-2">
-            <Button variant="gaming" size="sm" onClick={() => !multiplayerDisabled && setShowHostOptions(true)} disabled={multiplayerDisabled}><Wifi className="w-4 h-4 mr-1" />Host</Button>
-            <div className="flex gap-1">
-              <Input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase().slice(0, 5))} placeholder="CODE" className="w-20 text-center text-sm font-mono" maxLength={5} disabled={multiplayerDisabled} />
-              <Button onClick={handleJoinGame} variant="accent" size="sm" disabled={joinCode.length !== 5 || multiplayerDisabled}>Join</Button>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {showHostOptions && (
-        <Card className="p-4 border-primary/30 animate-in fade-in slide-in-from-bottom-4">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between"><h3 className="text-lg font-bold flex items-center gap-2"><Timer className="w-5 h-5 text-primary" /> Match Duration</h3><Button variant="ghost" size="sm" onClick={() => setShowHostOptions(false)}>Cancel</Button></div>
-            <p className="text-xs text-muted-foreground"><Trophy className="w-3 h-3 inline mr-1" />Winner gets 5 coins, 5 gems, and 5 gold!</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Button variant="gaming" onClick={() => handleHostTimed(5)} className="h-14 flex-col gap-0.5"><Timer className="w-5 h-5" /><span className="font-bold">5 Min</span></Button>
-              <Button variant="gaming" onClick={() => handleHostTimed(10)} className="h-14 flex-col gap-0.5"><Timer className="w-5 h-5" /><span className="font-bold">10 Min</span></Button>
-            </div>
-          </div>
-        </Card>
-      )}
     </div>
   );
 };

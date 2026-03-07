@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { UsernameModal } from "@/components/game/UsernameModal";
 import { GameModeSelector } from "@/components/game/GameModeSelector";
 import { GameCanvas } from "@/components/game/GameCanvas";
@@ -24,9 +24,6 @@ import { TagMode } from "@/components/game/TagMode";
 import { BountyHunterMode } from "@/components/game/BountyHunterMode";
 import { DemolitionMode } from "@/components/game/DemolitionMode";
 import { MedicMode } from "@/components/game/MedicMode";
-import { Lobby } from "@/components/game/Lobby";
-import { TimedLobby } from "@/components/game/TimedLobby";
-import { TimedGameCanvas } from "@/components/game/TimedGameCanvas";
 import { AdminPanel } from "@/components/game/AdminPanel";
 import { AdminCodeModal } from "@/components/game/AdminCodeModal";
 import { WebsiteDisabled } from "@/components/game/WebsiteDisabled";
@@ -73,6 +70,7 @@ export type GameMode = "solo" | "3d-solo" | "host" | "join" | "offline" | "boss"
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [username, setUsername] = useState<string>("");
   const [gameMode, setGameMode] = useState<GameMode>(null);
   const [roomCode, setRoomCode] = useState<string>("");
@@ -127,6 +125,16 @@ const Index = () => {
 
   const gameStatus = useGameStatus(user?.id || null);
 
+  const validModes = new Set<GameMode>(["solo", "3d-solo", "offline", "boss", "ranked", "youvsme", "school", "survival", "zombie", "arena", "infection", "ctf", "koth", "gungame", "vip", "lms", "dodgeball", "payload", "sniper", "tag", "bounty", "demolition", "medic", "blitz", "juggernaut", "stealth", "mirror", "lowgrav", "chaos", "headhunter", "vampire", "frostbite", "titan", "quickplay"]);
+
+  const syncUrlForMode = (mode: GameMode) => {
+    if (!mode) {
+      navigate("/", { replace: true });
+      return;
+    }
+    navigate(`/?mode=${encodeURIComponent(mode)}`, { replace: true });
+  };
+
   useEffect(() => {
     checkWebsiteStatus();
     const savedTouchscreen = localStorage.getItem("foodfps_touchscreen");
@@ -157,6 +165,13 @@ const Index = () => {
     checkAdminRole(); checkTeacherRole(); checkBetaTester(); checkClassMemberStatus(); loadUserProfile(); loadUnreadMessages();
   }, [user, loading, navigate]);
 
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const modeParam = params.get("mode") as GameMode;
+    if (!modeParam || !validModes.has(modeParam)) return;
+    if (gameMode !== modeParam) setGameMode(modeParam);
+  }, [location.search]);
   const checkClassMemberStatus = async () => {
     if (!user) return;
     try {
@@ -243,12 +258,24 @@ const Index = () => {
   };
   const handleUsernameSet = (name: string) => { setUsername(name); localStorage.setItem("foodfps_username", name); setShowUsernameModal(false); };
   const handleModeSelect = (mode: GameMode, code?: string, timed?: number) => {
-    if (timed && timed > 0) { setGameMode("timed-host"); setTimedMinutes(timed); } else { setGameMode(mode); }
+    if (timed && timed > 0) {
+      setGameMode("arena");
+      setTimedMinutes(timed);
+      syncUrlForMode("arena");
+    } else {
+      if (mode === "host" || mode === "join" || mode === "timed-host" || mode === "timed-join") {
+        setGameMode("arena");
+        syncUrlForMode("arena");
+      } else {
+        setGameMode(mode);
+        syncUrlForMode(mode);
+      }
+    }
     if (code) setRoomCode(code);
   };
   const handleStartGame = () => setIsInGame(true);
   const handleTimedStartGame = (minutes: number) => { setTimedMinutes(minutes); setIsInGame(true); };
-  const handleBackToMenu = () => { setGameMode(null); setRoomCode(""); setTimedMinutes(0); setIsInGame(false); };
+  const handleBackToMenu = () => { setGameMode(null); setRoomCode(""); setTimedMinutes(0); setIsInGame(false); syncUrlForMode(null); };
   const handleLogout = async () => {
     localStorage.removeItem("play_as_guest"); localStorage.removeItem("foodfps_username"); localStorage.removeItem("isClassMode"); localStorage.removeItem("classCode");
     await supabase.auth.signOut(); navigate("/auth");
@@ -367,13 +394,11 @@ const Index = () => {
       {!gameMode && !showUsernameModal && username && (
         <GameModeSelector 
           username={username} onModeSelect={handleModeSelect}
-          soloDisabled={soloDisabled || isClassMode} multiplayerDisabled={multiplayerDisabled || isClassMode} bossDisabled={bossDisabled || isClassMode}
+          soloDisabled={soloDisabled || isClassMode} bossDisabled={bossDisabled || isClassMode}
           isClassMode={isClassMode}
         />
       )}
 
-      {gameMode && !isInGame && (gameMode === "host" || gameMode === "join") && <Lobby mode={gameMode} username={username} roomCode={roomCode} onStartGame={handleStartGame} onBack={handleBackToMenu} />}
-      {gameMode === "timed-host" && !isInGame && <TimedLobby mode="host" username={username} roomCode={roomCode} timedMinutes={timedMinutes} onStartGame={handleTimedStartGame} onBack={handleBackToMenu} />}
       {/* 2D mode: render every playable mode in 2D when 3D toggle is off */}
       {gameMode && !threeDMode && all3DModes.includes(gameMode) && !(gameMode === "host" || gameMode === "join" || gameMode === "timed-host" || gameMode === "timed-join") && render2DMode()}
 

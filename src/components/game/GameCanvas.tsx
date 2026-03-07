@@ -1665,7 +1665,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         ctx.stroke();
       }
       
-      ctx.fillStyle = playerSkin;
+      ctx.fillStyle = playerSkinRef.current;
       ctx.beginPath();
       ctx.arc(0, 0, player.r, 0, Math.PI * 2);
       ctx.fill();

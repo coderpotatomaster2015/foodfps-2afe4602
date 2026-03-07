@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import {
   Biohazard, Bot, Circle, Crown, Crosshair, Dumbbell, Flag, FlipHorizontal, Gauge,
   Ghost, GraduationCap, Heart, Lock, Mountain, Orbit, Shield, Skull, Snowflake,
-  Sparkles, Swords, Target, User, UserCheck, Zap,
+  Sparkles, Swords, Target, User, UserCheck, Users, Zap,
   Droplets, Shuffle, Star, Box, HeartPulse, Bomb, Coins, UserMinus
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";

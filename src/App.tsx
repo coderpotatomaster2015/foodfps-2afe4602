@@ -15,6 +15,7 @@ import AdminAccountViewer from "./pages/AdminAccountViewer";
 import AdminPasswordReset from "./pages/AdminPasswordReset";
 import PrivateStuff from "./pages/PrivateStuff";
 import CustomGamemodePage from "./pages/CustomGamemodePage";
+import EncoderEdu from "./pages/EncoderEdu";
 import { BanCheck } from "./components/BanCheck";
 import { SEOHead, StructuredData } from "./components/SEOHead";
 import { toast } from "sonner";
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="/adminpasswordreset" element={<AdminPasswordReset />} />
               <Route path="/privatestuffpasswordsandmore" element={<PrivateStuff />} />
               <Route path="/custom/:slug" element={<CustomGamemodePage />} />
+              <Route path="/encoder.edu" element={<EncoderEdu />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

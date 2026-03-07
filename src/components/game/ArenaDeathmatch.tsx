@@ -62,6 +62,8 @@ export const ArenaDeathmatch = ({ username, onBack, adminAbuseEvents = [], touch
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [score, setScore] = useState(0);
+  const scoreRef = useRef(score);
+  scoreRef.current = score;
   const [ammo, setAmmo] = useState(10);
   const [maxAmmo, setMaxAmmo] = useState(10);
   const [currentWeapon, setCurrentWeapon] = useState<Weapon>("pistol");
@@ -355,12 +357,12 @@ export const ArenaDeathmatch = ({ username, onBack, adminAbuseEvents = [], touch
 
       // Victory check
       if (killCount >= KILL_TARGET && !won) {
-        won = true; setVictory(true); movementLogsRef.current = []; saveProgress(score);
+        won = true; setVictory(true); movementLogsRef.current = []; saveProgress(scoreRef.current);
         toast.success(`🏆 Arena Victory! ${KILL_TARGET} kills reached!`);
       }
 
       if (player.hp <= 0 && !adminStateRef.current.godMode) {
-        if (!gameOver) { setGameOver(true); movementLogsRef.current = []; saveProgress(score); }
+        if (!gameOver) { setGameOver(true); movementLogsRef.current = []; saveProgress(scoreRef.current); }
         ctx.fillStyle = "rgba(20,0,0,0.85)"; ctx.fillRect(0, 0, W, H);
         ctx.fillStyle = "#E53935"; ctx.font = "bold 48px sans-serif"; ctx.textAlign = "center";
         ctx.fillText("DEFEATED", W / 2, H / 2 - 30);
@@ -556,7 +558,7 @@ export const ArenaDeathmatch = ({ username, onBack, adminAbuseEvents = [], touch
       </div>
       <canvas ref={canvasRef} width={960} height={640} className="border-2 border-red-500/30 rounded-lg shadow-2xl" />
       <div className="mt-4 flex gap-2">
-        <Button variant="outline" onClick={() => { if (score > 0) saveProgress(score); onBack(); }}><ArrowLeft className="w-4 h-4 mr-2" />Back to Menu</Button>
+        <Button variant="outline" onClick={() => { if (score > 0) saveProgress(scoreRef.current); onBack(); }}><ArrowLeft className="w-4 h-4 mr-2" />Back to Menu</Button>
         <Button variant="outline" onClick={() => setChatOpen(!chatOpen)}><MessageSquare className="w-4 h-4 mr-2" />Console</Button>
       </div>
       <AdminChat open={chatOpen} onOpenChange={setChatOpen} onCommand={handleCommand} onShowOnlinePlayers={() => {}} />

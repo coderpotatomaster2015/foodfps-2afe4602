@@ -1124,7 +1124,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         if (!gameOver) {
           setGameOver(true);
           setDeaths(prev => prev + 1);
-          saveProgress(score);
+          saveProgress(scoreRef.current);
         }
         
         ctx.save();
@@ -1384,7 +1384,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       // Arena win condition
       if (mode === "arena" && kills >= arenaKillTarget && !modeWon) {
         modeWon = true;
-        saveProgress(score);
+        saveProgress(scoreRef.current);
         toast.success(`🏆 Arena Victory! ${arenaKillTarget} kills reached!`);
       }
 
@@ -1404,7 +1404,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           toast.success(`🎉 Flag captured! Score: ${ctfPlayerScore}/3`);
           if (ctfPlayerScore >= 3 && !modeWon) {
             modeWon = true;
-            saveProgress(score);
+            saveProgress(scoreRef.current);
             toast.success("🏆 CTF Victory! You captured 3 flags!");
           }
         }
@@ -1831,7 +1831,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const handleBackWithScoreboard = async () => {
     // Save progress when leaving the game
     if (score > 0) {
-      saveProgress(score);
+      saveProgress(scoreRef.current);
     }
     
     if (mode === "host" || mode === "join") {

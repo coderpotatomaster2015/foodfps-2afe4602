@@ -112,11 +112,38 @@ export const ArenaDeathmatch = ({ username, onBack, adminAbuseEvents = [], touch
         if (!active || teammateRef.current || payload.playerId === localPlayerIdRef.current) return;
         if (payload.matchId !== "arena-coop") return;
         if (String(payload.playerId) < localPlayerIdRef.current) {
-          const foundMate: TeammateState = { id: payload.playerId, username: payload.username, x: 480, y: 320, angle: 0, isBot: false };
-          setTeammate(foundMate);
-          setIsQueueing(false);
-          toast.success(`Matched with ${payload.username}!`);
+          queueChannel.send({
+            type: "broadcast",
+            event: "arena_match",
+            payload: {
+              matchId: "arena-coop",
+              playerAId: payload.playerId,
+              playerAUsername: payload.username,
+              playerBId: localPlayerIdRef.current,
+              playerBUsername: username,
+            },
+          });
         }
+      })
+      .on("broadcast", { event: "arena_match" }, ({ payload }) => {
+        if (!active || teammateRef.current) return;
+        if (payload.matchId !== "arena-coop") return;
+
+        const isPlayerA = payload.playerAId === localPlayerIdRef.current;
+        const isPlayerB = payload.playerBId === localPlayerIdRef.current;
+        if (!isPlayerA && !isPlayerB) return;
+
+        const foundMate: TeammateState = {
+          id: isPlayerA ? payload.playerBId : payload.playerAId,
+          username: isPlayerA ? payload.playerBUsername : payload.playerAUsername,
+          x: 480,
+          y: 320,
+          angle: 0,
+          isBot: false,
+        };
+        setTeammate(foundMate);
+        setIsQueueing(false);
+        toast.success(`Matched with ${foundMate.username}!`);
       })
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {

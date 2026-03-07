@@ -1432,15 +1432,13 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
 
       // In coop mode, host broadcasts enemy state, non-hosts sync from shared state
       if (isMultiplayerCoop) {
-        if (isHost) {
-          // Host broadcasts enemy positions every 100ms
+        if (isHostRef.current) {
           if (time % 0.1 < dt) {
             const enemyData = enemies.map(e => ({ id: e.id, x: e.x, y: e.y, hp: e.hp, speed: e.speed }));
-            broadcastEnemyUpdate(enemyData);
+            broadcastEnemyUpdateRef.current(enemyData);
           }
-        } else if (sharedEnemies.length > 0) {
-          // Non-host syncs enemy positions from host
-          for (const shared of sharedEnemies) {
+        } else if (sharedEnemiesRef.current.length > 0) {
+          for (const shared of sharedEnemiesRef.current) {
             const existing = enemies.find(e => e.id === shared.id);
             if (existing) {
               existing.x = shared.x;
@@ -1450,9 +1448,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
               enemies.push({ id: shared.id, x: shared.x, y: shared.y, r: 16, speed: shared.speed, hp: shared.hp, color: "#FF6B6B", stun: 0, lastHit: 0, lastShot: -1 });
             }
           }
-          // Remove enemies that don't exist in shared state
           for (let i = enemies.length - 1; i >= 0; i--) {
-            if (!sharedEnemies.find(s => s.id === enemies[i].id)) {
+            if (!sharedEnemiesRef.current.find(s => s.id === enemies[i].id)) {
               enemies.splice(i, 1);
             }
           }

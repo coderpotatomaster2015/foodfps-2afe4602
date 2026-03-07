@@ -1807,7 +1807,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     };
 
     // Only spawn initial enemies if not joining coop (host or solo spawn)
-    const shouldSpawnInitial = mode === "solo" || mode === "host" || !coopMode;
+    const shouldSpawnInitial = mode === "solo" || mode === "host" || !coopModeRef.current;
     if (shouldSpawnInitial) {
       for (let i = 0; i < 3; i++) spawnEnemy();
     }

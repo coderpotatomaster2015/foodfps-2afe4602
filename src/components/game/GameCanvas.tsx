@@ -1683,7 +1683,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
 
       // Draw other players (multiplayer) - Enhanced visibility
       if (mode === "host" || mode === "join") {
-        for (const otherPlayer of players) {
+        for (const otherPlayer of playersRef.current) {
           if (otherPlayer.username === username) continue;
           
           const opx = otherPlayer.position_x || 480;

@@ -799,29 +799,6 @@ export const MysteryBoxModal = ({ open, onOpenChange }: MysteryBoxModalProps) =>
           background: `radial-gradient(ellipse at center, ${tier.glowColor}18 0%, #07071a 70%)`,
           border: `1px solid ${tier.accentColor}20`,
         }}>
-          {/* Video background — plays during animation */}
-          <video
-            ref={(el) => {
-              if (!el) return;
-              if (isAnimating || phase === "reveal") {
-                el.currentTime = 0;
-                el.play().catch(() => {});
-              } else {
-                el.pause();
-                el.currentTime = 0;
-              }
-            }}
-            src="/drop.mov"
-            muted
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
-            style={{
-              opacity: isAnimating ? 0.6 : phase === "reveal" ? 0.35 : 0,
-              transition: "opacity 0.4s ease",
-              mixBlendMode: "screen",
-            }}
-          />
-
           {/* Tier label overlay */}
           <div className="absolute top-2 left-3 z-10">
             <span className="text-xs font-black tracking-wider uppercase" style={{ color: tier.accentColor, textShadow: `0 0 10px ${tier.glowColor}80` }}>

@@ -817,6 +817,50 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
       ctx.fillRect(player.r - 2, -6, 18, 12);
       ctx.restore();
 
+      // Draw minions
+      for (const m of minions) {
+        ctx.save();
+        ctx.fillStyle = "#FF8800";
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+        ctx.fill();
+        // Minion health bar
+        ctx.fillStyle = "#333";
+        ctx.fillRect(m.x - 15, m.y - m.r - 8, 30, 4);
+        ctx.fillStyle = "#FF8800";
+        ctx.fillRect(m.x - 15, m.y - m.r - 8, 30 * Math.max(0, m.hp / (30 + bossLevel * 5)), 4);
+        ctx.restore();
+      }
+
+      // Draw shockwave
+      if (shockwaveRef.current.active) {
+        ctx.save();
+        ctx.strokeStyle = "#FFAA00";
+        ctx.lineWidth = 4;
+        ctx.globalAlpha = Math.max(0, shockwaveRef.current.timer / 0.8);
+        ctx.beginPath();
+        ctx.arc(boss.x, boss.y, shockwaveRef.current.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Draw laser
+      if (laserRef.current.active) {
+        ctx.save();
+        const isWarning = laserRef.current.warning > 0;
+        ctx.strokeStyle = isWarning ? "rgba(255,0,0,0.3)" : "#FF0000";
+        ctx.lineWidth = isWarning ? 6 : 12;
+        ctx.globalAlpha = isWarning ? 0.5 + Math.sin(time * 20) * 0.3 : 0.9;
+        ctx.beginPath();
+        ctx.moveTo(boss.x, boss.y);
+        ctx.lineTo(
+          boss.x + Math.cos(laserRef.current.angle) * 1200,
+          boss.y + Math.sin(laserRef.current.angle) * 1200
+        );
+        ctx.stroke();
+        ctx.restore();
+      }
+
       // Draw particles
       for (const p of particles) {
         ctx.save();

@@ -559,10 +559,12 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
       }
 
       // Boss AI
-      boss.x += Math.sin(time * 2) * 100 * dt;
+      const bossSpeedMult = diffConf.speedMult;
+      boss.x += Math.sin(time * 2 * bossSpeedMult) * 100 * bossSpeedMult * dt;
+      boss.x = Math.max(boss.r, Math.min(W - boss.r, boss.x));
       
-      // Boss shooting - balanced difficulty
-      const shootInterval = Math.max(0.6, 2.0 - bossLevel * 0.1);
+      // Boss shooting - difficulty adjusted
+      const shootInterval = Math.max(0.6, 2.0 - bossLevel * 0.1) * diffConf.shootMult;
       if (time - boss.lastShot >= shootInterval) {
         boss.lastShot = time;
         const bulletCount = Math.min(8, 3 + Math.floor(bossLevel / 3));
@@ -571,11 +573,11 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
           bossBullets.push({
             x: boss.x,
             y: boss.y + boss.r,
-            vx: Math.cos(angle) * 200,
-            vy: Math.sin(angle) * 200 + 80,
+            vx: Math.cos(angle) * 200 * bossSpeedMult,
+            vy: Math.sin(angle) * 200 * bossSpeedMult + 80,
             r: 8,
             life: 3,
-            dmg: 10 + bossLevel * 2,
+            dmg: Math.round((10 + bossLevel * 2) * diffConf.dmgMult),
             color: boss.color,
           });
         }
@@ -586,13 +588,123 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
           bossBullets.push({
             x: boss.x,
             y: boss.y + boss.r,
-            vx: Math.cos(aimAngle) * 280,
-            vy: Math.sin(aimAngle) * 280,
+            vx: Math.cos(aimAngle) * 280 * bossSpeedMult,
+            vy: Math.sin(aimAngle) * 280 * bossSpeedMult,
             r: 10,
             life: 2.5,
-            dmg: 15 + bossLevel * 3,
+            dmg: Math.round((15 + bossLevel * 3) * diffConf.dmgMult),
             color: "#FF00FF",
           });
+        }
+      }
+
+      // === BOSS SPECIAL ABILITIES ===
+      const specialCooldown = bossLevel >= 8 ? 4 : bossLevel >= 5 ? 6 : 8;
+      if (bossLevel >= 3 && time - lastSpecialAbility >= specialCooldown) {
+        lastSpecialAbility = time;
+        const abilities: string[] = [];
+        if (bossLevel >= 3) abilities.push("shockwave");
+        if (bossLevel >= 5) abilities.push("laser");
+        if (bossLevel >= 7) abilities.push("minions");
+        const chosen = abilities[Math.floor(Math.random() * abilities.length)];
+
+        if (chosen === "shockwave") {
+          shockwaveRef.current = { active: true, radius: 0, maxRadius: 200 + bossLevel * 15, timer: 0.8 };
+          spawnParticles(boss.x, boss.y, "#FFAA00", 20);
+        } else if (chosen === "laser") {
+          const laserAngle = Math.atan2(player.y - boss.y, player.x - boss.x);
+          laserRef.current = { active: true, angle: laserAngle, timer: 1.2, warning: 0.5 };
+        } else if (chosen === "minions") {
+          const count = Math.min(4, 1 + Math.floor(bossLevel / 4));
+          for (let i = 0; i < count; i++) {
+            minions.push({
+              x: boss.x + rand(-80, 80),
+              y: boss.y + rand(20, 60),
+              r: 12,
+              hp: 30 + bossLevel * 5,
+              speed: 80 + bossLevel * 5,
+              lastShot: time,
+            });
+          }
+          toast.info("Boss summoned minions!");
+        }
+      }
+
+      // Update shockwave
+      if (shockwaveRef.current.active) {
+        shockwaveRef.current.timer -= dt;
+        shockwaveRef.current.radius += (shockwaveRef.current.maxRadius / 0.8) * dt;
+        if (shockwaveRef.current.timer <= 0) {
+          shockwaveRef.current.active = false;
+        }
+        // Check player collision with shockwave ring
+        const dist = Math.hypot(player.x - boss.x, player.y - boss.y);
+        const ringR = shockwaveRef.current.radius;
+        if (Math.abs(dist - ringR) < 25 && !adminStateRef.current.godMode) {
+          player.hp -= Math.round(8 * diffConf.dmgMult);
+          setHealth(Math.max(0, player.hp));
+        }
+      }
+
+      // Update laser
+      if (laserRef.current.active) {
+        laserRef.current.timer -= dt;
+        laserRef.current.warning -= dt;
+        if (laserRef.current.timer <= 0) {
+          laserRef.current.active = false;
+        }
+        // Damage player if laser is past warning phase
+        if (laserRef.current.warning <= 0) {
+          const laserDx = Math.cos(laserRef.current.angle);
+          const laserDy = Math.sin(laserRef.current.angle);
+          // Point-to-line distance
+          const relX = player.x - boss.x, relY = player.y - boss.y;
+          const proj = relX * laserDx + relY * laserDy;
+          if (proj > 0) {
+            const perpDist = Math.abs(relX * laserDy - relY * laserDx);
+            if (perpDist < 20 && !adminStateRef.current.godMode) {
+              player.hp -= Math.round(15 * diffConf.dmgMult * dt);
+              setHealth(Math.max(0, player.hp));
+            }
+          }
+        }
+      }
+
+      // Update minions
+      for (let i = minions.length - 1; i >= 0; i--) {
+        const m = minions[i];
+        const toPlayerAngle = Math.atan2(player.y - m.y, player.x - m.x);
+        m.x += Math.cos(toPlayerAngle) * m.speed * dt;
+        m.y += Math.sin(toPlayerAngle) * m.speed * dt;
+        
+        // Minion shooting
+        if (time - m.lastShot >= 2.0) {
+          m.lastShot = time;
+          bossBullets.push({
+            x: m.x, y: m.y,
+            vx: Math.cos(toPlayerAngle) * 180,
+            vy: Math.sin(toPlayerAngle) * 180,
+            r: 6, life: 2,
+            dmg: Math.round(8 * diffConf.dmgMult),
+            color: "#FF8800",
+          });
+        }
+
+        // Check if player bullets hit minion
+        for (let j = bullets.length - 1; j >= 0; j--) {
+          const b = bullets[j];
+          const mdx = b.x - m.x, mdy = b.y - m.y;
+          if (mdx * mdx + mdy * mdy <= (b.r + m.r) * (b.r + m.r)) {
+            m.hp -= b.dmg;
+            spawnParticles(b.x, b.y, "#FF8800", 5);
+            bullets.splice(j, 1);
+            if (m.hp <= 0) {
+              spawnParticles(m.x, m.y, "#FF8800", 15);
+              minions.splice(i, 1);
+              setScore(prev => prev + 25);
+              break;
+            }
+          }
         }
       }
 

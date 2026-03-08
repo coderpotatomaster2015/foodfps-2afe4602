@@ -87,10 +87,11 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
   const playerRef = useRef<any>(null);
   const gameLoopRef = useRef<number | null>(null);
   const bossLevelRef = useRef(1);
+  const specialPowerRef = useRef<string | null>(null);
   const difficultyRef = useRef<Difficulty>("normal");
   const minionsRef = useRef<any[]>([]);
-  const laserRef = useRef<any>(null);
-  const shockwaveRef = useRef<any>(null);
+  const laserRef = useRef<{ active: boolean; angle: number; timer: number; warning: number }>({ active: false, angle: 0, timer: 0, warning: 0 });
+  const shockwaveRef = useRef<{ active: boolean; radius: number; maxRadius: number; timer: number }>({ active: false, radius: 0, maxRadius: 0, timer: 0 });
   const teleportCooldownRef = useRef<number>(0);
 
   // Apply admin abuse events

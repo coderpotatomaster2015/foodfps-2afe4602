@@ -16,7 +16,7 @@ import {
   Gamepad2, Heart, Crosshair, Zap, Users, Palette, Eye, 
   Send, ArrowLeft, Sparkles, Shield, Timer, Target, Save,
   Loader2, Check, X, Clock, Play, Globe, Search, Flame,
-  Ruler, Wind, Bomb, Snowflake, Map
+  Ruler, Wind, Bomb, Snowflake, Map, Bot, Wand2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -31,6 +31,21 @@ const ALL_WEAPONS = [
   "flamethrower", "minigun", "railgun", "crossbow", "laser_pistol", "grenade_launcher",
   "katana", "dual_pistols", "plasma_rifle", "boomerang", "whip", "freeze_ray", "harpoon_gun"
 ];
+
+const GRAPHICS_PRESETS: Record<string, { label: string; bgTop: string; bgBottom: string; enemyColor: string; description: string }> = {
+  custom: { label: "Custom", bgTop: "#0a0a1a", bgBottom: "#1a1a2e", enemyColor: "#FF0000", description: "Your own colors" },
+  neon: { label: "Neon City", bgTop: "#0a001a", bgBottom: "#1a0033", enemyColor: "#FF00FF", description: "Cyberpunk neon vibes" },
+  retro: { label: "Retro Arcade", bgTop: "#1a0a00", bgBottom: "#331a00", enemyColor: "#00FF00", description: "Classic arcade green" },
+  arctic: { label: "Arctic Storm", bgTop: "#0a1a2e", bgBottom: "#1a3352", enemyColor: "#93C5FD", description: "Icy blue tones" },
+  volcanic: { label: "Volcanic", bgTop: "#1a0500", bgBottom: "#3d0f00", enemyColor: "#FF4500", description: "Fiery lava tones" },
+  forest: { label: "Dark Forest", bgTop: "#050f05", bgBottom: "#0f2a0f", enemyColor: "#8B4513", description: "Dense woodland" },
+  ocean: { label: "Deep Ocean", bgTop: "#001020", bgBottom: "#003060", enemyColor: "#00CED1", description: "Underwater depths" },
+  sunset: { label: "Sunset", bgTop: "#1a0a1a", bgBottom: "#331a00", enemyColor: "#FFD700", description: "Golden hour warmth" },
+  void: { label: "Void", bgTop: "#000000", bgBottom: "#080808", enemyColor: "#FFFFFF", description: "Pure darkness" },
+  candy: { label: "Candy Land", bgTop: "#1a0520", bgBottom: "#2a0a35", enemyColor: "#FF69B4", description: "Sweet pink theme" },
+  matrix: { label: "Matrix", bgTop: "#000a00", bgBottom: "#001a00", enemyColor: "#00FF41", description: "Digital rain green" },
+  blood_moon: { label: "Blood Moon", bgTop: "#1a0000", bgBottom: "#330000", enemyColor: "#DC143C", description: "Dark crimson" },
+};
 
 export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) => {
   const [name, setName] = useState("");

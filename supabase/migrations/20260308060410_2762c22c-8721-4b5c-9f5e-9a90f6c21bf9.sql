@@ -1,0 +1,21 @@
+
+ALTER TABLE public.custom_gamemodes 
+  ADD COLUMN IF NOT EXISTS gravity_mult real NOT NULL DEFAULT 1.0,
+  ADD COLUMN IF NOT EXISTS friendly_fire boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS auto_heal boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS auto_heal_rate real NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS damage_mult real NOT NULL DEFAULT 1.0,
+  ADD COLUMN IF NOT EXISTS shield_on_spawn boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS shield_duration real NOT NULL DEFAULT 3.0,
+  ADD COLUMN IF NOT EXISTS lives integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS time_limit integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS minimap_enabled boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS ammo_infinite boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS enemy_size_mult real NOT NULL DEFAULT 1.0,
+  ADD COLUMN IF NOT EXISTS player_size_mult real NOT NULL DEFAULT 1.0,
+  ADD COLUMN IF NOT EXISTS fog_enabled boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS fog_density real NOT NULL DEFAULT 0.5,
+  ADD COLUMN IF NOT EXISTS wave_mode boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS enemies_per_wave integer NOT NULL DEFAULT 5,
+  ADD COLUMN IF NOT EXISTS difficulty_ramp real NOT NULL DEFAULT 1.0,
+  ADD COLUMN IF NOT EXISTS creator_notes text;

@@ -335,6 +335,30 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
 
     const handleKeyDown = (e: KeyboardEvent) => {
       keys[e.key.toLowerCase()] = true;
+      
+      // SPACE to restart from checkpoint
+      if (e.key === " " && player.hp <= 0) {
+        player.hp = 100;
+        player.x = W / 2;
+        player.y = H - 100;
+        setHealth(100);
+        setGameOver(false);
+        bossBullets.length = 0;
+        minions.length = 0;
+        laserRef.current = { active: false, angle: 0, timer: 0, warning: 0 };
+        shockwaveRef.current = { active: false, radius: 0, maxRadius: 0, timer: 0 };
+        // Respawn boss at current level
+        const curLvl = bossLevelRef.current;
+        const respawnHp = Math.round(500 * curLvl * diffConf.hpMult);
+        boss.hp = respawnHp;
+        boss.maxHp = respawnHp;
+        boss.x = W / 2;
+        boss.y = 100;
+        setBossHealth(respawnHp);
+        setBossMaxHealth(respawnHp);
+        return;
+      }
+      
       if (e.key.toLowerCase() === "r" && player.ammo < player.maxAmmo) {
         player.ammo = player.maxAmmo;
         setAmmo(player.ammo);

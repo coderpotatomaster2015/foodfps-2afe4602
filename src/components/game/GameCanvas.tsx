@@ -1136,8 +1136,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         ctx.textAlign = "center";
         ctx.fillText("GAME OVER", W / 2, H / 2 - 20);
         ctx.font = "24px sans-serif";
-        ctx.fillText("Score: " + score, W / 2, H / 2 + 30);
-        ctx.fillText("Kills: " + kills + " | Deaths: " + deaths, W / 2, H / 2 + 65);
+        ctx.fillText("Score: " + scoreRef.current, W / 2, H / 2 + 30);
+        ctx.fillText("Kills: " + killsRef.current + " | Deaths: " + (deaths + 1), W / 2, H / 2 + 65);
         ctx.font = "16px sans-serif";
         ctx.fillStyle = "#aaa";
         ctx.fillText("Use /revive command or press Back to Menu", W / 2, H / 2 + 100);

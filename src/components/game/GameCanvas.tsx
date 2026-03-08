@@ -1204,7 +1204,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         b.x += b.vx * dt;
         b.y += b.vy * dt;
         b.life -= dt;
-        if (b.life <= 0 || b.x < -50 || b.x > W + 50 || b.y < -50 || b.y > H + 50) {
+      const bMult = gameStateRef.current.mapBoundsMultiplier;
+      if (b.life <= 0 || b.x < -50 * bMult || b.x > W * bMult + 50 || b.y < -50 * bMult || b.y > H * bMult + 50) {
           bullets.splice(i, 1);
           continue;
         }

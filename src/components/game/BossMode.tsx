@@ -47,9 +47,19 @@ const WEAPONS: Record<Weapon, WeaponConfig> = {
 
 const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "rifle", "sniper", "smg", "knife", "rpg", "axe", "flamethrower", "minigun", "railgun"];
 
+type Difficulty = "easy" | "normal" | "hard";
+
+const DIFFICULTY_CONFIG: Record<Difficulty, { hpMult: number; dmgMult: number; speedMult: number; shootMult: number; label: string; color: string }> = {
+  easy: { hpMult: 0.6, dmgMult: 0.5, speedMult: 0.7, shootMult: 1.5, label: "Easy", color: "#4ADE80" },
+  normal: { hpMult: 1.0, dmgMult: 1.0, speedMult: 1.0, shootMult: 1.0, label: "Normal", color: "#FACC15" },
+  hard: { hpMult: 1.6, dmgMult: 1.5, speedMult: 1.3, shootMult: 0.7, label: "Hard", color: "#EF4444" },
+};
+
 export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseEvents = [], touchscreenMode = false }: BossModeProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
+  const [checkpointLevel, setCheckpointLevel] = useState(1);
   
   const [bossLevel, setBossLevel] = useState(1);
   const [highestLevel, setHighestLevel] = useState(1);

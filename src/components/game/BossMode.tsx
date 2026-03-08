@@ -272,6 +272,9 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
   }, [hasPermission]);
 
   useEffect(() => {
+    if (!difficulty) return;
+    const diffConf = DIFFICULTY_CONFIG[difficulty];
+    difficultyRef.current = difficulty;
     const canvas = canvasRef.current;
     if (!canvas) return;
 

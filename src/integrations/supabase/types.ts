@@ -569,90 +569,147 @@ export type Database = {
       custom_gamemodes: {
         Row: {
           allowed_weapons: string[]
+          ammo_infinite: boolean
+          auto_heal: boolean
+          auto_heal_rate: number
           bg_color_bottom: string
           bg_color_top: string
           created_at: string
           creator_id: string
+          creator_notes: string | null
           creator_username: string
+          damage_mult: number
           description: string | null
+          difficulty_ramp: number
+          enemies_per_wave: number
           enemy_color: string
           enemy_health: number
+          enemy_size_mult: number
           enemy_speed_mult: number
+          fog_density: number
+          fog_enabled: boolean
+          friendly_fire: boolean
+          gravity_mult: number
           id: string
           is_public: boolean
+          lives: number
           map_background: string | null
           max_enemies: number
+          minimap_enabled: boolean
           name: string
           pickup_chance: number
           player_health: number
+          player_size_mult: number
           player_speed_mult: number
           reviewed_at: string | null
           reviewed_by: string | null
           score_multiplier: number
+          shield_duration: number
+          shield_on_spawn: boolean
           show_health_gui: boolean
           show_score: boolean
           slug: string
           spawn_interval: number
           status: string
+          time_limit: number
           updated_at: string
+          wave_mode: boolean
         }
         Insert: {
           allowed_weapons?: string[]
+          ammo_infinite?: boolean
+          auto_heal?: boolean
+          auto_heal_rate?: number
           bg_color_bottom?: string
           bg_color_top?: string
           created_at?: string
           creator_id: string
+          creator_notes?: string | null
           creator_username: string
+          damage_mult?: number
           description?: string | null
+          difficulty_ramp?: number
+          enemies_per_wave?: number
           enemy_color?: string
           enemy_health?: number
+          enemy_size_mult?: number
           enemy_speed_mult?: number
+          fog_density?: number
+          fog_enabled?: boolean
+          friendly_fire?: boolean
+          gravity_mult?: number
           id?: string
           is_public?: boolean
+          lives?: number
           map_background?: string | null
           max_enemies?: number
+          minimap_enabled?: boolean
           name: string
           pickup_chance?: number
           player_health?: number
+          player_size_mult?: number
           player_speed_mult?: number
           reviewed_at?: string | null
           reviewed_by?: string | null
           score_multiplier?: number
+          shield_duration?: number
+          shield_on_spawn?: boolean
           show_health_gui?: boolean
           show_score?: boolean
           slug: string
           spawn_interval?: number
           status?: string
+          time_limit?: number
           updated_at?: string
+          wave_mode?: boolean
         }
         Update: {
           allowed_weapons?: string[]
+          ammo_infinite?: boolean
+          auto_heal?: boolean
+          auto_heal_rate?: number
           bg_color_bottom?: string
           bg_color_top?: string
           created_at?: string
           creator_id?: string
+          creator_notes?: string | null
           creator_username?: string
+          damage_mult?: number
           description?: string | null
+          difficulty_ramp?: number
+          enemies_per_wave?: number
           enemy_color?: string
           enemy_health?: number
+          enemy_size_mult?: number
           enemy_speed_mult?: number
+          fog_density?: number
+          fog_enabled?: boolean
+          friendly_fire?: boolean
+          gravity_mult?: number
           id?: string
           is_public?: boolean
+          lives?: number
           map_background?: string | null
           max_enemies?: number
+          minimap_enabled?: boolean
           name?: string
           pickup_chance?: number
           player_health?: number
+          player_size_mult?: number
           player_speed_mult?: number
           reviewed_at?: string | null
           reviewed_by?: string | null
           score_multiplier?: number
+          shield_duration?: number
+          shield_on_spawn?: boolean
           show_health_gui?: boolean
           show_score?: boolean
           slug?: string
           spawn_interval?: number
           status?: string
+          time_limit?: number
           updated_at?: string
+          wave_mode?: boolean
         }
         Relationships: []
       }

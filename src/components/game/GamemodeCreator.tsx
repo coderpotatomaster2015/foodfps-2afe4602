@@ -16,7 +16,7 @@ import {
   Gamepad2, Heart, Crosshair, Zap, Users, Palette, Eye, 
   Send, ArrowLeft, Sparkles, Shield, Timer, Target, Save,
   Loader2, Check, X, Clock, Play, Globe, Search, Flame,
-  Ruler, Wind, Bomb, Snowflake, Map
+  Ruler, Wind, Bomb, Snowflake, Map, Bot, Wand2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -31,6 +31,21 @@ const ALL_WEAPONS = [
   "flamethrower", "minigun", "railgun", "crossbow", "laser_pistol", "grenade_launcher",
   "katana", "dual_pistols", "plasma_rifle", "boomerang", "whip", "freeze_ray", "harpoon_gun"
 ];
+
+const GRAPHICS_PRESETS: Record<string, { label: string; bgTop: string; bgBottom: string; enemyColor: string; description: string }> = {
+  custom: { label: "Custom", bgTop: "#0a0a1a", bgBottom: "#1a1a2e", enemyColor: "#FF0000", description: "Your own colors" },
+  neon: { label: "Neon City", bgTop: "#0a001a", bgBottom: "#1a0033", enemyColor: "#FF00FF", description: "Cyberpunk neon vibes" },
+  retro: { label: "Retro Arcade", bgTop: "#1a0a00", bgBottom: "#331a00", enemyColor: "#00FF00", description: "Classic arcade green" },
+  arctic: { label: "Arctic Storm", bgTop: "#0a1a2e", bgBottom: "#1a3352", enemyColor: "#93C5FD", description: "Icy blue tones" },
+  volcanic: { label: "Volcanic", bgTop: "#1a0500", bgBottom: "#3d0f00", enemyColor: "#FF4500", description: "Fiery lava tones" },
+  forest: { label: "Dark Forest", bgTop: "#050f05", bgBottom: "#0f2a0f", enemyColor: "#8B4513", description: "Dense woodland" },
+  ocean: { label: "Deep Ocean", bgTop: "#001020", bgBottom: "#003060", enemyColor: "#00CED1", description: "Underwater depths" },
+  sunset: { label: "Sunset", bgTop: "#1a0a1a", bgBottom: "#331a00", enemyColor: "#FFD700", description: "Golden hour warmth" },
+  void: { label: "Void", bgTop: "#000000", bgBottom: "#080808", enemyColor: "#FFFFFF", description: "Pure darkness" },
+  candy: { label: "Candy Land", bgTop: "#1a0520", bgBottom: "#2a0a35", enemyColor: "#FF69B4", description: "Sweet pink theme" },
+  matrix: { label: "Matrix", bgTop: "#000a00", bgBottom: "#001a00", enemyColor: "#00FF41", description: "Digital rain green" },
+  blood_moon: { label: "Blood Moon", bgTop: "#1a0000", bgBottom: "#330000", enemyColor: "#DC143C", description: "Dark crimson" },
+};
 
 export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) => {
   const [name, setName] = useState("");
@@ -69,6 +84,7 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
   const [enemiesPerWave, setEnemiesPerWave] = useState(5);
   const [difficultyRamp, setDifficultyRamp] = useState(1.0);
   const [creatorNotes, setCreatorNotes] = useState("");
+  const [graphicsPreset, setGraphicsPreset] = useState("custom");
 
   const [submitting, setSubmitting] = useState(false);
   const [myModes, setMyModes] = useState<any[]>([]);
@@ -80,12 +96,99 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
   const [browseSearch, setBrowseSearch] = useState("");
   const [browseLoading, setBrowseLoading] = useState(false);
 
+  // AI state (admin only)
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiResult, setAiResult] = useState<any>(null);
+
   useEffect(() => {
     if (open) {
       loadMyModes();
       loadBrowseModes();
+      checkAdminStatus();
     }
   }, [open]);
+
+  const checkAdminStatus = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+    if (data?.some(r => r.role === "admin" || r.role === "owner")) setIsAdmin(true);
+  };
+
+  const applyGraphicsPreset = (presetKey: string) => {
+    setGraphicsPreset(presetKey);
+    if (presetKey !== "custom") {
+      const preset = GRAPHICS_PRESETS[presetKey];
+      setBgColorTop(preset.bgTop);
+      setBgColorBottom(preset.bgBottom);
+      setEnemyColor(preset.enemyColor);
+    }
+  };
+
+  const generateWithAI = async () => {
+    if (!aiPrompt.trim()) { toast.error("Enter a description for the AI"); return; }
+    setAiGenerating(true);
+    setAiResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-gamemode", {
+        body: { prompt: aiPrompt.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+      if (data?.gamemode) {
+        setAiResult(data.gamemode);
+        toast.success("AI generated a gamemode! Review and submit it.");
+      }
+    } catch (e: any) {
+      console.error("AI generation error:", e);
+      toast.error("AI generation failed: " + (e.message || "Unknown error"));
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  const loadAiResultIntoForm = () => {
+    if (!aiResult) return;
+    setName(aiResult.name || "");
+    setDescription(aiResult.description || "");
+    setEnemyHealth(aiResult.enemy_health ?? 100);
+    setPlayerHealth(aiResult.player_health ?? 100);
+    setAllowedWeapons(aiResult.allowed_weapons || ["pistol"]);
+    setShowScore(aiResult.show_score ?? true);
+    setShowHealthGui(aiResult.show_health_gui ?? true);
+    setEnemySpeedMult(aiResult.enemy_speed_mult ?? 1.0);
+    setPlayerSpeedMult(aiResult.player_speed_mult ?? 1.0);
+    setSpawnInterval(aiResult.spawn_interval ?? 2.0);
+    setScoreMultiplier(aiResult.score_multiplier ?? 1.0);
+    setEnemyColor(aiResult.enemy_color || "#FF0000");
+    setBgColorTop(aiResult.bg_color_top || "#0a0a1a");
+    setBgColorBottom(aiResult.bg_color_bottom || "#1a1a2e");
+    setMaxEnemies(aiResult.max_enemies ?? 10);
+    setPickupChance(aiResult.pickup_chance ?? 0.3);
+    setGravityMult(aiResult.gravity_mult ?? 1.0);
+    setFriendlyFire(aiResult.friendly_fire ?? false);
+    setAutoHeal(aiResult.auto_heal ?? false);
+    setAutoHealRate(aiResult.auto_heal_rate ?? 0);
+    setDamageMult(aiResult.damage_mult ?? 1.0);
+    setShieldOnSpawn(aiResult.shield_on_spawn ?? false);
+    setShieldDuration(aiResult.shield_duration ?? 3.0);
+    setLives(aiResult.lives ?? 0);
+    setTimeLimit(aiResult.time_limit ?? 0);
+    setMinimapEnabled(aiResult.minimap_enabled ?? true);
+    setAmmoInfinite(aiResult.ammo_infinite ?? false);
+    setEnemySizeMult(aiResult.enemy_size_mult ?? 1.0);
+    setPlayerSizeMult(aiResult.player_size_mult ?? 1.0);
+    setFogEnabled(aiResult.fog_enabled ?? false);
+    setFogDensity(aiResult.fog_density ?? 0.5);
+    setWaveMode(aiResult.wave_mode ?? false);
+    setEnemiesPerWave(aiResult.enemies_per_wave ?? 5);
+    setDifficultyRamp(aiResult.difficulty_ramp ?? 1.0);
+    setGraphicsPreset("custom");
+    setTab("create");
+    toast.success("Loaded into editor! Review and submit.");
+  };
 
   const loadMyModes = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -269,10 +372,11 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col">
-          <TabsList className="mx-auto">
+          <TabsList className="mx-auto flex-wrap">
             <TabsTrigger value="create">Create New</TabsTrigger>
             <TabsTrigger value="browse">Browse ({browseModes.length})</TabsTrigger>
             <TabsTrigger value="my-modes">My Modes ({myModes.length})</TabsTrigger>
+            {isAdmin && <TabsTrigger value="ai-creator"><Bot className="w-3 h-3 mr-1" />AI Creator</TabsTrigger>}
           </TabsList>
 
           {/* ══════════ CREATE TAB ══════════ */}
@@ -445,26 +549,49 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
 
                 {/* Visuals & Environment */}
                 <Card className="p-4 space-y-3">
-                  <h3 className="font-semibold flex items-center gap-2"><Palette className="w-4 h-4 text-purple-400" />Visuals & Environment</h3>
+                  <h3 className="font-semibold flex items-center gap-2"><Palette className="w-4 h-4 text-purple-400" />Graphics Style</h3>
+                  
+                  {/* Graphics Presets */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">Choose a preset or customize</Label>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                      {Object.entries(GRAPHICS_PRESETS).map(([key, preset]) => (
+                        <button
+                          key={key}
+                          onClick={() => applyGraphicsPreset(key)}
+                          className={`p-1.5 rounded-lg border text-left transition-all ${
+                            graphicsPreset === key ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <div className="w-full h-6 rounded mb-1" style={{ background: `linear-gradient(135deg, ${preset.bgTop}, ${preset.bgBottom})` }}>
+                            <div className="w-2 h-2 rounded-full ml-auto mr-1 mt-1" style={{ backgroundColor: preset.enemyColor }} />
+                          </div>
+                          <span className="text-[10px] font-medium block truncate">{preset.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Manual color pickers */}
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <Label>Enemy Color</Label>
                       <div className="flex items-center gap-2 mt-1">
-                        <input type="color" value={enemyColor} onChange={e => setEnemyColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer" />
+                        <input type="color" value={enemyColor} onChange={e => { setEnemyColor(e.target.value); setGraphicsPreset("custom"); }} className="w-8 h-8 rounded cursor-pointer" />
                         <span className="text-xs text-muted-foreground">{enemyColor}</span>
                       </div>
                     </div>
                     <div>
                       <Label>Sky (Top)</Label>
                       <div className="flex items-center gap-2 mt-1">
-                        <input type="color" value={bgColorTop} onChange={e => setBgColorTop(e.target.value)} className="w-8 h-8 rounded cursor-pointer" />
+                        <input type="color" value={bgColorTop} onChange={e => { setBgColorTop(e.target.value); setGraphicsPreset("custom"); }} className="w-8 h-8 rounded cursor-pointer" />
                         <span className="text-xs text-muted-foreground">{bgColorTop}</span>
                       </div>
                     </div>
                     <div>
                       <Label>Ground (Bottom)</Label>
                       <div className="flex items-center gap-2 mt-1">
-                        <input type="color" value={bgColorBottom} onChange={e => setBgColorBottom(e.target.value)} className="w-8 h-8 rounded cursor-pointer" />
+                        <input type="color" value={bgColorBottom} onChange={e => { setBgColorBottom(e.target.value); setGraphicsPreset("custom"); }} className="w-8 h-8 rounded cursor-pointer" />
                         <span className="text-xs text-muted-foreground">{bgColorBottom}</span>
                       </div>
                     </div>
@@ -624,6 +751,90 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
               )}
             </ScrollArea>
           </TabsContent>
+
+          {/* ══════════ AI CREATOR TAB (Admin Only) ══════════ */}
+          {isAdmin && (
+            <TabsContent value="ai-creator" className="flex-1">
+              <ScrollArea className="h-[calc(85vh-180px)]">
+                <div className="space-y-4 p-2">
+                  <Card className="p-4 space-y-3">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <Bot className="w-4 h-4 text-primary" />
+                      AI Gamemode Generator
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Describe the gamemode you want and AI will generate all parameters. Admin only.
+                    </p>
+                    <Textarea
+                      value={aiPrompt}
+                      onChange={e => setAiPrompt(e.target.value)}
+                      placeholder="e.g. A fast-paced neon cyberpunk mode with lots of enemies, infinite ammo, low gravity, and fog. Sniper and railgun only. Very hard."
+                      rows={4}
+                      maxLength={1000}
+                    />
+                    <Button
+                      onClick={generateWithAI}
+                      disabled={aiGenerating || !aiPrompt.trim()}
+                      className="w-full gap-2"
+                    >
+                      {aiGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                      {aiGenerating ? "Generating..." : "Generate Gamemode"}
+                    </Button>
+                  </Card>
+
+                  {aiResult && (
+                    <Card className="p-4 space-y-3 border-primary/50">
+                      <h3 className="font-semibold flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        Generated: {aiResult.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">{aiResult.description}</p>
+                      
+                      {/* Preview */}
+                      <div 
+                        className="w-full h-20 rounded-lg border border-border flex items-center justify-center relative overflow-hidden"
+                        style={{ background: `linear-gradient(to bottom, ${aiResult.bg_color_top}, ${aiResult.bg_color_bottom})` }}
+                      >
+                        {aiResult.fog_enabled && (
+                          <div className="absolute inset-0 bg-white/20" style={{ opacity: (aiResult.fog_density || 0.5) * 0.5 }} />
+                        )}
+                        <div className="w-5 h-5 rounded-full bg-primary/80 border-2 border-primary" />
+                        <div className="w-4 h-4 rounded-full absolute top-3 right-6" style={{ backgroundColor: aiResult.enemy_color }} />
+                        <div className="w-4 h-4 rounded-full absolute bottom-4 left-10" style={{ backgroundColor: aiResult.enemy_color }} />
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 text-[10px]">
+                        <span className="bg-secondary/80 px-1.5 py-0.5 rounded">❤️ {aiResult.player_health}hp</span>
+                        <span className="bg-secondary/80 px-1.5 py-0.5 rounded">👾 {aiResult.enemy_health}hp</span>
+                        <span className="bg-secondary/80 px-1.5 py-0.5 rounded">⚡ {aiResult.player_speed_mult}x spd</span>
+                        <span className="bg-secondary/80 px-1.5 py-0.5 rounded">💥 {aiResult.damage_mult}x dmg</span>
+                        <span className="bg-secondary/80 px-1.5 py-0.5 rounded">🎯 {aiResult.max_enemies} max</span>
+                        <span className="bg-secondary/80 px-1.5 py-0.5 rounded">🔫 {aiResult.allowed_weapons?.length} weapons</span>
+                        {aiResult.fog_enabled && <span className="bg-secondary/80 px-1.5 py-0.5 rounded">🌫️ Fog</span>}
+                        {aiResult.wave_mode && <span className="bg-secondary/80 px-1.5 py-0.5 rounded">🌊 Waves</span>}
+                        {aiResult.ammo_infinite && <span className="bg-secondary/80 px-1.5 py-0.5 rounded">∞ Ammo</span>}
+                        {aiResult.shield_on_spawn && <span className="bg-secondary/80 px-1.5 py-0.5 rounded">🛡️ Shield</span>}
+                        {aiResult.auto_heal && <span className="bg-secondary/80 px-1.5 py-0.5 rounded">💚 Heal</span>}
+                      </div>
+
+                      <div className="text-xs">
+                        <strong>Weapons:</strong> {aiResult.allowed_weapons?.map((w: string) => w.replace(/_/g, " ")).join(", ")}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button onClick={loadAiResultIntoForm} className="flex-1 gap-2">
+                          <Send className="w-4 h-4" /> Load into Editor
+                        </Button>
+                        <Button variant="outline" onClick={() => setAiResult(null)}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          )}
         </Tabs>
       </DialogContent>
     </Dialog>

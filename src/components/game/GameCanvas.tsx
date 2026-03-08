@@ -868,7 +868,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       else { x = W * mult + 30; y = rand(-40 * mult, H * mult + 40); }
       const enemyId = `enemy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const canShoot = mode !== "zombie";
-      enemies.push({ id: enemyId, x, y, r: soloVariant?.enemyRadius ?? (mode === "zombie" ? 18 : 16), speed: getEnemySpeed(), hp: getEnemyHp(), color: getEnemyColor(), stun: 0, lastHit: 0, lastShot: canShoot ? -1 : 99999 });
+      const hp = getEnemyHp();
+      enemies.push({ id: enemyId, x, y, r: soloVariant?.enemyRadius ?? (mode === "zombie" ? 18 : 16), speed: getEnemySpeed(), hp, maxHp: hp, color: getEnemyColor(), stun: 0, lastHit: 0, lastShot: canShoot ? -1 : 99999 });
     };
 
     const spawnPickup = () => {
@@ -1136,8 +1137,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         ctx.textAlign = "center";
         ctx.fillText("GAME OVER", W / 2, H / 2 - 20);
         ctx.font = "24px sans-serif";
-        ctx.fillText("Score: " + score, W / 2, H / 2 + 30);
-        ctx.fillText("Kills: " + kills + " | Deaths: " + deaths, W / 2, H / 2 + 65);
+        ctx.fillText("Score: " + scoreRef.current, W / 2, H / 2 + 30);
+        ctx.fillText("Kills: " + killsRef.current + " | Deaths: " + (deaths + 1), W / 2, H / 2 + 65);
         ctx.font = "16px sans-serif";
         ctx.fillStyle = "#aaa";
         ctx.fillText("Use /revive command or press Back to Menu", W / 2, H / 2 + 100);
@@ -1203,7 +1204,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         b.x += b.vx * dt;
         b.y += b.vy * dt;
         b.life -= dt;
-        if (b.life <= 0 || b.x < -50 || b.x > W + 50 || b.y < -50 || b.y > H + 50) {
+      const bMult = gameStateRef.current.mapBoundsMultiplier;
+      if (b.life <= 0 || b.x < -50 * bMult || b.x > W * bMult + 50 || b.y < -50 * bMult || b.y > H * bMult + 50) {
           bullets.splice(i, 1);
           continue;
         }
@@ -1640,8 +1642,9 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         const hpW = 28;
         ctx.fillStyle = "#333";
         ctx.fillRect(-hpW / 2, -e.r - 12, hpW, 6);
+        const enemyMaxHp = e.maxHp || getEnemyHp();
         ctx.fillStyle = "#FF6B6B";
-        ctx.fillRect(-hpW / 2, -e.r - 12, hpW * Math.max(0, e.hp / 60), 6);
+        ctx.fillRect(-hpW / 2, -e.r - 12, hpW * Math.max(0, e.hp / enemyMaxHp), 6);
         ctx.restore();
       }
 

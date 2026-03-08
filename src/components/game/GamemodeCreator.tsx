@@ -751,6 +751,90 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
               )}
             </ScrollArea>
           </TabsContent>
+
+          {/* ══════════ AI CREATOR TAB (Admin Only) ══════════ */}
+          {isAdmin && (
+            <TabsContent value="ai-creator" className="flex-1">
+              <ScrollArea className="h-[calc(85vh-180px)]">
+                <div className="space-y-4 p-2">
+                  <Card className="p-4 space-y-3">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <Bot className="w-4 h-4 text-primary" />
+                      AI Gamemode Generator
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Describe the gamemode you want and AI will generate all parameters. Admin only.
+                    </p>
+                    <Textarea
+                      value={aiPrompt}
+                      onChange={e => setAiPrompt(e.target.value)}
+                      placeholder="e.g. A fast-paced neon cyberpunk mode with lots of enemies, infinite ammo, low gravity, and fog. Sniper and railgun only. Very hard."
+                      rows={4}
+                      maxLength={1000}
+                    />
+                    <Button
+                      onClick={generateWithAI}
+                      disabled={aiGenerating || !aiPrompt.trim()}
+                      className="w-full gap-2"
+                    >
+                      {aiGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                      {aiGenerating ? "Generating..." : "Generate Gamemode"}
+                    </Button>
+                  </Card>
+
+                  {aiResult && (
+                    <Card className="p-4 space-y-3 border-primary/50">
+                      <h3 className="font-semibold flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        Generated: {aiResult.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">{aiResult.description}</p>
+                      
+                      {/* Preview */}
+                      <div 
+                        className="w-full h-20 rounded-lg border border-border flex items-center justify-center relative overflow-hidden"
+                        style={{ background: `linear-gradient(to bottom, ${aiResult.bg_color_top}, ${aiResult.bg_color_bottom})` }}
+                      >
+                        {aiResult.fog_enabled && (
+                          <div className="absolute inset-0 bg-white/20" style={{ opacity: (aiResult.fog_density || 0.5) * 0.5 }} />
+                        )}
+                        <div className="w-5 h-5 rounded-full bg-primary/80 border-2 border-primary" />
+                        <div className="w-4 h-4 rounded-full absolute top-3 right-6" style={{ backgroundColor: aiResult.enemy_color }} />
+                        <div className="w-4 h-4 rounded-full absolute bottom-4 left-10" style={{ backgroundColor: aiResult.enemy_color }} />
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 text-[10px]">
+                        <span className="bg-secondary/80 px-1.5 py-0.5 rounded">❤️ {aiResult.player_health}hp</span>
+                        <span className="bg-secondary/80 px-1.5 py-0.5 rounded">👾 {aiResult.enemy_health}hp</span>
+                        <span className="bg-secondary/80 px-1.5 py-0.5 rounded">⚡ {aiResult.player_speed_mult}x spd</span>
+                        <span className="bg-secondary/80 px-1.5 py-0.5 rounded">💥 {aiResult.damage_mult}x dmg</span>
+                        <span className="bg-secondary/80 px-1.5 py-0.5 rounded">🎯 {aiResult.max_enemies} max</span>
+                        <span className="bg-secondary/80 px-1.5 py-0.5 rounded">🔫 {aiResult.allowed_weapons?.length} weapons</span>
+                        {aiResult.fog_enabled && <span className="bg-secondary/80 px-1.5 py-0.5 rounded">🌫️ Fog</span>}
+                        {aiResult.wave_mode && <span className="bg-secondary/80 px-1.5 py-0.5 rounded">🌊 Waves</span>}
+                        {aiResult.ammo_infinite && <span className="bg-secondary/80 px-1.5 py-0.5 rounded">∞ Ammo</span>}
+                        {aiResult.shield_on_spawn && <span className="bg-secondary/80 px-1.5 py-0.5 rounded">🛡️ Shield</span>}
+                        {aiResult.auto_heal && <span className="bg-secondary/80 px-1.5 py-0.5 rounded">💚 Heal</span>}
+                      </div>
+
+                      <div className="text-xs">
+                        <strong>Weapons:</strong> {aiResult.allowed_weapons?.map((w: string) => w.replace(/_/g, " ")).join(", ")}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button onClick={loadAiResultIntoForm} className="flex-1 gap-2">
+                          <Send className="w-4 h-4" /> Load into Editor
+                        </Button>
+                        <Button variant="outline" onClick={() => setAiResult(null)}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          )}
         </Tabs>
       </DialogContent>
     </Dialog>

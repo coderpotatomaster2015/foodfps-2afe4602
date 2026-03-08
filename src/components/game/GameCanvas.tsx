@@ -1640,8 +1640,9 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         const hpW = 28;
         ctx.fillStyle = "#333";
         ctx.fillRect(-hpW / 2, -e.r - 12, hpW, 6);
+        const enemyMaxHp = e.maxHp || getEnemyHp();
         ctx.fillStyle = "#FF6B6B";
-        ctx.fillRect(-hpW / 2, -e.r - 12, hpW * Math.max(0, e.hp / 60), 6);
+        ctx.fillRect(-hpW / 2, -e.r - 12, hpW * Math.max(0, e.hp / enemyMaxHp), 6);
         ctx.restore();
       }
 

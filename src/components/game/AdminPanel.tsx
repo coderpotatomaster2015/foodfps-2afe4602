@@ -1541,16 +1541,22 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
             <DialogTitle>Ban {banTarget?.username}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Duration (hours)</Label>
-              <Input
-                type="number"
-                value={banHours}
-                onChange={(e) => setBanHours(e.target.value)}
-                placeholder="e.g., 24"
-                min="1"
-              />
+            <div className="flex items-center gap-2">
+              <Switch checked={banPermanent} onCheckedChange={(v) => { setBanPermanent(v); if (v) setBanHours(""); }} />
+              <Label className="text-sm font-medium text-destructive">Permanent Ban</Label>
             </div>
+            {!banPermanent && (
+              <div className="space-y-2">
+                <Label>Duration (hours)</Label>
+                <Input
+                  type="number"
+                  value={banHours}
+                  onChange={(e) => setBanHours(e.target.value)}
+                  placeholder="e.g., 24"
+                  min="1"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Reason (optional)</Label>
               <Input
@@ -1559,9 +1565,12 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                 placeholder="Enter reason..."
               />
             </div>
+            {banPermanent && (
+              <p className="text-xs text-destructive">⚠️ This will permanently ban the user. They will not be able to access the game until manually unbanned.</p>
+            )}
             <div className="flex gap-2">
               <Button variant="destructive" className="flex-1" onClick={confirmBan}>
-                Confirm Ban
+                {banPermanent ? "Permanently Ban" : "Confirm Ban"}
               </Button>
               <Button variant="outline" className="flex-1" onClick={() => setBanModalOpen(false)}>
                 Cancel

@@ -64,7 +64,7 @@ export const GameSidebar = ({
   const shopItems = [
     { icon: Palette, label: "Skins", onClick: onShowSkinsShop },
     ...(onShowItemShop ? [{ icon: Store, label: "Item Shop", onClick: onShowItemShop }] : []),
-    ...(onShowMysteryBox ? [{ icon: Package, label: "Mystery Box", onClick: onShowMysteryBox }] : []),
+    ...(onShowMysteryBox ? [{ icon: Package, label: "Mystery Drops", onClick: onShowMysteryBox }] : []),
     ...(onShowInventory ? [{ icon: Backpack, label: "Inventory", onClick: onShowInventory }] : []),
   ];
 

@@ -87,6 +87,14 @@ const RARITY_COLORS: Record<string, string> = {
   common: "#9CA3AF", uncommon: "#22C55E", rare: "#3B82F6", epic: "#A855F7", legendary: "#F59E0B",
 };
 
+const RARITY_BACKGROUNDS: Record<string, string> = {
+  common: "",
+  uncommon: "/drops/super-rare.png",
+  rare: "/drops/rare.png",
+  epic: "/drops/epic.jpg",
+  legendary: "/drops/mythic.jpg",
+};
+
 function pickReward(weights: Record<string, number>): BoxReward {
   const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
   let roll = Math.random() * totalWeight;

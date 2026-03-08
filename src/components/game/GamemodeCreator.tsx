@@ -15,7 +15,8 @@ import { CustomGamemodeCanvas } from "./CustomGamemodeCanvas";
 import { 
   Gamepad2, Heart, Crosshair, Zap, Users, Palette, Eye, 
   Send, ArrowLeft, Sparkles, Shield, Timer, Target, Save,
-  Loader2, Check, X, Clock, Play
+  Loader2, Check, X, Clock, Play, Globe, Search, Flame,
+  Ruler, Wind, Bomb, Snowflake, Map
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -48,13 +49,42 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
   const [bgColorBottom, setBgColorBottom] = useState("#1a1a2e");
   const [maxEnemies, setMaxEnemies] = useState(10);
   const [pickupChance, setPickupChance] = useState(0.3);
+  // New expanded controls
+  const [gravityMult, setGravityMult] = useState(1.0);
+  const [friendlyFire, setFriendlyFire] = useState(false);
+  const [autoHeal, setAutoHeal] = useState(false);
+  const [autoHealRate, setAutoHealRate] = useState(0);
+  const [damageMult, setDamageMult] = useState(1.0);
+  const [shieldOnSpawn, setShieldOnSpawn] = useState(false);
+  const [shieldDuration, setShieldDuration] = useState(3.0);
+  const [lives, setLives] = useState(0);
+  const [timeLimit, setTimeLimit] = useState(0);
+  const [minimapEnabled, setMinimapEnabled] = useState(true);
+  const [ammoInfinite, setAmmoInfinite] = useState(false);
+  const [enemySizeMult, setEnemySizeMult] = useState(1.0);
+  const [playerSizeMult, setPlayerSizeMult] = useState(1.0);
+  const [fogEnabled, setFogEnabled] = useState(false);
+  const [fogDensity, setFogDensity] = useState(0.5);
+  const [waveMode, setWaveMode] = useState(false);
+  const [enemiesPerWave, setEnemiesPerWave] = useState(5);
+  const [difficultyRamp, setDifficultyRamp] = useState(1.0);
+  const [creatorNotes, setCreatorNotes] = useState("");
+
   const [submitting, setSubmitting] = useState(false);
   const [myModes, setMyModes] = useState<any[]>([]);
   const [tab, setTab] = useState("create");
   const [testing, setTesting] = useState(false);
 
+  // Browse state
+  const [browseModes, setBrowseModes] = useState<any[]>([]);
+  const [browseSearch, setBrowseSearch] = useState("");
+  const [browseLoading, setBrowseLoading] = useState(false);
+
   useEffect(() => {
-    if (open) loadMyModes();
+    if (open) {
+      loadMyModes();
+      loadBrowseModes();
+    }
   }, [open]);
 
   const loadMyModes = async () => {
@@ -67,6 +97,27 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
       .order("created_at", { ascending: false });
     if (data) setMyModes(data);
   };
+
+  const loadBrowseModes = async () => {
+    setBrowseLoading(true);
+    const { data } = await supabase
+      .from("custom_gamemodes")
+      .select("*")
+      .eq("is_public", true)
+      .eq("status", "approved")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (data) setBrowseModes(data);
+    setBrowseLoading(false);
+  };
+
+  const filteredBrowseModes = browseSearch.trim()
+    ? browseModes.filter(m => 
+        m.name.toLowerCase().includes(browseSearch.toLowerCase()) ||
+        (m.description || "").toLowerCase().includes(browseSearch.toLowerCase()) ||
+        m.creator_username.toLowerCase().includes(browseSearch.toLowerCase())
+      )
+    : browseModes;
 
   const toggleWeapon = (weapon: string) => {
     setAllowedWeapons(prev => 
@@ -112,7 +163,26 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
         bg_color_bottom: bgColorBottom,
         max_enemies: maxEnemies,
         pickup_chance: pickupChance,
-      });
+        gravity_mult: gravityMult,
+        friendly_fire: friendlyFire,
+        auto_heal: autoHeal,
+        auto_heal_rate: autoHealRate,
+        damage_mult: damageMult,
+        shield_on_spawn: shieldOnSpawn,
+        shield_duration: shieldDuration,
+        lives,
+        time_limit: timeLimit,
+        minimap_enabled: minimapEnabled,
+        ammo_infinite: ammoInfinite,
+        enemy_size_mult: enemySizeMult,
+        player_size_mult: playerSizeMult,
+        fog_enabled: fogEnabled,
+        fog_density: fogDensity,
+        wave_mode: waveMode,
+        enemies_per_wave: enemiesPerWave,
+        difficulty_ramp: difficultyRamp,
+        creator_notes: creatorNotes.trim() || null,
+      } as any);
 
       if (error) {
         if (error.code === "23505") toast.error("A gamemode with this name already exists");
@@ -121,11 +191,7 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
       }
 
       toast.success("Gamemode submitted for approval!");
-      setName(""); setDescription(""); setEnemyHealth(100); setPlayerHealth(100);
-      setAllowedWeapons(["pistol"]); setShowScore(true); setShowHealthGui(true);
-      setEnemySpeedMult(1.0); setPlayerSpeedMult(1.0); setSpawnInterval(2.0);
-      setScoreMultiplier(1.0); setEnemyColor("#FF0000"); setBgColorTop("#0a0a1a");
-      setBgColorBottom("#1a1a2e"); setMaxEnemies(10); setPickupChance(0.3);
+      resetForm();
       loadMyModes();
       setTab("my-modes");
     } catch (error) {
@@ -134,6 +200,20 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const resetForm = () => {
+    setName(""); setDescription(""); setEnemyHealth(100); setPlayerHealth(100);
+    setAllowedWeapons(["pistol"]); setShowScore(true); setShowHealthGui(true);
+    setEnemySpeedMult(1.0); setPlayerSpeedMult(1.0); setSpawnInterval(2.0);
+    setScoreMultiplier(1.0); setEnemyColor("#FF0000"); setBgColorTop("#0a0a1a");
+    setBgColorBottom("#1a1a2e"); setMaxEnemies(10); setPickupChance(0.3);
+    setGravityMult(1.0); setFriendlyFire(false); setAutoHeal(false); setAutoHealRate(0);
+    setDamageMult(1.0); setShieldOnSpawn(false); setShieldDuration(3.0); setLives(0);
+    setTimeLimit(0); setMinimapEnabled(true); setAmmoInfinite(false);
+    setEnemySizeMult(1.0); setPlayerSizeMult(1.0); setFogEnabled(false);
+    setFogDensity(0.5); setWaveMode(false); setEnemiesPerWave(5);
+    setDifficultyRamp(1.0); setCreatorNotes("");
   };
 
   const statusBadge = (status: string) => {
@@ -185,15 +265,17 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
             <Gamepad2 className="w-5 h-5 text-primary" />
             Gamemode Creator
           </DialogTitle>
-          <DialogDescription>Design your own custom gamemode and submit it for approval</DialogDescription>
+          <DialogDescription>Design, browse, and play custom gamemodes</DialogDescription>
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col">
           <TabsList className="mx-auto">
             <TabsTrigger value="create">Create New</TabsTrigger>
+            <TabsTrigger value="browse">Browse ({browseModes.length})</TabsTrigger>
             <TabsTrigger value="my-modes">My Modes ({myModes.length})</TabsTrigger>
           </TabsList>
 
+          {/* ══════════ CREATE TAB ══════════ */}
           <TabsContent value="create" className="flex-1">
             <ScrollArea className="h-[calc(85vh-180px)]">
               <div className="space-y-6 p-2">
@@ -210,12 +292,16 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
                       <Label>Description</Label>
                       <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe your gamemode..." maxLength={500} rows={3} />
                     </div>
+                    <div>
+                      <Label>Creator Notes (private, visible to reviewers)</Label>
+                      <Textarea value={creatorNotes} onChange={e => setCreatorNotes(e.target.value)} placeholder="Any notes for the review team..." maxLength={300} rows={2} />
+                    </div>
                   </div>
                 </Card>
 
-                {/* Health Settings */}
+                {/* Health & Combat */}
                 <Card className="p-4 space-y-3">
-                  <h3 className="font-semibold flex items-center gap-2"><Heart className="w-4 h-4 text-red-400" />Health</h3>
+                  <h3 className="font-semibold flex items-center gap-2"><Heart className="w-4 h-4 text-red-400" />Health & Combat</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Player Health: {playerHealth}</Label>
@@ -225,20 +311,58 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
                       <Label>Enemy Health: {enemyHealth}</Label>
                       <Slider min={10} max={500} step={10} value={[enemyHealth]} onValueChange={v => setEnemyHealth(v[0])} />
                     </div>
+                    <div>
+                      <Label>Damage Multiplier: {damageMult.toFixed(1)}x</Label>
+                      <Slider min={0.1} max={5.0} step={0.1} value={[damageMult]} onValueChange={v => setDamageMult(v[0])} />
+                    </div>
+                    <div>
+                      <Label>Lives (0 = infinite): {lives}</Label>
+                      <Slider min={0} max={10} step={1} value={[lives]} onValueChange={v => setLives(v[0])} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">Auto Heal</Label>
+                      <Switch checked={autoHeal} onCheckedChange={setAutoHeal} />
+                    </div>
+                    {autoHeal && (
+                      <div>
+                        <Label>Heal Rate: {autoHealRate.toFixed(1)} HP/s</Label>
+                        <Slider min={0.5} max={10} step={0.5} value={[autoHealRate]} onValueChange={v => setAutoHealRate(v[0])} />
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">Shield on Spawn</Label>
+                      <Switch checked={shieldOnSpawn} onCheckedChange={setShieldOnSpawn} />
+                    </div>
+                    {shieldOnSpawn && (
+                      <div>
+                        <Label>Shield Duration: {shieldDuration.toFixed(1)}s</Label>
+                        <Slider min={1} max={15} step={0.5} value={[shieldDuration]} onValueChange={v => setShieldDuration(v[0])} />
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">Friendly Fire</Label>
+                      <Switch checked={friendlyFire} onCheckedChange={setFriendlyFire} />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">Infinite Ammo</Label>
+                      <Switch checked={ammoInfinite} onCheckedChange={setAmmoInfinite} />
+                    </div>
                   </div>
                 </Card>
 
-                {/* Speed & Spawning */}
+                {/* Speed, Spawning & Physics */}
                 <Card className="p-4 space-y-3">
-                  <h3 className="font-semibold flex items-center gap-2"><Zap className="w-4 h-4 text-yellow-400" />Speed & Spawning</h3>
+                  <h3 className="font-semibold flex items-center gap-2"><Zap className="w-4 h-4 text-yellow-400" />Speed, Spawning & Physics</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Player Speed: {playerSpeedMult.toFixed(2)}x</Label>
-                      <Slider min={0.5} max={2.0} step={0.05} value={[playerSpeedMult]} onValueChange={v => setPlayerSpeedMult(v[0])} />
+                      <Slider min={0.5} max={3.0} step={0.05} value={[playerSpeedMult]} onValueChange={v => setPlayerSpeedMult(v[0])} />
                     </div>
                     <div>
                       <Label>Enemy Speed: {enemySpeedMult.toFixed(2)}x</Label>
-                      <Slider min={0.3} max={2.0} step={0.05} value={[enemySpeedMult]} onValueChange={v => setEnemySpeedMult(v[0])} />
+                      <Slider min={0.3} max={3.0} step={0.05} value={[enemySpeedMult]} onValueChange={v => setEnemySpeedMult(v[0])} />
                     </div>
                     <div>
                       <Label>Spawn Interval: {spawnInterval.toFixed(1)}s</Label>
@@ -246,17 +370,54 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
                     </div>
                     <div>
                       <Label>Max Enemies: {maxEnemies}</Label>
-                      <Slider min={3} max={30} step={1} value={[maxEnemies]} onValueChange={v => setMaxEnemies(v[0])} />
+                      <Slider min={3} max={50} step={1} value={[maxEnemies]} onValueChange={v => setMaxEnemies(v[0])} />
                     </div>
                     <div>
                       <Label>Score Multiplier: {scoreMultiplier.toFixed(1)}x</Label>
-                      <Slider min={0.5} max={3.0} step={0.1} value={[scoreMultiplier]} onValueChange={v => setScoreMultiplier(v[0])} />
+                      <Slider min={0.5} max={5.0} step={0.1} value={[scoreMultiplier]} onValueChange={v => setScoreMultiplier(v[0])} />
                     </div>
                     <div>
                       <Label>Pickup Chance: {(pickupChance * 100).toFixed(0)}%</Label>
                       <Slider min={0} max={1} step={0.05} value={[pickupChance]} onValueChange={v => setPickupChance(v[0])} />
                     </div>
+                    <div>
+                      <Label>Gravity: {gravityMult.toFixed(1)}x</Label>
+                      <Slider min={0.1} max={3.0} step={0.1} value={[gravityMult]} onValueChange={v => setGravityMult(v[0])} />
+                    </div>
+                    <div>
+                      <Label>Time Limit (0 = none): {timeLimit === 0 ? "None" : `${timeLimit}s`}</Label>
+                      <Slider min={0} max={600} step={30} value={[timeLimit]} onValueChange={v => setTimeLimit(v[0])} />
+                    </div>
+                    <div>
+                      <Label>Difficulty Ramp: {difficultyRamp.toFixed(1)}x</Label>
+                      <Slider min={0.5} max={3.0} step={0.1} value={[difficultyRamp]} onValueChange={v => setDifficultyRamp(v[0])} />
+                    </div>
                   </div>
+                </Card>
+
+                {/* Size & Wave Settings */}
+                <Card className="p-4 space-y-3">
+                  <h3 className="font-semibold flex items-center gap-2"><Ruler className="w-4 h-4 text-orange-400" />Size & Wave Settings</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Enemy Size: {enemySizeMult.toFixed(1)}x</Label>
+                      <Slider min={0.3} max={3.0} step={0.1} value={[enemySizeMult]} onValueChange={v => setEnemySizeMult(v[0])} />
+                    </div>
+                    <div>
+                      <Label>Player Size: {playerSizeMult.toFixed(1)}x</Label>
+                      <Slider min={0.5} max={2.0} step={0.1} value={[playerSizeMult]} onValueChange={v => setPlayerSizeMult(v[0])} />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Wave Mode (enemies come in waves)</Label>
+                    <Switch checked={waveMode} onCheckedChange={setWaveMode} />
+                  </div>
+                  {waveMode && (
+                    <div>
+                      <Label>Enemies Per Wave: {enemiesPerWave}</Label>
+                      <Slider min={3} max={30} step={1} value={[enemiesPerWave]} onValueChange={v => setEnemiesPerWave(v[0])} />
+                    </div>
+                  )}
                 </Card>
 
                 {/* Weapons */}
@@ -282,9 +443,9 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
                   </div>
                 </Card>
 
-                {/* Visuals */}
+                {/* Visuals & Environment */}
                 <Card className="p-4 space-y-3">
-                  <h3 className="font-semibold flex items-center gap-2"><Palette className="w-4 h-4 text-purple-400" />Visuals</h3>
+                  <h3 className="font-semibold flex items-center gap-2"><Palette className="w-4 h-4 text-purple-400" />Visuals & Environment</h3>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <Label>Enemy Color</Label>
@@ -308,6 +469,16 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
                       </div>
                     </div>
                   </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <Label className="text-xs">Fog Effect</Label>
+                    <Switch checked={fogEnabled} onCheckedChange={setFogEnabled} />
+                  </div>
+                  {fogEnabled && (
+                    <div>
+                      <Label>Fog Density: {(fogDensity * 100).toFixed(0)}%</Label>
+                      <Slider min={0.1} max={1.0} step={0.1} value={[fogDensity]} onValueChange={v => setFogDensity(v[0])} />
+                    </div>
+                  )}
 
                   {/* Preview */}
                   <div className="mt-3">
@@ -316,9 +487,12 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
                       className="w-full h-24 rounded-lg border border-border mt-1 flex items-center justify-center relative overflow-hidden"
                       style={{ background: `linear-gradient(to bottom, ${bgColorTop}, ${bgColorBottom})` }}
                     >
-                      <div className="w-6 h-6 rounded-full bg-primary/80 border-2 border-primary" />
-                      <div className="w-5 h-5 rounded-full absolute top-4 right-8" style={{ backgroundColor: enemyColor }} />
-                      <div className="w-5 h-5 rounded-full absolute bottom-6 left-12" style={{ backgroundColor: enemyColor }} />
+                      {fogEnabled && (
+                        <div className="absolute inset-0 bg-white/20" style={{ opacity: fogDensity * 0.5 }} />
+                      )}
+                      <div className="w-6 h-6 rounded-full bg-primary/80 border-2 border-primary" style={{ transform: `scale(${playerSizeMult})` }} />
+                      <div className="w-5 h-5 rounded-full absolute top-4 right-8" style={{ backgroundColor: enemyColor, transform: `scale(${enemySizeMult})` }} />
+                      <div className="w-5 h-5 rounded-full absolute bottom-6 left-12" style={{ backgroundColor: enemyColor, transform: `scale(${enemySizeMult})` }} />
                     </div>
                   </div>
                 </Card>
@@ -326,7 +500,7 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
                 {/* HUD Options */}
                 <Card className="p-4 space-y-3">
                   <h3 className="font-semibold flex items-center gap-2"><Eye className="w-4 h-4 text-blue-400" />HUD Options</h3>
-                  <div className="flex gap-6">
+                  <div className="flex gap-6 flex-wrap">
                     <div className="flex items-center gap-2">
                       <Switch checked={showScore} onCheckedChange={setShowScore} />
                       <Label>Show Score</Label>
@@ -334,6 +508,10 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
                     <div className="flex items-center gap-2">
                       <Switch checked={showHealthGui} onCheckedChange={setShowHealthGui} />
                       <Label>Show Health Bar</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch checked={minimapEnabled} onCheckedChange={setMinimapEnabled} />
+                      <Label>Show Minimap</Label>
                     </div>
                   </div>
                 </Card>
@@ -351,6 +529,70 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
             </ScrollArea>
           </TabsContent>
 
+          {/* ══════════ BROWSE TAB ══════════ */}
+          <TabsContent value="browse" className="flex-1">
+            <div className="px-2 pb-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input 
+                  value={browseSearch} 
+                  onChange={e => setBrowseSearch(e.target.value)} 
+                  placeholder="Search gamemodes by name, description, or creator..." 
+                  className="pl-9"
+                />
+              </div>
+            </div>
+            <ScrollArea className="h-[calc(85vh-220px)]">
+              {browseLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredBrowseModes.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Globe className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>{browseSearch ? "No gamemodes match your search" : "No public gamemodes available yet"}</p>
+                </div>
+              ) : (
+                <div className="space-y-2 p-2">
+                  {filteredBrowseModes.map(mode => (
+                    <Card key={mode.id} className="p-3 hover:border-primary/50 transition-colors cursor-pointer" onClick={() => {
+                      window.open(`/custom/${mode.slug}`, '_blank');
+                    }}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-sm truncate">{mode.name}</h4>
+                            <Badge variant="secondary" className="text-[10px] shrink-0">
+                              by {mode.creator_username}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">{mode.description || "No description"}</p>
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            <span className="text-[10px] bg-secondary/80 px-1.5 py-0.5 rounded">❤️ {mode.player_health}hp</span>
+                            <span className="text-[10px] bg-secondary/80 px-1.5 py-0.5 rounded">👾 {mode.enemy_health}hp</span>
+                            <span className="text-[10px] bg-secondary/80 px-1.5 py-0.5 rounded">⚡ {mode.player_speed_mult}x spd</span>
+                            <span className="text-[10px] bg-secondary/80 px-1.5 py-0.5 rounded">🎯 {mode.max_enemies} max</span>
+                            <span className="text-[10px] bg-secondary/80 px-1.5 py-0.5 rounded">🔫 {mode.allowed_weapons?.length || 0} weapons</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <div className="w-8 h-8 rounded" style={{ background: `linear-gradient(135deg, ${mode.bg_color_top}, ${mode.bg_color_bottom})` }} />
+                          <Button size="sm" variant="outline" className="text-[10px] h-6 px-2" onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(`/custom/${mode.slug}`, '_blank');
+                          }}>
+                            Play
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </TabsContent>
+
+          {/* ══════════ MY MODES TAB ══════════ */}
           <TabsContent value="my-modes" className="flex-1">
             <ScrollArea className="h-[calc(85vh-180px)]">
               {myModes.length === 0 ? (

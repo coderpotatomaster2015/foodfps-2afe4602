@@ -919,7 +919,7 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
       canvas.removeEventListener("mouseup", handleMouseUp);
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
-  }, [bossLevel, unlockedWeapons, playerSkin, touchscreenMode, highestLevel]);
+  }, [bossLevel, unlockedWeapons, playerSkin, touchscreenMode, highestLevel, difficulty]);
 
   // Touch control handlers
   const handleTouchMove = useCallback((dx: number, dy: number) => {

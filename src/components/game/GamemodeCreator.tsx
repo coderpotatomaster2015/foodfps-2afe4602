@@ -549,26 +549,49 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
 
                 {/* Visuals & Environment */}
                 <Card className="p-4 space-y-3">
-                  <h3 className="font-semibold flex items-center gap-2"><Palette className="w-4 h-4 text-purple-400" />Visuals & Environment</h3>
+                  <h3 className="font-semibold flex items-center gap-2"><Palette className="w-4 h-4 text-purple-400" />Graphics Style</h3>
+                  
+                  {/* Graphics Presets */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">Choose a preset or customize</Label>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                      {Object.entries(GRAPHICS_PRESETS).map(([key, preset]) => (
+                        <button
+                          key={key}
+                          onClick={() => applyGraphicsPreset(key)}
+                          className={`p-1.5 rounded-lg border text-left transition-all ${
+                            graphicsPreset === key ? "border-primary ring-1 ring-primary" : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <div className="w-full h-6 rounded mb-1" style={{ background: `linear-gradient(135deg, ${preset.bgTop}, ${preset.bgBottom})` }}>
+                            <div className="w-2 h-2 rounded-full ml-auto mr-1 mt-1" style={{ backgroundColor: preset.enemyColor }} />
+                          </div>
+                          <span className="text-[10px] font-medium block truncate">{preset.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Manual color pickers */}
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <Label>Enemy Color</Label>
                       <div className="flex items-center gap-2 mt-1">
-                        <input type="color" value={enemyColor} onChange={e => setEnemyColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer" />
+                        <input type="color" value={enemyColor} onChange={e => { setEnemyColor(e.target.value); setGraphicsPreset("custom"); }} className="w-8 h-8 rounded cursor-pointer" />
                         <span className="text-xs text-muted-foreground">{enemyColor}</span>
                       </div>
                     </div>
                     <div>
                       <Label>Sky (Top)</Label>
                       <div className="flex items-center gap-2 mt-1">
-                        <input type="color" value={bgColorTop} onChange={e => setBgColorTop(e.target.value)} className="w-8 h-8 rounded cursor-pointer" />
+                        <input type="color" value={bgColorTop} onChange={e => { setBgColorTop(e.target.value); setGraphicsPreset("custom"); }} className="w-8 h-8 rounded cursor-pointer" />
                         <span className="text-xs text-muted-foreground">{bgColorTop}</span>
                       </div>
                     </div>
                     <div>
                       <Label>Ground (Bottom)</Label>
                       <div className="flex items-center gap-2 mt-1">
-                        <input type="color" value={bgColorBottom} onChange={e => setBgColorBottom(e.target.value)} className="w-8 h-8 rounded cursor-pointer" />
+                        <input type="color" value={bgColorBottom} onChange={e => { setBgColorBottom(e.target.value); setGraphicsPreset("custom"); }} className="w-8 h-8 rounded cursor-pointer" />
                         <span className="text-xs text-muted-foreground">{bgColorBottom}</span>
                       </div>
                     </div>

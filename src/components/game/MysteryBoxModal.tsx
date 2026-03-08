@@ -87,6 +87,14 @@ const RARITY_COLORS: Record<string, string> = {
   common: "#9CA3AF", uncommon: "#22C55E", rare: "#3B82F6", epic: "#A855F7", legendary: "#F59E0B",
 };
 
+const RARITY_BACKGROUNDS: Record<string, string> = {
+  common: "",
+  uncommon: "/drops/super-rare.png",
+  rare: "/drops/rare.png",
+  epic: "/drops/epic.jpg",
+  legendary: "/drops/mythic.jpg",
+};
+
 function pickReward(weights: Record<string, number>): BoxReward {
   const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
   let roll = Math.random() * totalWeight;
@@ -851,17 +859,27 @@ export const MysteryBoxModal = ({ open, onOpenChange }: MysteryBoxModalProps) =>
 
         {/* Reveal card */}
         {phase === "reveal" && reward && (
-          <div className="mx-5 p-4 rounded-xl text-center animate-scale-in" style={{
+          <div className="mx-5 rounded-xl overflow-hidden relative" style={{
             background: `linear-gradient(135deg, ${RARITY_COLORS[reward.rarity]}25 0%, ${RARITY_COLORS[reward.rarity]}08 100%)`,
             border: `2px solid ${RARITY_COLORS[reward.rarity]}`,
             boxShadow: `0 0 40px ${RARITY_COLORS[reward.rarity]}50, inset 0 0 40px ${RARITY_COLORS[reward.rarity]}15`,
           }}>
-            <Badge className="mb-1.5 text-xs font-black uppercase tracking-wider" style={{ backgroundColor: RARITY_COLORS[reward.rarity], color: "#fff" }}>
-              {reward.rarity}
-            </Badge>
-            <h3 className="text-xl font-black text-white" style={{ textShadow: `0 0 20px ${RARITY_COLORS[reward.rarity]}80` }}>
-              {reward.name}
-            </h3>
+            {RARITY_BACKGROUNDS[reward.rarity] && (
+              <img
+                src={RARITY_BACKGROUNDS[reward.rarity]}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover opacity-40 pointer-events-none"
+                style={{ mixBlendMode: "screen" }}
+              />
+            )}
+            <div className="relative z-10 p-4 text-center animate-scale-in">
+              <Badge className="mb-1.5 text-xs font-black uppercase tracking-wider" style={{ backgroundColor: RARITY_COLORS[reward.rarity], color: "#fff" }}>
+                {reward.rarity}
+              </Badge>
+              <h3 className="text-xl font-black text-white" style={{ textShadow: `0 0 20px ${RARITY_COLORS[reward.rarity]}80` }}>
+                {reward.name}
+              </h3>
+            </div>
           </div>
         )}
 

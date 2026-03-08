@@ -525,36 +525,36 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
       // Boss AI
       boss.x += Math.sin(time * 2) * 100 * dt;
       
-      // Boss shooting (more aggressive at higher levels) - INCREASED DAMAGE
-      const shootInterval = Math.max(0.3, 1.5 - bossLevel * 0.15);
+      // Boss shooting - balanced difficulty
+      const shootInterval = Math.max(0.6, 2.0 - bossLevel * 0.1);
       if (time - boss.lastShot >= shootInterval) {
         boss.lastShot = time;
-        const bulletCount = Math.min(12, 4 + Math.floor(bossLevel / 2));
+        const bulletCount = Math.min(8, 3 + Math.floor(bossLevel / 3));
         for (let i = 0; i < bulletCount; i++) {
           const angle = (Math.PI * 2 / bulletCount) * i + time;
           bossBullets.push({
             x: boss.x,
             y: boss.y + boss.r,
-            vx: Math.cos(angle) * 250,
-            vy: Math.sin(angle) * 250 + 120,
-            r: 10,
-            life: 4,
-            dmg: 25 + bossLevel * 5, // INCREASED from 15+2*level to 25+5*level
+            vx: Math.cos(angle) * 200,
+            vy: Math.sin(angle) * 200 + 80,
+            r: 8,
+            life: 3,
+            dmg: 10 + bossLevel * 2,
             color: boss.color,
           });
         }
         
         // Additional aimed shot at player at higher levels
-        if (bossLevel >= 2) {
+        if (bossLevel >= 3) {
           const aimAngle = Math.atan2(player.y - boss.y, player.x - boss.x);
           bossBullets.push({
             x: boss.x,
             y: boss.y + boss.r,
-            vx: Math.cos(aimAngle) * 350,
-            vy: Math.sin(aimAngle) * 350,
-            r: 12,
-            life: 3,
-            dmg: 35 + bossLevel * 8, // Heavy damage aimed shot
+            vx: Math.cos(aimAngle) * 280,
+            vy: Math.sin(aimAngle) * 280,
+            r: 10,
+            life: 2.5,
+            dmg: 15 + bossLevel * 3,
             color: "#FF00FF",
           });
         }

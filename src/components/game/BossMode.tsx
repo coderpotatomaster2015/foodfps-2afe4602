@@ -47,9 +47,19 @@ const WEAPONS: Record<Weapon, WeaponConfig> = {
 
 const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "rifle", "sniper", "smg", "knife", "rpg", "axe", "flamethrower", "minigun", "railgun"];
 
+type Difficulty = "easy" | "normal" | "hard";
+
+const DIFFICULTY_CONFIG: Record<Difficulty, { hpMult: number; dmgMult: number; speedMult: number; shootMult: number; label: string; color: string }> = {
+  easy: { hpMult: 0.6, dmgMult: 0.5, speedMult: 0.7, shootMult: 1.5, label: "Easy", color: "#4ADE80" },
+  normal: { hpMult: 1.0, dmgMult: 1.0, speedMult: 1.0, shootMult: 1.0, label: "Normal", color: "#FACC15" },
+  hard: { hpMult: 1.6, dmgMult: 1.5, speedMult: 1.3, shootMult: 0.7, label: "Hard", color: "#EF4444" },
+};
+
 export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseEvents = [], touchscreenMode = false }: BossModeProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
+  const [checkpointLevel, setCheckpointLevel] = useState(1);
   
   const [bossLevel, setBossLevel] = useState(1);
   const [highestLevel, setHighestLevel] = useState(1);
@@ -78,6 +88,10 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
   const gameLoopRef = useRef<number | null>(null);
   const bossLevelRef = useRef(1);
   const specialPowerRef = useRef<string | null>(null);
+  const difficultyRef = useRef<Difficulty>("normal");
+  const minionsRef = useRef<any[]>([]);
+  const laserRef = useRef<{ active: boolean; angle: number; timer: number; warning: number }>({ active: false, angle: 0, timer: 0, warning: 0 });
+  const shockwaveRef = useRef<{ active: boolean; radius: number; maxRadius: number; timer: number }>({ active: false, radius: 0, maxRadius: 0, timer: 0 });
   const teleportCooldownRef = useRef<number>(0);
 
   // Apply admin abuse events
@@ -259,6 +273,9 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
   }, [hasPermission]);
 
   useEffect(() => {
+    if (!difficulty) return;
+    const diffConf = DIFFICULTY_CONFIG[difficulty];
+    difficultyRef.current = difficulty;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -289,14 +306,17 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
     let bullets: any[] = [];
     let bossBullets: any[] = [];
     let particles: any[] = [];
+    let minions: any[] = [];
     let time = 0;
+    let lastSpecialAbility = 0;
     
+    const bossHp = Math.round(500 * bossLevel * diffConf.hpMult);
     let boss = {
       x: W / 2,
       y: 100,
       r: 60,
-      hp: 500 * bossLevel,
-      maxHp: 500 * bossLevel,
+      hp: bossHp,
+      maxHp: bossHp,
       lastShot: 0,
       phase: 0,
       color: "#FF0000",
@@ -315,6 +335,30 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
 
     const handleKeyDown = (e: KeyboardEvent) => {
       keys[e.key.toLowerCase()] = true;
+      
+      // SPACE to restart from checkpoint
+      if (e.key === " " && player.hp <= 0) {
+        player.hp = 100;
+        player.x = W / 2;
+        player.y = H - 100;
+        setHealth(100);
+        setGameOver(false);
+        bossBullets.length = 0;
+        minions.length = 0;
+        laserRef.current = { active: false, angle: 0, timer: 0, warning: 0 };
+        shockwaveRef.current = { active: false, radius: 0, maxRadius: 0, timer: 0 };
+        // Respawn boss at current level
+        const curLvl = bossLevelRef.current;
+        const respawnHp = Math.round(500 * curLvl * diffConf.hpMult);
+        boss.hp = respawnHp;
+        boss.maxHp = respawnHp;
+        boss.x = W / 2;
+        boss.y = 100;
+        setBossHealth(respawnHp);
+        setBossMaxHealth(respawnHp);
+        return;
+      }
+      
       if (e.key.toLowerCase() === "r" && player.ammo < player.maxAmmo) {
         player.ammo = player.maxAmmo;
         setAmmo(player.ammo);
@@ -398,17 +442,21 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
 
       if (player.hp <= 0 && !adminStateRef.current.godMode) {
         setGameOver(true);
+        setCheckpointLevel(Math.max(1, bossLevelRef.current));
         ctx.save();
         ctx.fillStyle = "rgba(0,0,0,0.8)";
         ctx.fillRect(0, 0, W, H);
         ctx.fillStyle = "#fff";
         ctx.font = "48px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("GAME OVER", W / 2, H / 2 - 40);
+        ctx.fillText("GAME OVER", W / 2, H / 2 - 60);
         ctx.font = "24px sans-serif";
-        ctx.fillText(`Boss Level ${bossLevel} - Score: ${score}`, W / 2, H / 2 + 10);
-        ctx.fillText(`Highest Level Reached: ${highestLevel}`, W / 2, H / 2 + 40);
-        ctx.fillText(`Rewards: 💎${earnedRewards.gems} 🪙${earnedRewards.coins} ⭐${earnedRewards.gold}`, W / 2, H / 2 + 80);
+        ctx.fillText(`Boss Level ${bossLevel} - Score: ${score}`, W / 2, H / 2 - 20);
+        ctx.fillText(`Highest Level Reached: ${highestLevel}`, W / 2, H / 2 + 10);
+        ctx.fillText(`Rewards: 💎${earnedRewards.gems} 🪙${earnedRewards.coins} ⭐${earnedRewards.gold}`, W / 2, H / 2 + 50);
+        ctx.font = "20px sans-serif";
+        ctx.fillStyle = "#4ADE80";
+        ctx.fillText(`Press SPACE to restart from Level ${Math.max(1, bossLevelRef.current)}`, W / 2, H / 2 + 90);
         ctx.restore();
         gameLoopRef.current = requestAnimationFrame(loop);
         return;
@@ -425,20 +473,32 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
         awardCurrencies(gemsEarned, coinsEarned, goldEarned);
         toast.success(`Boss ${currentLevel} defeated! +${gemsEarned}💎 +${coinsEarned}🪙 ${goldEarned > 0 ? `+${goldEarned}⭐` : ""}`);
         
+        // Heal player to full on boss defeat (checkpoint)
+        player.hp = 100;
+        setHealth(100);
+        
         // Save highest level to cloud
         if (newLevel > highestLevel) {
           setHighestLevel(newLevel);
           saveBossLevel(newLevel);
         }
         
+        // Clear minions on boss defeat
+        minions.length = 0;
+        laserRef.current = { active: false, angle: 0, timer: 0, warning: 0 };
+        shockwaveRef.current = { active: false, radius: 0, maxRadius: 0, timer: 0 };
+        lastSpecialAbility = time;
+        
         bossLevelRef.current = newLevel;
         setBossLevel(newLevel);
+        setCheckpointLevel(newLevel);
+        const newBossHp = Math.round(500 * newLevel * diffConf.hpMult);
         boss = {
           x: W / 2,
           y: 100,
           r: 60 + currentLevel * 5,
-          hp: 500 * newLevel,
-          maxHp: 500 * newLevel,
+          hp: newBossHp,
+          maxHp: newBossHp,
           lastShot: time,
           phase: 0,
           color: `hsl(${(currentLevel * 30) % 360}, 70%, 50%)`,
@@ -523,10 +583,12 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
       }
 
       // Boss AI
-      boss.x += Math.sin(time * 2) * 100 * dt;
+      const bossSpeedMult = diffConf.speedMult;
+      boss.x += Math.sin(time * 2 * bossSpeedMult) * 100 * bossSpeedMult * dt;
+      boss.x = Math.max(boss.r, Math.min(W - boss.r, boss.x));
       
-      // Boss shooting - balanced difficulty
-      const shootInterval = Math.max(0.6, 2.0 - bossLevel * 0.1);
+      // Boss shooting - difficulty adjusted
+      const shootInterval = Math.max(0.6, 2.0 - bossLevel * 0.1) * diffConf.shootMult;
       if (time - boss.lastShot >= shootInterval) {
         boss.lastShot = time;
         const bulletCount = Math.min(8, 3 + Math.floor(bossLevel / 3));
@@ -535,11 +597,11 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
           bossBullets.push({
             x: boss.x,
             y: boss.y + boss.r,
-            vx: Math.cos(angle) * 200,
-            vy: Math.sin(angle) * 200 + 80,
+            vx: Math.cos(angle) * 200 * bossSpeedMult,
+            vy: Math.sin(angle) * 200 * bossSpeedMult + 80,
             r: 8,
             life: 3,
-            dmg: 10 + bossLevel * 2,
+            dmg: Math.round((10 + bossLevel * 2) * diffConf.dmgMult),
             color: boss.color,
           });
         }
@@ -550,13 +612,123 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
           bossBullets.push({
             x: boss.x,
             y: boss.y + boss.r,
-            vx: Math.cos(aimAngle) * 280,
-            vy: Math.sin(aimAngle) * 280,
+            vx: Math.cos(aimAngle) * 280 * bossSpeedMult,
+            vy: Math.sin(aimAngle) * 280 * bossSpeedMult,
             r: 10,
             life: 2.5,
-            dmg: 15 + bossLevel * 3,
+            dmg: Math.round((15 + bossLevel * 3) * diffConf.dmgMult),
             color: "#FF00FF",
           });
+        }
+      }
+
+      // === BOSS SPECIAL ABILITIES ===
+      const specialCooldown = bossLevel >= 8 ? 4 : bossLevel >= 5 ? 6 : 8;
+      if (bossLevel >= 3 && time - lastSpecialAbility >= specialCooldown) {
+        lastSpecialAbility = time;
+        const abilities: string[] = [];
+        if (bossLevel >= 3) abilities.push("shockwave");
+        if (bossLevel >= 5) abilities.push("laser");
+        if (bossLevel >= 7) abilities.push("minions");
+        const chosen = abilities[Math.floor(Math.random() * abilities.length)];
+
+        if (chosen === "shockwave") {
+          shockwaveRef.current = { active: true, radius: 0, maxRadius: 200 + bossLevel * 15, timer: 0.8 };
+          spawnParticles(boss.x, boss.y, "#FFAA00", 20);
+        } else if (chosen === "laser") {
+          const laserAngle = Math.atan2(player.y - boss.y, player.x - boss.x);
+          laserRef.current = { active: true, angle: laserAngle, timer: 1.2, warning: 0.5 };
+        } else if (chosen === "minions") {
+          const count = Math.min(4, 1 + Math.floor(bossLevel / 4));
+          for (let i = 0; i < count; i++) {
+            minions.push({
+              x: boss.x + rand(-80, 80),
+              y: boss.y + rand(20, 60),
+              r: 12,
+              hp: 30 + bossLevel * 5,
+              speed: 80 + bossLevel * 5,
+              lastShot: time,
+            });
+          }
+          toast.info("Boss summoned minions!");
+        }
+      }
+
+      // Update shockwave
+      if (shockwaveRef.current.active) {
+        shockwaveRef.current.timer -= dt;
+        shockwaveRef.current.radius += (shockwaveRef.current.maxRadius / 0.8) * dt;
+        if (shockwaveRef.current.timer <= 0) {
+          shockwaveRef.current.active = false;
+        }
+        // Check player collision with shockwave ring
+        const dist = Math.hypot(player.x - boss.x, player.y - boss.y);
+        const ringR = shockwaveRef.current.radius;
+        if (Math.abs(dist - ringR) < 25 && !adminStateRef.current.godMode) {
+          player.hp -= Math.round(8 * diffConf.dmgMult);
+          setHealth(Math.max(0, player.hp));
+        }
+      }
+
+      // Update laser
+      if (laserRef.current.active) {
+        laserRef.current.timer -= dt;
+        laserRef.current.warning -= dt;
+        if (laserRef.current.timer <= 0) {
+          laserRef.current.active = false;
+        }
+        // Damage player if laser is past warning phase
+        if (laserRef.current.warning <= 0) {
+          const laserDx = Math.cos(laserRef.current.angle);
+          const laserDy = Math.sin(laserRef.current.angle);
+          // Point-to-line distance
+          const relX = player.x - boss.x, relY = player.y - boss.y;
+          const proj = relX * laserDx + relY * laserDy;
+          if (proj > 0) {
+            const perpDist = Math.abs(relX * laserDy - relY * laserDx);
+            if (perpDist < 20 && !adminStateRef.current.godMode) {
+              player.hp -= Math.round(15 * diffConf.dmgMult * dt);
+              setHealth(Math.max(0, player.hp));
+            }
+          }
+        }
+      }
+
+      // Update minions
+      for (let i = minions.length - 1; i >= 0; i--) {
+        const m = minions[i];
+        const toPlayerAngle = Math.atan2(player.y - m.y, player.x - m.x);
+        m.x += Math.cos(toPlayerAngle) * m.speed * dt;
+        m.y += Math.sin(toPlayerAngle) * m.speed * dt;
+        
+        // Minion shooting
+        if (time - m.lastShot >= 2.0) {
+          m.lastShot = time;
+          bossBullets.push({
+            x: m.x, y: m.y,
+            vx: Math.cos(toPlayerAngle) * 180,
+            vy: Math.sin(toPlayerAngle) * 180,
+            r: 6, life: 2,
+            dmg: Math.round(8 * diffConf.dmgMult),
+            color: "#FF8800",
+          });
+        }
+
+        // Check if player bullets hit minion
+        for (let j = bullets.length - 1; j >= 0; j--) {
+          const b = bullets[j];
+          const mdx = b.x - m.x, mdy = b.y - m.y;
+          if (mdx * mdx + mdy * mdy <= (b.r + m.r) * (b.r + m.r)) {
+            m.hp -= b.dmg;
+            spawnParticles(b.x, b.y, "#FF8800", 5);
+            bullets.splice(j, 1);
+            if (m.hp <= 0) {
+              spawnParticles(m.x, m.y, "#FF8800", 15);
+              minions.splice(i, 1);
+              setScore(prev => prev + 25);
+              break;
+            }
+          }
         }
       }
 
@@ -669,6 +841,50 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
       ctx.fillRect(player.r - 2, -6, 18, 12);
       ctx.restore();
 
+      // Draw minions
+      for (const m of minions) {
+        ctx.save();
+        ctx.fillStyle = "#FF8800";
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+        ctx.fill();
+        // Minion health bar
+        ctx.fillStyle = "#333";
+        ctx.fillRect(m.x - 15, m.y - m.r - 8, 30, 4);
+        ctx.fillStyle = "#FF8800";
+        ctx.fillRect(m.x - 15, m.y - m.r - 8, 30 * Math.max(0, m.hp / (30 + bossLevel * 5)), 4);
+        ctx.restore();
+      }
+
+      // Draw shockwave
+      if (shockwaveRef.current.active) {
+        ctx.save();
+        ctx.strokeStyle = "#FFAA00";
+        ctx.lineWidth = 4;
+        ctx.globalAlpha = Math.max(0, shockwaveRef.current.timer / 0.8);
+        ctx.beginPath();
+        ctx.arc(boss.x, boss.y, shockwaveRef.current.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Draw laser
+      if (laserRef.current.active) {
+        ctx.save();
+        const isWarning = laserRef.current.warning > 0;
+        ctx.strokeStyle = isWarning ? "rgba(255,0,0,0.3)" : "#FF0000";
+        ctx.lineWidth = isWarning ? 6 : 12;
+        ctx.globalAlpha = isWarning ? 0.5 + Math.sin(time * 20) * 0.3 : 0.9;
+        ctx.beginPath();
+        ctx.moveTo(boss.x, boss.y);
+        ctx.lineTo(
+          boss.x + Math.cos(laserRef.current.angle) * 1200,
+          boss.y + Math.sin(laserRef.current.angle) * 1200
+        );
+        ctx.stroke();
+        ctx.restore();
+      }
+
       // Draw particles
       for (const p of particles) {
         ctx.save();
@@ -703,7 +919,7 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
       canvas.removeEventListener("mouseup", handleMouseUp);
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
-  }, [bossLevel, unlockedWeapons, playerSkin, touchscreenMode, highestLevel]);
+  }, [bossLevel, unlockedWeapons, playerSkin, touchscreenMode, highestLevel, difficulty]);
 
   // Touch control handlers
   const handleTouchMove = useCallback((dx: number, dy: number) => {
@@ -724,6 +940,39 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
       setAmmo(playerRef.current.maxAmmo);
     }
   }, []);
+
+  // Difficulty selector screen
+  if (!difficulty) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[640px] gap-6">
+        <h1 className="text-4xl font-bold text-foreground">BOSS MODE</h1>
+        <p className="text-muted-foreground text-lg">Select Difficulty</p>
+        <div className="flex gap-4">
+          {(["easy", "normal", "hard"] as Difficulty[]).map((d) => {
+            const conf = DIFFICULTY_CONFIG[d];
+            return (
+              <button
+                key={d}
+                onClick={() => setDifficulty(d)}
+                className="w-40 p-6 rounded-xl border-2 border-border bg-card hover:bg-accent transition-all flex flex-col items-center gap-3"
+              >
+                <span className="text-2xl font-bold" style={{ color: conf.color }}>{conf.label}</span>
+                <div className="text-xs text-muted-foreground space-y-1 text-center">
+                  <p>Boss HP: {Math.round(conf.hpMult * 100)}%</p>
+                  <p>Damage: {Math.round(conf.dmgMult * 100)}%</p>
+                  <p>Speed: {Math.round(conf.speedMult * 100)}%</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <Button variant="outline" onClick={onBack}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Menu
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="relative">

@@ -306,14 +306,17 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
     let bullets: any[] = [];
     let bossBullets: any[] = [];
     let particles: any[] = [];
+    let minions: any[] = [];
     let time = 0;
+    let lastSpecialAbility = 0;
     
+    const bossHp = Math.round(500 * bossLevel * diffConf.hpMult);
     let boss = {
       x: W / 2,
       y: 100,
       r: 60,
-      hp: 500 * bossLevel,
-      maxHp: 500 * bossLevel,
+      hp: bossHp,
+      maxHp: bossHp,
       lastShot: 0,
       phase: 0,
       color: "#FF0000",

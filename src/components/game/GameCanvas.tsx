@@ -908,7 +908,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
               if (e.hp <= 0) {
                 spawnParticles(e.x, e.y, "#FF6B6B", 20);
                 setScore(prev => {
-                  const newScore = prev + Math.round(10 * (soloVariant?.scoreMult ?? 1));
+                  const dbgScoreMult = debugOverridesRef.current.active ? debugOverridesRef.current.scoreMultiplier : 1;
+                  const newScore = prev + Math.round(10 * (soloVariant?.scoreMult ?? 1) * dbgScoreMult);
                   player.score = newScore;
                   return newScore;
                 });

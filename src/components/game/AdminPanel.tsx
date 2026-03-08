@@ -108,6 +108,7 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
   const [banTarget, setBanTarget] = useState<UserData | null>(null);
   const [banHours, setBanHours] = useState("");
   const [banReason, setBanReason] = useState("");
+  const [banPermanent, setBanPermanent] = useState(false);
 
   // Update modal state
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
@@ -371,33 +372,35 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
   };
 
   const confirmBan = async () => {
-    if (!banTarget || !banHours) {
-      toast.error("Please enter hours");
+    if (!banTarget || (!banPermanent && !banHours)) {
+      toast.error("Please enter hours or select permanent");
       return;
     }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    const hours = banPermanent ? 999999 : parseInt(banHours);
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + parseInt(banHours));
+    expiresAt.setHours(expiresAt.getHours() + hours);
 
     const { error } = await supabase.from("bans").insert({
       user_id: banTarget.user_id,
       banned_by: user.id,
-      hours: parseInt(banHours),
-      reason: banReason || "Banned by admin",
+      hours,
+      reason: banReason || (banPermanent ? "Permanently banned by admin" : "Banned by admin"),
       expires_at: expiresAt.toISOString(),
     });
 
     if (error) {
       toast.error("Failed to ban user");
     } else {
-      toast.success(`${banTarget.username} has been banned`);
+      toast.success(`${banTarget.username} has been ${banPermanent ? "permanently " : ""}banned`);
       setBanModalOpen(false);
       setBanTarget(null);
       setBanHours("");
       setBanReason("");
+      setBanPermanent(false);
       loadUsers();
       loadAnalytics();
     }
@@ -1538,16 +1541,22 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
             <DialogTitle>Ban {banTarget?.username}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Duration (hours)</Label>
-              <Input
-                type="number"
-                value={banHours}
-                onChange={(e) => setBanHours(e.target.value)}
-                placeholder="e.g., 24"
-                min="1"
-              />
+            <div className="flex items-center gap-2">
+              <Switch checked={banPermanent} onCheckedChange={(v) => { setBanPermanent(v); if (v) setBanHours(""); }} />
+              <Label className="text-sm font-medium text-destructive">Permanent Ban</Label>
             </div>
+            {!banPermanent && (
+              <div className="space-y-2">
+                <Label>Duration (hours)</Label>
+                <Input
+                  type="number"
+                  value={banHours}
+                  onChange={(e) => setBanHours(e.target.value)}
+                  placeholder="e.g., 24"
+                  min="1"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Reason (optional)</Label>
               <Input
@@ -1556,9 +1565,12 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                 placeholder="Enter reason..."
               />
             </div>
+            {banPermanent && (
+              <p className="text-xs text-destructive">⚠️ This will permanently ban the user. They will not be able to access the game until manually unbanned.</p>
+            )}
             <div className="flex gap-2">
               <Button variant="destructive" className="flex-1" onClick={confirmBan}>
-                Confirm Ban
+                {banPermanent ? "Permanently Ban" : "Confirm Ban"}
               </Button>
               <Button variant="outline" className="flex-1" onClick={() => setBanModalOpen(false)}>
                 Cancel

@@ -106,8 +106,89 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
     if (open) {
       loadMyModes();
       loadBrowseModes();
+      checkAdminStatus();
     }
   }, [open]);
+
+  const checkAdminStatus = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+    if (data?.some(r => r.role === "admin" || r.role === "owner")) setIsAdmin(true);
+  };
+
+  const applyGraphicsPreset = (presetKey: string) => {
+    setGraphicsPreset(presetKey);
+    if (presetKey !== "custom") {
+      const preset = GRAPHICS_PRESETS[presetKey];
+      setBgColorTop(preset.bgTop);
+      setBgColorBottom(preset.bgBottom);
+      setEnemyColor(preset.enemyColor);
+    }
+  };
+
+  const generateWithAI = async () => {
+    if (!aiPrompt.trim()) { toast.error("Enter a description for the AI"); return; }
+    setAiGenerating(true);
+    setAiResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-gamemode", {
+        body: { prompt: aiPrompt.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+      if (data?.gamemode) {
+        setAiResult(data.gamemode);
+        toast.success("AI generated a gamemode! Review and submit it.");
+      }
+    } catch (e: any) {
+      console.error("AI generation error:", e);
+      toast.error("AI generation failed: " + (e.message || "Unknown error"));
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  const loadAiResultIntoForm = () => {
+    if (!aiResult) return;
+    setName(aiResult.name || "");
+    setDescription(aiResult.description || "");
+    setEnemyHealth(aiResult.enemy_health ?? 100);
+    setPlayerHealth(aiResult.player_health ?? 100);
+    setAllowedWeapons(aiResult.allowed_weapons || ["pistol"]);
+    setShowScore(aiResult.show_score ?? true);
+    setShowHealthGui(aiResult.show_health_gui ?? true);
+    setEnemySpeedMult(aiResult.enemy_speed_mult ?? 1.0);
+    setPlayerSpeedMult(aiResult.player_speed_mult ?? 1.0);
+    setSpawnInterval(aiResult.spawn_interval ?? 2.0);
+    setScoreMultiplier(aiResult.score_multiplier ?? 1.0);
+    setEnemyColor(aiResult.enemy_color || "#FF0000");
+    setBgColorTop(aiResult.bg_color_top || "#0a0a1a");
+    setBgColorBottom(aiResult.bg_color_bottom || "#1a1a2e");
+    setMaxEnemies(aiResult.max_enemies ?? 10);
+    setPickupChance(aiResult.pickup_chance ?? 0.3);
+    setGravityMult(aiResult.gravity_mult ?? 1.0);
+    setFriendlyFire(aiResult.friendly_fire ?? false);
+    setAutoHeal(aiResult.auto_heal ?? false);
+    setAutoHealRate(aiResult.auto_heal_rate ?? 0);
+    setDamageMult(aiResult.damage_mult ?? 1.0);
+    setShieldOnSpawn(aiResult.shield_on_spawn ?? false);
+    setShieldDuration(aiResult.shield_duration ?? 3.0);
+    setLives(aiResult.lives ?? 0);
+    setTimeLimit(aiResult.time_limit ?? 0);
+    setMinimapEnabled(aiResult.minimap_enabled ?? true);
+    setAmmoInfinite(aiResult.ammo_infinite ?? false);
+    setEnemySizeMult(aiResult.enemy_size_mult ?? 1.0);
+    setPlayerSizeMult(aiResult.player_size_mult ?? 1.0);
+    setFogEnabled(aiResult.fog_enabled ?? false);
+    setFogDensity(aiResult.fog_density ?? 0.5);
+    setWaveMode(aiResult.wave_mode ?? false);
+    setEnemiesPerWave(aiResult.enemies_per_wave ?? 5);
+    setDifficultyRamp(aiResult.difficulty_ramp ?? 1.0);
+    setGraphicsPreset("custom");
+    setTab("create");
+    toast.success("Loaded into editor! Review and submit.");
+  };
 
   const loadMyModes = async () => {
     const { data: { user } } = await supabase.auth.getUser();

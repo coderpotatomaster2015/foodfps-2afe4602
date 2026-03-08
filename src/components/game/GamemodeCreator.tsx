@@ -84,6 +84,7 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
   const [enemiesPerWave, setEnemiesPerWave] = useState(5);
   const [difficultyRamp, setDifficultyRamp] = useState(1.0);
   const [creatorNotes, setCreatorNotes] = useState("");
+  const [graphicsPreset, setGraphicsPreset] = useState("custom");
 
   const [submitting, setSubmitting] = useState(false);
   const [myModes, setMyModes] = useState<any[]>([]);
@@ -94,6 +95,12 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
   const [browseModes, setBrowseModes] = useState<any[]>([]);
   const [browseSearch, setBrowseSearch] = useState("");
   const [browseLoading, setBrowseLoading] = useState(false);
+
+  // AI state (admin only)
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiResult, setAiResult] = useState<any>(null);
 
   useEffect(() => {
     if (open) {

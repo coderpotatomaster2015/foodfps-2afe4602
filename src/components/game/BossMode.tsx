@@ -449,20 +449,32 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
         awardCurrencies(gemsEarned, coinsEarned, goldEarned);
         toast.success(`Boss ${currentLevel} defeated! +${gemsEarned}💎 +${coinsEarned}🪙 ${goldEarned > 0 ? `+${goldEarned}⭐` : ""}`);
         
+        // Heal player to full on boss defeat (checkpoint)
+        player.hp = 100;
+        setHealth(100);
+        
         // Save highest level to cloud
         if (newLevel > highestLevel) {
           setHighestLevel(newLevel);
           saveBossLevel(newLevel);
         }
         
+        // Clear minions on boss defeat
+        minions.length = 0;
+        laserRef.current = { active: false, angle: 0, timer: 0, warning: 0 };
+        shockwaveRef.current = { active: false, radius: 0, maxRadius: 0, timer: 0 };
+        lastSpecialAbility = time;
+        
         bossLevelRef.current = newLevel;
         setBossLevel(newLevel);
+        setCheckpointLevel(newLevel);
+        const newBossHp = Math.round(500 * newLevel * diffConf.hpMult);
         boss = {
           x: W / 2,
           y: 100,
           r: 60 + currentLevel * 5,
-          hp: 500 * newLevel,
-          maxHp: 500 * newLevel,
+          hp: newBossHp,
+          maxHp: newBossHp,
           lastShot: time,
           phase: 0,
           color: `hsl(${(currentLevel * 30) % 360}, 70%, 50%)`,

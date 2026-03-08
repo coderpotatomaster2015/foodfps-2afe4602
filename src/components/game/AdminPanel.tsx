@@ -372,33 +372,35 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
   };
 
   const confirmBan = async () => {
-    if (!banTarget || !banHours) {
-      toast.error("Please enter hours");
+    if (!banTarget || (!banPermanent && !banHours)) {
+      toast.error("Please enter hours or select permanent");
       return;
     }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    const hours = banPermanent ? 999999 : parseInt(banHours);
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + parseInt(banHours));
+    expiresAt.setHours(expiresAt.getHours() + hours);
 
     const { error } = await supabase.from("bans").insert({
       user_id: banTarget.user_id,
       banned_by: user.id,
-      hours: parseInt(banHours),
-      reason: banReason || "Banned by admin",
+      hours,
+      reason: banReason || (banPermanent ? "Permanently banned by admin" : "Banned by admin"),
       expires_at: expiresAt.toISOString(),
     });
 
     if (error) {
       toast.error("Failed to ban user");
     } else {
-      toast.success(`${banTarget.username} has been banned`);
+      toast.success(`${banTarget.username} has been ${banPermanent ? "permanently " : ""}banned`);
       setBanModalOpen(false);
       setBanTarget(null);
       setBanHours("");
       setBanReason("");
+      setBanPermanent(false);
       loadUsers();
       loadAnalytics();
     }

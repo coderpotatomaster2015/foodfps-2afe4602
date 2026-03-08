@@ -418,17 +418,21 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
 
       if (player.hp <= 0 && !adminStateRef.current.godMode) {
         setGameOver(true);
+        setCheckpointLevel(Math.max(1, bossLevelRef.current));
         ctx.save();
         ctx.fillStyle = "rgba(0,0,0,0.8)";
         ctx.fillRect(0, 0, W, H);
         ctx.fillStyle = "#fff";
         ctx.font = "48px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("GAME OVER", W / 2, H / 2 - 40);
+        ctx.fillText("GAME OVER", W / 2, H / 2 - 60);
         ctx.font = "24px sans-serif";
-        ctx.fillText(`Boss Level ${bossLevel} - Score: ${score}`, W / 2, H / 2 + 10);
-        ctx.fillText(`Highest Level Reached: ${highestLevel}`, W / 2, H / 2 + 40);
-        ctx.fillText(`Rewards: 💎${earnedRewards.gems} 🪙${earnedRewards.coins} ⭐${earnedRewards.gold}`, W / 2, H / 2 + 80);
+        ctx.fillText(`Boss Level ${bossLevel} - Score: ${score}`, W / 2, H / 2 - 20);
+        ctx.fillText(`Highest Level Reached: ${highestLevel}`, W / 2, H / 2 + 10);
+        ctx.fillText(`Rewards: 💎${earnedRewards.gems} 🪙${earnedRewards.coins} ⭐${earnedRewards.gold}`, W / 2, H / 2 + 50);
+        ctx.font = "20px sans-serif";
+        ctx.fillStyle = "#4ADE80";
+        ctx.fillText(`Press SPACE to restart from Level ${Math.max(1, bossLevelRef.current)}`, W / 2, H / 2 + 90);
         ctx.restore();
         gameLoopRef.current = requestAnimationFrame(loop);
         return;

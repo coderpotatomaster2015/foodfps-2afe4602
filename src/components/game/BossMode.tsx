@@ -941,6 +941,39 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
     }
   }, []);
 
+  // Difficulty selector screen
+  if (!difficulty) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[640px] gap-6">
+        <h1 className="text-4xl font-bold text-foreground">BOSS MODE</h1>
+        <p className="text-muted-foreground text-lg">Select Difficulty</p>
+        <div className="flex gap-4">
+          {(["easy", "normal", "hard"] as Difficulty[]).map((d) => {
+            const conf = DIFFICULTY_CONFIG[d];
+            return (
+              <button
+                key={d}
+                onClick={() => setDifficulty(d)}
+                className="w-40 p-6 rounded-xl border-2 border-border bg-card hover:bg-accent transition-all flex flex-col items-center gap-3"
+              >
+                <span className="text-2xl font-bold" style={{ color: conf.color }}>{conf.label}</span>
+                <div className="text-xs text-muted-foreground space-y-1 text-center">
+                  <p>Boss HP: {Math.round(conf.hpMult * 100)}%</p>
+                  <p>Damage: {Math.round(conf.dmgMult * 100)}%</p>
+                  <p>Speed: {Math.round(conf.speedMult * 100)}%</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <Button variant="outline" onClick={onBack}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Menu
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
       {/* Stats panel */}

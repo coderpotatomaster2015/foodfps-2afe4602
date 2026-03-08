@@ -868,7 +868,8 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       else { x = W * mult + 30; y = rand(-40 * mult, H * mult + 40); }
       const enemyId = `enemy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const canShoot = mode !== "zombie";
-      enemies.push({ id: enemyId, x, y, r: soloVariant?.enemyRadius ?? (mode === "zombie" ? 18 : 16), speed: getEnemySpeed(), hp: getEnemyHp(), color: getEnemyColor(), stun: 0, lastHit: 0, lastShot: canShoot ? -1 : 99999 });
+      const hp = getEnemyHp();
+      enemies.push({ id: enemyId, x, y, r: soloVariant?.enemyRadius ?? (mode === "zombie" ? 18 : 16), speed: getEnemySpeed(), hp, maxHp: hp, color: getEnemyColor(), stun: 0, lastHit: 0, lastShot: canShoot ? -1 : 99999 });
     };
 
     const spawnPickup = () => {

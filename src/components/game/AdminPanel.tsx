@@ -108,6 +108,7 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
   const [banTarget, setBanTarget] = useState<UserData | null>(null);
   const [banHours, setBanHours] = useState("");
   const [banReason, setBanReason] = useState("");
+  const [banPermanent, setBanPermanent] = useState(false);
 
   // Update modal state
   const [updateModalOpen, setUpdateModalOpen] = useState(false);

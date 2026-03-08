@@ -306,16 +306,19 @@ serve(async (req) => {
       }
     };
 
+    const activePlayersList = gameContext.activePlayers.map((p: any) => p.username + " (" + p.mode + ")").join(", ") || "None";
+    const recentUpdatesList = gameContext.recentUpdates.map((u: any) => u.name + " (" + (u.is_released ? "Released" : u.is_beta ? "Beta" : "Draft") + ")").join(", ") || "None";
+
     const systemPrompt = `You are FoodFPS Admin AI — an advanced admin assistant with FULL database access. You can read, write, update, and delete any data in the game database using the provided tools.
 
 CURRENT GAME STATE:
 - Total Users: ${gameContext.totalUsers}
 - Website: ${gameContext.websiteEnabled ? "Enabled" : "Disabled"}
 - Beta Testers: ${gameContext.betaTesters.join(", ") || "None"}
-- Active Players: ${gameContext.activePlayers.map((p: any) => \`\${p.username} (\${p.mode})\`).join(", ") || "None"}
+- Active Players: ${activePlayersList}
 - Pending Posts: ${gameContext.pendingPosts}
 - Banned Users: ${gameContext.bannedUsers.map((b: any) => b.username).join(", ") || "None"}
-- Recent Updates: ${gameContext.recentUpdates.map((u: any) => \`\${u.name} (\${u.is_released ? "Released" : u.is_beta ? "Beta" : "Draft"})\`).join(", ") || "None"}
+- Recent Updates: ${recentUpdatesList}
 
 DATABASE TABLES AVAILABLE:
 ${DB_TABLES.join(", ")}

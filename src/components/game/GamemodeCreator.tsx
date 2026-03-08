@@ -372,10 +372,11 @@ export const GamemodeCreator = ({ open, onOpenChange }: GamemodeCreatorProps) =>
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col">
-          <TabsList className="mx-auto">
+          <TabsList className="mx-auto flex-wrap">
             <TabsTrigger value="create">Create New</TabsTrigger>
             <TabsTrigger value="browse">Browse ({browseModes.length})</TabsTrigger>
             <TabsTrigger value="my-modes">My Modes ({myModes.length})</TabsTrigger>
+            {isAdmin && <TabsTrigger value="ai-creator"><Bot className="w-3 h-3 mr-1" />AI Creator</TabsTrigger>}
           </TabsList>
 
           {/* ══════════ CREATE TAB ══════════ */}

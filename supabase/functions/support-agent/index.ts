@@ -112,7 +112,7 @@ const findTopicResponse = (normalized: string) => {
     }
   }
 
-  return "I can help with gameplay guidance, troubleshooting, account issues, rewards, and reporting bugs. Tell me what happened and I'll walk you through next steps.";
+  return "I can help with gameplay guidance, troubleshooting, account issues, rewards, and reporting bugs. Tell me what happened and I'll walk you through next steps. Warning:exploiting bugs or hacking and part of the game will get you reported and banned.";
 };
 
 const readReferenceSnippet = async (normalized: string): Promise<string | null> => {

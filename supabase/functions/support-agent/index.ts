@@ -9,6 +9,8 @@ const ADMIN_CODE = "ADMIN2698";
 const REFERENCE_URL = "https://foodfps.lovable.app/ai.md";
 const OLLAMA_BASE_URL = Deno.env.get("OLLAMA_BASE_URL") ?? "http://localhost:11434";
 const OLLAMA_MODEL = Deno.env.get("OLLAMA_MODEL") ?? "llama3.2";
+const HUGGINGFACE_API_KEY = Deno.env.get("HUGGINGFACE_API_KEY") ?? "";
+const HUGGINGFACE_MODEL = Deno.env.get("HUGGINGFACE_MODEL") ?? "mistralai/Mistral-7B-Instruct-v0.3";
 
 type RoleLabel = "owner" | "admin" | "user" | "teacher" | "beta tester";
 
@@ -170,6 +172,52 @@ const chatWithOllama = async (userMessage: string, reference: string | null): Pr
   }
 };
 
+const chatWithHuggingFace = async (userMessage: string, reference: string | null): Promise<string | null> => {
+  if (!HUGGINGFACE_API_KEY) return null;
+
+  const prompt = `${SUPPORT_SYSTEM_PROMPT}
+
+External support reference:
+${reference ?? "No matching snippet found."}
+
+User message: ${userMessage}`;
+
+  try {
+    const response = await fetch(`https://api-inference.huggingface.co/models/${encodeURIComponent(HUGGINGFACE_MODEL)}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${HUGGINGFACE_API_KEY}`,
+      },
+      body: JSON.stringify({
+        inputs: prompt,
+        options: { wait_for_model: true },
+        parameters: {
+          max_new_tokens: 220,
+          temperature: 0.4,
+          return_full_text: false,
+        },
+      }),
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+
+    if (Array.isArray(data) && typeof data[0]?.generated_text === "string" && data[0].generated_text.trim()) {
+      return data[0].generated_text.trim();
+    }
+
+    if (typeof data?.generated_text === "string" && data.generated_text.trim()) {
+      return data.generated_text.trim();
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 const guessUrgency = (text: string) => {
   const normalized = text.toLowerCase();
   if (
@@ -276,8 +324,10 @@ serve(async (req) => {
     }
 
     const referenceSnippet = await readReferenceSnippet(normalized);
-    // attempt to get a model response from Ollama; if unavailable, fall back to topic-based help + reference
-    const modelResponse = await chatWithOllama(message, referenceSnippet);
+    // attempt AI replies via Ollama first, then Hugging Face; if both are unavailable, fall back to topic-based help + reference
+    const ollamaResponse = await chatWithOllama(message, referenceSnippet);
+    const huggingFaceResponse = ollamaResponse ? null : await chatWithHuggingFace(message, referenceSnippet);
+    const modelResponse = ollamaResponse ?? huggingFaceResponse;
 
     const topicHelp = findTopicResponse(normalized);
 

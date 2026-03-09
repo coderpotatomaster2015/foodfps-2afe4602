@@ -69,6 +69,7 @@ interface Update {
   id: string;
   name: string;
   description: string;
+  summary?: string | null;
   is_released: boolean;
   is_beta: boolean;
   is_seasonal: boolean;
@@ -680,24 +681,33 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
   };
 
   const releaseUpdate = async (updateId: string, toBeta: boolean = false) => {
-    const updateData = toBeta 
-      ? { 
-          is_beta: true, 
+    const selectedUpdate = updates.find((update) => update.id === updateId);
+    const updateSummary =
+      selectedUpdate?.summary?.trim() || selectedUpdate?.description?.trim() || "New update released.";
+
+    const updateData = toBeta
+      ? {
+          is_beta: true,
           is_released: false,
-          released_at: new Date().toISOString()
+          released_at: new Date().toISOString(),
         }
-      : { 
-          is_released: true, 
+      : {
+          is_released: true,
           is_beta: false,
           released_at: new Date().toISOString(),
-          summary: "New features and improvements!"
+          summary: updateSummary,
         };
 
-    await supabase
+    const { error } = await supabase
       .from("game_updates")
       .update(updateData)
       .eq("id", updateId);
-    
+
+    if (error) {
+      toast.error("Failed to release update");
+      return;
+    }
+
     toast.success(toBeta ? "Released to beta testers" : "Update released publicly");
     loadUpdates();
   };

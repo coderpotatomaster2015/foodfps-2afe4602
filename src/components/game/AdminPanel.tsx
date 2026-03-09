@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { X, Send, Power, Users, Bot, Shield, Trophy, Sparkles, 
          Terminal, FlaskConical, Globe, Check, Ban, Zap, Edit, Trash2,
          BarChart3, TrendingUp, Activity, Clock, UserX, Key, RefreshCw,
-         Megaphone, Gift, Swords, Ticket, Calendar } from "lucide-react";
+         Megaphone, Gift, Swords, Ticket, Calendar, LifeBuoy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { RedeemCodesPanel } from "./RedeemCodesPanel";
@@ -76,6 +76,19 @@ interface Update {
   created_at: string;
 }
 
+
+interface SupportTicketItem {
+  id: string;
+  created_at: string;
+  from_username: string;
+  encoded: string;
+  decoded: string;
+  username: string;
+  problem: string;
+  role: string;
+  urgency: string;
+}
+
 interface Analytics {
   totalUsers: number;
   newUsersToday: number;
@@ -101,6 +114,7 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
   const [updates, setUpdates] = useState<Update[]>([]);
   const [leaderboard, setLeaderboard] = useState<UserData[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [supportTickets, setSupportTickets] = useState<SupportTicketItem[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // Ban modal state
@@ -151,9 +165,52 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
       loadUpdates();
       loadLeaderboard();
       loadAnalytics();
+      loadSupportTickets();
       loadCurrentUser();
     }
   }, [open]);
+
+  const decodeTicket = (encoded: string) => {
+    try {
+      return decodeURIComponent(escape(atob(encoded)));
+    } catch {
+      return encoded;
+    }
+  };
+
+  const loadSupportTickets = async () => {
+    const { data } = await supabase
+      .from("messages")
+      .select("id, created_at, from_username, content")
+      .ilike("subject", "[SUPPORT_TICKET]%")
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (!data) return;
+
+    const parsed = data.map((row) => {
+      const decoded = decodeTicket(row.content);
+      const parts = decoded.split("-");
+      const username = parts[0] || row.from_username;
+      const role = parts.length >= 2 ? parts[parts.length - 2] : "user";
+      const urgency = parts.length >= 1 ? parts[parts.length - 1] : "low";
+      const problem = parts.length > 3 ? parts.slice(1, -2).join("-") : decoded;
+
+      return {
+        id: row.id,
+        created_at: row.created_at,
+        from_username: row.from_username,
+        encoded: row.content,
+        decoded,
+        username,
+        problem,
+        role,
+        urgency,
+      };
+    });
+
+    setSupportTickets(parsed);
+  };
 
   const loadCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -797,6 +854,10 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                 </span>
               )}
             </TabsTrigger>
+            <TabsTrigger value="support-tickets" className="gap-1 text-xs">
+              <LifeBuoy className="w-3 h-3" />
+              Support Tickets ({supportTickets.length})
+            </TabsTrigger>
             <TabsTrigger value="leaderboard" className="gap-1 text-xs">
               <Trophy className="w-3 h-3" />
               Leaderboard
@@ -1396,6 +1457,39 @@ export const AdminPanel = ({ open, onClose }: AdminPanelProps) => {
                 </ScrollArea>
               </TabsContent>
             </Tabs>
+          </TabsContent>
+
+          <TabsContent value="support-tickets" className="flex-1 p-4 overflow-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-lg">Support Tickets</h3>
+              <Button variant="outline" size="sm" onClick={loadSupportTickets}>
+                <RefreshCw className="w-3 h-3 mr-1" />
+                Refresh
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {supportTickets.length === 0 && (
+                <Card className="p-4 text-sm text-muted-foreground">No support tickets yet.</Card>
+              )}
+
+              {supportTickets.map((ticket) => (
+                <Card key={ticket.id} className="p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-medium">{ticket.username}</p>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(ticket.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-sm"><span className="font-semibold">Role:</span> {ticket.role}</p>
+                  <p className="text-sm"><span className="font-semibold">Urgency:</span> {ticket.urgency}</p>
+                  <p className="text-sm"><span className="font-semibold">Problem:</span> {ticket.problem}</p>
+                  <p className="text-xs text-muted-foreground break-all">
+                    <span className="font-semibold">Encoded:</span> {ticket.encoded}
+                  </p>
+                </Card>
+              ))}
+            </div>
           </TabsContent>
 
           <TabsContent value="leaderboard" className="flex-1 p-4 overflow-hidden">

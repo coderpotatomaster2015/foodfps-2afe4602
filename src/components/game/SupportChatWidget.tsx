@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageCircle, Send, X } from "lucide-react";
+import { MessageCircle, Send, X, LifeBuoy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,14 +12,23 @@ type SupportMessage = {
   content: string;
 };
 
-export const SupportChatWidget = () => {
+interface SupportChatWidgetProps {
+  userId: string;
+  username: string;
+  roleLabel: "owner" | "admin" | "user" | "teacher" | "beta tester";
+}
+
+export const SupportChatWidget = ({ userId, username, roleLabel }: SupportChatWidgetProps) => {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ticketLoading, setTicketLoading] = useState(false);
+  const [lastUserMessage, setLastUserMessage] = useState("");
   const [messages, setMessages] = useState<SupportMessage[]>([
     {
       role: "assistant",
-      content: "Hey! Need help? Ask me about gameplay, bugs, account issues, or troubleshooting.",
+      content:
+        "Hey! Need help? Ask me about gameplay, bugs, account issues, or troubleshooting. If this needs staff review, press Create Support Ticket.",
     },
   ]);
 
@@ -28,6 +37,7 @@ export const SupportChatWidget = () => {
     if (!trimmed || loading) return;
 
     setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
+    setLastUserMessage(trimmed);
     setInput("");
     setLoading(true);
 
@@ -59,10 +69,87 @@ export const SupportChatWidget = () => {
     }
   };
 
+  const createSupportTicket = async () => {
+    const issueText = lastUserMessage || input.trim();
+    if (!issueText) {
+      toast.error("Please describe your issue first, then create a ticket.");
+      return;
+    }
+
+    setTicketLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("support-agent", {
+        body: {
+          action: "create_ticket",
+          message: issueText,
+          username,
+          role: roleLabel,
+        },
+      });
+
+      if (error) throw error;
+
+      const encodedTicket = typeof data?.encodedTicket === "string" ? data.encodedTicket : null;
+      const confirmation =
+        typeof data?.response === "string" ? data.response : "Support ticket created and sent to admins.";
+
+      if (!encodedTicket) {
+        toast.error("Could not generate a support ticket right now.");
+        return;
+      }
+
+      const { data: adminRoles, error: adminRolesError } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
+        .in("role", ["admin", "owner"]);
+
+      if (adminRolesError) throw adminRolesError;
+
+      const adminIds = [...new Set((adminRoles || []).map((row) => row.user_id))];
+
+      if (!adminIds.length) {
+        toast.error("No admins found to receive the ticket.");
+        return;
+      }
+
+      const { data: adminProfiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("user_id, username")
+        .in("user_id", adminIds);
+
+      if (profilesError) throw profilesError;
+
+      const usernameMap = new Map((adminProfiles || []).map((profile) => [profile.user_id, profile.username]));
+
+      const inserts = adminIds.map((adminId) => ({
+        from_user_id: userId,
+        from_username: username,
+        to_user_id: adminId,
+        to_username: usernameMap.get(adminId) || "Admin",
+        subject: "[SUPPORT_TICKET] New ticket from support bot",
+        content: encodedTicket,
+        is_feedback: false,
+        is_appeal: false,
+      }));
+
+      const { error: insertError } = await supabase.from("messages").insert(inserts);
+      if (insertError) throw insertError;
+
+      setMessages((prev) => [...prev, { role: "assistant", content: confirmation }]);
+      toast.success("Support ticket sent to admins.");
+    } catch (error) {
+      console.error("Create support ticket failed:", error);
+      toast.error("Failed to send support ticket.");
+    } finally {
+      setTicketLoading(false);
+    }
+  };
+
   return (
     <>
       <Button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((value) => !value)}
         className="fixed right-4 bottom-4 z-50 gap-2 rounded-full shadow-lg"
       >
         <MessageCircle className="h-4 w-4" />
@@ -97,20 +184,31 @@ export const SupportChatWidget = () => {
             </div>
           </ScrollArea>
 
-          <div className="flex items-center gap-2 border-t p-3">
-            <Input
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder="Describe your issue..."
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  void sendMessage();
-                }
-              }}
-            />
-            <Button size="icon" onClick={() => void sendMessage()} disabled={loading || !input.trim()}>
-              <Send className="h-4 w-4" />
+          <div className="border-t p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Input
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                placeholder="Describe your issue..."
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void sendMessage();
+                  }
+                }}
+              />
+              <Button size="icon" onClick={() => void sendMessage()} disabled={loading || !input.trim()}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => void createSupportTicket()}
+              disabled={ticketLoading}
+            >
+              <LifeBuoy className="h-4 w-4" />
+              {ticketLoading ? "Creating Support Ticket..." : "Create Support Ticket"}
             </Button>
           </div>
         </div>

@@ -45,6 +45,7 @@ import { GlobalChatModal } from "@/components/game/GlobalChatModal";
 import { PopupAd } from "@/components/game/PopupAd";
 import { TutorialModal } from "@/components/game/TutorialModal";
 import { FeedbackButton } from "@/components/game/FeedbackButton";
+import { SupportChatWidget } from "@/components/game/SupportChatWidget";
 import { RedeemCodeModal } from "@/components/game/RedeemCodeModal";
 import { PublicScheduleModal } from "@/components/game/PublicScheduleModal";
 import { FoodPassModal } from "@/components/game/FoodPassModal";
@@ -450,6 +451,7 @@ const Index = () => {
       {user && !gameMode && !isAdmin && <AdBanner userId={user.id} onSignupClick={() => setShowAdSignup(true)} />}
       {user && !gameMode && !isAdmin && <PopupAd userId={user.id} onSignupClick={() => setShowAdSignup(true)} />}
       {user && username && !gameMode && <FeedbackButton userId={user.id} username={username} />}
+      {user && username && <SupportChatWidget />}
       <PublicScheduleModal open={showEventSchedule} onOpenChange={setShowEventSchedule} />
     </div>
   );

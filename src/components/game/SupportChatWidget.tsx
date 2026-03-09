@@ -12,6 +12,52 @@ type SupportMessage = {
   content: string;
 };
 
+const FALLBACK_SUPPORT_TOPICS: Array<{ keywords: string[]; response: string }> = [
+  {
+    keywords: ["login", "sign in", "signin", "password", "account access"],
+    response:
+      "If you're having login issues, reset your password, close and reopen the app, then sign in again. If it still fails, share the exact error text and when it appears.",
+  },
+  {
+    keywords: ["lag", "fps", "stutter", "performance", "slow", "freezing"],
+    response:
+      "For lag or FPS problems: lower graphics settings, close extra tabs/apps, and use a stable connection. If possible, include your device, browser, and game mode.",
+  },
+  {
+    keywords: ["bug", "glitch", "broken", "not working", "issue"],
+    response:
+      "Thanks for reporting this. Please include steps to reproduce, expected behavior, and what happened instead so staff can investigate quickly.",
+  },
+];
+
+const getFallbackSupportReply = (message: string) => {
+  const normalized = message.toLowerCase();
+  for (const topic of FALLBACK_SUPPORT_TOPICS) {
+    if (topic.keywords.some((keyword) => normalized.includes(keyword))) {
+      return `${topic.response}\n\nIf you still need staff review, press Create Support Ticket.`;
+    }
+  }
+
+  return "I can help with gameplay guidance, troubleshooting, account issues, and bug reports. Share as many details as possible, then press Create Support Ticket if you need staff review.";
+};
+
+const createEncodedTicket = (username: string, message: string, roleLabel: SupportChatWidgetProps["roleLabel"]) => {
+  const normalizedMessage = message.replace(/\s+/g, " ").trim();
+  const lowered = normalizedMessage.toLowerCase();
+  const urgency =
+    /(urgent|immediately|asap|can't login|cant login|stolen|hacked|crash|banned by mistake)/.test(lowered)
+      ? "high"
+      : /(soon|annoying|broken|not working|issue|bug)|!!/.test(lowered)
+        ? "medium"
+        : "low";
+
+  const ticket = `${username}-${normalizedMessage}-${roleLabel}-${urgency}`;
+  return {
+    encodedTicket: btoa(unescape(encodeURIComponent(ticket))),
+    urgency,
+  };
+};
+
 interface SupportChatWidgetProps {
   userId: string;
   username: string;
@@ -56,12 +102,13 @@ export const SupportChatWidget = ({ userId, username, roleLabel }: SupportChatWi
       setMessages((prev) => [...prev, { role: "assistant", content: responseText }]);
     } catch (error) {
       console.error("Support chat failed:", error);
-      toast.error("Support chat is unavailable right now.");
+
+      const fallbackReply = getFallbackSupportReply(trimmed);
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: "Sorry, support is temporarily unavailable. Please try again in a moment.",
+          content: fallbackReply,
         },
       ]);
     } finally {
@@ -88,16 +135,15 @@ export const SupportChatWidget = ({ userId, username, roleLabel }: SupportChatWi
         },
       });
 
-      if (error) throw error;
-
-      const encodedTicket = typeof data?.encodedTicket === "string" ? data.encodedTicket : null;
+      const fallbackTicket = createEncodedTicket(username, issueText, roleLabel);
+      const encodedTicket =
+        !error && typeof data?.encodedTicket === "string" && data.encodedTicket.trim().length > 0
+          ? data.encodedTicket
+          : fallbackTicket.encodedTicket;
       const confirmation =
-        typeof data?.response === "string" ? data.response : "Support ticket created and sent to admins.";
-
-      if (!encodedTicket) {
-        toast.error("Could not generate a support ticket right now.");
-        return;
-      }
+        !error && typeof data?.response === "string"
+          ? data.response
+          : `Support ticket created. Sent to admins with urgency: ${fallbackTicket.urgency}.`;
 
       const { data: adminRoles, error: adminRolesError } = await supabase
         .from("user_roles")

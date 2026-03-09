@@ -151,6 +151,23 @@ const Index = () => {
   }, []);
 
   useEffect(() => {
+    if (!threeDMode || !gameMode) return;
+
+    const webglCanvas = document.createElement("canvas");
+    const canUseWebGL = !!(
+      webglCanvas.getContext("webgl2") ||
+      webglCanvas.getContext("webgl") ||
+      webglCanvas.getContext("experimental-webgl")
+    );
+
+    if (!canUseWebGL) {
+      setThreeDMode(false);
+      localStorage.setItem("foodfps_3d", "false");
+      toast.error("3D mode isn't supported on this device. Switched to 2D mode.");
+    }
+  }, [threeDMode, gameMode]);
+
+  useEffect(() => {
     if (!gameStatus.websiteEnabled && !isAdmin) { setWebsiteEnabled(false); }
   }, [gameStatus.websiteEnabled, isAdmin]);
 

@@ -784,8 +784,9 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       setSpawnImmunity(false);
     }, 5000);
 
-    let keys: Record<string, boolean> = {};
-    let mouse = { x: W / 2, y: H / 2, down: false };
+    // Persist keys and mouse across re-initializations to prevent shooting/movement disable
+    let keys: Record<string, boolean> = gameStateRef.current.keys || {};
+    let mouse = gameStateRef.current.mouse || { x: W / 2, y: H / 2, down: false };
 
     // Preserve player position across re-initializations to prevent teleportation bug
     const prevPlayer = playerRef.current;

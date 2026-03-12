@@ -466,9 +466,10 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
         // Boss defeated - award rewards and spawn next boss
         const currentLevel = bossLevelRef.current;
         const newLevel = currentLevel + 1;
-        const gemsEarned = currentLevel * 5;
-        const coinsEarned = currentLevel * 20;
-        const goldEarned = currentLevel >= 5 ? currentLevel : 0;
+        // Capped rewards to prevent excessive inflation
+        const gemsEarned = Math.min(currentLevel * 2, 50);
+        const coinsEarned = Math.min(currentLevel * 5, 150);
+        const goldEarned = currentLevel >= 5 ? Math.min(Math.floor(currentLevel / 2), 25) : 0;
         
         awardCurrencies(gemsEarned, coinsEarned, goldEarned);
         toast.success(`Boss ${currentLevel} defeated! +${gemsEarned}💎 +${coinsEarned}🪙 ${goldEarned > 0 ? `+${goldEarned}⭐` : ""}`);
@@ -505,7 +506,8 @@ export const BossMode = ({ username, onBack, playerSkin = "#FFF3D6", adminAbuseE
         };
         setBossHealth(boss.hp);
         setBossMaxHealth(boss.maxHp);
-        setScore(prev => prev + 100 * currentLevel);
+        // Capped score reward per boss kill
+        setScore(prev => prev + Math.min(50 + currentLevel * 10, 200));
       }
 
       // Player movement - handle touch controls

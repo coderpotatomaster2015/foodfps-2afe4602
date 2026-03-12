@@ -74,11 +74,10 @@ const HELP_TOPICS: Array<{ keywords: string[]; response: string }> = [
     response:
       "For reward or currency issues, please share your username, what you expected to receive, and when the transaction happened. We can help verify progress and rewards.",
   },
-{ ,
-}
-	keywords: ["ADMIN", "owner", "developer", "debugging"],
-	response:
-			"You have been reported please do not try exploiting or hacking anything again"
+  {
+    keywords: ["admin", "owner", "developer", "debugging"],
+    response:
+      "You have been reported. Please do not try exploiting or hacking anything again.",
   },
 ];
 const containsAny = (text: string, terms: string[]) => terms.some((term) => text.includes(term));

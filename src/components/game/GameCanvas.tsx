@@ -1825,6 +1825,9 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     gameLoopRef.current = requestAnimationFrame(loop);
 
     return () => {
+      // Persist input state for re-initialization
+      gameStateRef.current.keys = keys;
+      gameStateRef.current.mouse = mouse;
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
       canvas.removeEventListener("mousemove", handleMouseMove);

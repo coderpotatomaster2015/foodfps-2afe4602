@@ -30,7 +30,9 @@ export const SniperEliteMode = ({ username, onBack, adminAbuseEvents = [], touch
   const [spawnImmunity, setSpawnImmunity] = useState(true);
   const [gameOver, setGameOver] = useState(false);
   const [kills, setKills] = useState(0);
+  const killsRef = useRef(0);
   const [headshots, setHeadshots] = useState(0);
+  const headshotsRef = useRef(0);
   const [hasPermission, setHasPermission] = useState(false);
 
   const adminStateRef = useRef({ active: false, godMode: false, speedMultiplier: 1, infiniteAmmo: false });

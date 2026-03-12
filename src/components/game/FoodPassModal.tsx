@@ -147,14 +147,12 @@ export const FoodPassModal = ({ open, onOpenChange }: FoodPassModalProps) => {
 
       // Add reward based on type
       if (tier.reward_type === "coins" || tier.reward_type === "gems" || tier.reward_type === "gold") {
-        const params: Record<string, unknown> = {
+        const { error: rpcError } = await supabase.rpc("add_player_currency", {
           _user_id: user.id,
           _coins: tier.reward_type === "coins" ? tier.reward_value : 0,
           _gems: tier.reward_type === "gems" ? tier.reward_value : 0,
           _gold: tier.reward_type === "gold" ? tier.reward_value : 0,
-        };
-
-        const { error: rpcError } = await supabase.rpc("add_player_currency", params);
+        });
         if (rpcError) {
           console.error("RPC error:", rpcError);
           toast.error("Failed to add currency reward");

@@ -161,7 +161,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const touchShootingRef = useRef(false);
   
   const adminStateRef = useRef<AdminState>({ active: false, godMode: false, speedMultiplier: 1, infiniteAmmo: false });
-  const gameStateRef = useRef<any>({ enemies: [], pickups: [], W: 960, H: 640, mapBoundsMultiplier: 1 });
+  const gameStateRef = useRef<any>({ enemies: [], pickups: [], W: 960, H: 640, mapBoundsMultiplier: 1, keys: {} as Record<string, boolean>, mouse: { x: 480, y: 320, down: false } });
   const playerRef = useRef<any>(null);
   const spawnTimeRef = useRef(0);
   const spawnImmunityRef = useRef(true);

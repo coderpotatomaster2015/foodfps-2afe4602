@@ -30,7 +30,9 @@ export const SniperEliteMode = ({ username, onBack, adminAbuseEvents = [], touch
   const [spawnImmunity, setSpawnImmunity] = useState(true);
   const [gameOver, setGameOver] = useState(false);
   const [kills, setKills] = useState(0);
+  const killsRef = useRef(0);
   const [headshots, setHeadshots] = useState(0);
+  const headshotsRef = useRef(0);
   const [hasPermission, setHasPermission] = useState(false);
 
   const adminStateRef = useRef({ active: false, godMode: false, speedMultiplier: 1, infiniteAmmo: false });
@@ -111,7 +113,7 @@ export const SniperEliteMode = ({ username, onBack, adminAbuseEvents = [], touch
         if (!gameOver) { setGameOver(true); saveProgress(scoreRef.current); }
         ctx.fillStyle = "rgba(0,0,0,0.85)"; ctx.fillRect(0, 0, W, H);
         ctx.fillStyle = "#14B8A6"; ctx.font = "bold 48px sans-serif"; ctx.textAlign = "center"; ctx.fillText("MISSION FAILED", W / 2, H / 2 - 30);
-        ctx.fillStyle = "#fff"; ctx.font = "24px sans-serif"; ctx.fillText(`Score: ${score} • Kills: ${kills} • Headshots: ${headshots}`, W / 2, H / 2 + 20);
+        ctx.fillStyle = "#fff"; ctx.font = "24px sans-serif"; ctx.fillText(`Score: ${scoreRef.current} • Kills: ${killsRef.current} • Headshots: ${headshotsRef.current}`, W / 2, H / 2 + 20);
         ctx.font = "14px sans-serif"; ctx.fillStyle = "#888"; ctx.fillText("Use /revive or press Back to Menu", W / 2, H / 2 + 60);
         gameLoopRef.current = requestAnimationFrame(loop); return;
       }
@@ -130,7 +132,7 @@ export const SniperEliteMode = ({ username, onBack, adminAbuseEvents = [], touch
           const e = enemies[j];
           if ((b.x - e.x) ** 2 + (b.y - e.y) ** 2 <= (b.r + e.r) ** 2) {
             e.hp -= b.dmg; e.stun = 0.6; spawnParticles(b.x, b.y, "#14B8A6", 12);
-            if (e.hp <= 0) { spawnParticles(e.x, e.y, e.color, 20); setScore(p => { const ns = p + 25; player.score = ns; return ns; }); setKills(p => p + 1); setHeadshots(p => p + 1); if (Math.random() < 0.3) pickups.push({ x: e.x, y: e.y, r: 10, amt: 2, ttl: 15 }); enemies.splice(j, 1); }
+            if (e.hp <= 0) { spawnParticles(e.x, e.y, e.color, 20); setScore(p => { const ns = p + 25; player.score = ns; return ns; }); setKills(p => { const nk = p + 1; killsRef.current = nk; return nk; }); setHeadshots(p => { const nh = p + 1; headshotsRef.current = nh; return nh; }); if (Math.random() < 0.3) pickups.push({ x: e.x, y: e.y, r: 10, amt: 2, ttl: 15 }); enemies.splice(j, 1); }
             bullets.splice(i, 1); break;
           }
         }

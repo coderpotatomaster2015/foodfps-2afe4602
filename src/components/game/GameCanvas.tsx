@@ -161,7 +161,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const touchShootingRef = useRef(false);
   
   const adminStateRef = useRef<AdminState>({ active: false, godMode: false, speedMultiplier: 1, infiniteAmmo: false });
-  const gameStateRef = useRef<any>({ enemies: [], pickups: [], W: 960, H: 640, mapBoundsMultiplier: 1 });
+  const gameStateRef = useRef<any>({ enemies: [], pickups: [], W: 960, H: 640, mapBoundsMultiplier: 1, keys: {} as Record<string, boolean>, mouse: { x: 480, y: 320, down: false } });
   const playerRef = useRef<any>(null);
   const spawnTimeRef = useRef(0);
   const spawnImmunityRef = useRef(true);
@@ -784,8 +784,9 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       setSpawnImmunity(false);
     }, 5000);
 
-    let keys: Record<string, boolean> = {};
-    let mouse = { x: W / 2, y: H / 2, down: false };
+    // Persist keys and mouse across re-initializations to prevent shooting/movement disable
+    let keys: Record<string, boolean> = gameStateRef.current.keys || {};
+    let mouse = gameStateRef.current.mouse || { x: W / 2, y: H / 2, down: false };
 
     // Preserve player position across re-initializations to prevent teleportation bug
     const prevPlayer = playerRef.current;
@@ -1824,6 +1825,9 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     gameLoopRef.current = requestAnimationFrame(loop);
 
     return () => {
+      // Persist input state for re-initialization
+      gameStateRef.current.keys = keys;
+      gameStateRef.current.mouse = mouse;
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
       canvas.removeEventListener("mousemove", handleMouseMove);

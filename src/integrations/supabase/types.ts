@@ -1230,6 +1230,45 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          banned: boolean
+          broadcasts: boolean
+          created_at: string
+          enabled: boolean
+          gamemode_approved: boolean
+          id: string
+          leaderboard: boolean
+          mentioned: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          banned?: boolean
+          broadcasts?: boolean
+          created_at?: string
+          enabled?: boolean
+          gamemode_approved?: boolean
+          id?: string
+          leaderboard?: boolean
+          mentioned?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          banned?: boolean
+          broadcasts?: boolean
+          created_at?: string
+          enabled?: boolean
+          gamemode_approved?: boolean
+          id?: string
+          leaderboard?: boolean
+          mentioned?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       player_currencies: {
         Row: {
           coins: number
@@ -1456,6 +1495,57 @@ export type Database = {
           updated_at?: string
           user_id?: string
           username?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_vapid_keys: {
+        Row: {
+          created_at: string
+          id: string
+          private_key: string
+          public_key: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          private_key: string
+          public_key: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          private_key?: string
+          public_key?: string
         }
         Relationships: []
       }

@@ -132,7 +132,7 @@ export const SniperEliteMode = ({ username, onBack, adminAbuseEvents = [], touch
           const e = enemies[j];
           if ((b.x - e.x) ** 2 + (b.y - e.y) ** 2 <= (b.r + e.r) ** 2) {
             e.hp -= b.dmg; e.stun = 0.6; spawnParticles(b.x, b.y, "#14B8A6", 12);
-            if (e.hp <= 0) { spawnParticles(e.x, e.y, e.color, 20); setScore(p => { const ns = p + 25; player.score = ns; return ns; }); setKills(p => p + 1); setHeadshots(p => p + 1); if (Math.random() < 0.3) pickups.push({ x: e.x, y: e.y, r: 10, amt: 2, ttl: 15 }); enemies.splice(j, 1); }
+            if (e.hp <= 0) { spawnParticles(e.x, e.y, e.color, 20); setScore(p => { const ns = p + 25; player.score = ns; return ns; }); setKills(p => { const nk = p + 1; killsRef.current = nk; return nk; }); setHeadshots(p => { const nh = p + 1; headshotsRef.current = nh; return nh; }); if (Math.random() < 0.3) pickups.push({ x: e.x, y: e.y, r: 10, amt: 2, ttl: 15 }); enemies.splice(j, 1); }
             bullets.splice(i, 1); break;
           }
         }

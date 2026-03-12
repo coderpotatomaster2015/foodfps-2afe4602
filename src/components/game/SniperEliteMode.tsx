@@ -113,7 +113,7 @@ export const SniperEliteMode = ({ username, onBack, adminAbuseEvents = [], touch
         if (!gameOver) { setGameOver(true); saveProgress(scoreRef.current); }
         ctx.fillStyle = "rgba(0,0,0,0.85)"; ctx.fillRect(0, 0, W, H);
         ctx.fillStyle = "#14B8A6"; ctx.font = "bold 48px sans-serif"; ctx.textAlign = "center"; ctx.fillText("MISSION FAILED", W / 2, H / 2 - 30);
-        ctx.fillStyle = "#fff"; ctx.font = "24px sans-serif"; ctx.fillText(`Score: ${score} • Kills: ${kills} • Headshots: ${headshots}`, W / 2, H / 2 + 20);
+        ctx.fillStyle = "#fff"; ctx.font = "24px sans-serif"; ctx.fillText(`Score: ${scoreRef.current} • Kills: ${killsRef.current} • Headshots: ${headshotsRef.current}`, W / 2, H / 2 + 20);
         ctx.font = "14px sans-serif"; ctx.fillStyle = "#888"; ctx.fillText("Use /revive or press Back to Menu", W / 2, H / 2 + 60);
         gameLoopRef.current = requestAnimationFrame(loop); return;
       }

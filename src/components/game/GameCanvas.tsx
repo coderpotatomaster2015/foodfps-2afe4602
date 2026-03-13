@@ -275,7 +275,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       warningCountRef.current += 1;
 
       // Insert warning record
-      await supabase.from("anti_cheat_warnings").insert({
+      await (supabase.from("anti_cheat_warnings" as any) as any).insert({
         user_id: user.id,
         reason: reason,
         warning_number: warningCountRef.current,

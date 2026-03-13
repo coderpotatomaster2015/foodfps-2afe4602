@@ -249,7 +249,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         const { count } = await supabase
-          .from("anti_cheat_warnings")
+          .from("anti_cheat_warnings" as any)
           .select("*", { count: "exact", head: true })
           .eq("user_id", user.id);
         warningCountRef.current = count || 0;

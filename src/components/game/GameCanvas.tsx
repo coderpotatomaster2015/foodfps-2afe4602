@@ -219,21 +219,22 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     const loadAntiCheatSettings = async () => {
       try {
         const { data } = await supabase
-          .from("anti_cheat_settings")
+          .from("anti_cheat_settings" as any)
           .select("*")
           .eq("id", "00000000-0000-0000-0000-000000000002")
           .maybeSingle();
         if (data) {
+          const d = data as any;
           antiCheatRef.current = {
-            maxSessionScore: data.max_session_score,
-            maxScorePerMinute: data.max_score_per_minute,
-            maxMapBoundsMultiplier: data.max_map_bounds_multiplier,
-            maxAfkMs: data.max_afk_ms,
-            banHours: data.ban_hours,
-            maxAccuracyPercent: data.max_accuracy_percent,
-            maxFlamethrowerKills: data.max_flamethrower_kills,
-            warningsBeforeBan: data.warnings_before_ban,
-            enabled: data.enabled,
+            maxSessionScore: d.max_session_score,
+            maxScorePerMinute: d.max_score_per_minute,
+            maxMapBoundsMultiplier: d.max_map_bounds_multiplier,
+            maxAfkMs: d.max_afk_ms,
+            banHours: d.ban_hours,
+            maxAccuracyPercent: d.max_accuracy_percent,
+            maxFlamethrowerKills: d.max_flamethrower_kills,
+            warningsBeforeBan: d.warnings_before_ban,
+            enabled: d.enabled,
           };
         }
       } catch (err) {

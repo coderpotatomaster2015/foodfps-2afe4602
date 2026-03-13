@@ -71,12 +71,17 @@ const WEAPONS: Record<Weapon, WeaponConfig> = {
 
 const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "rifle", "sniper", "smg", "knife", "rpg", "axe", "flamethrower", "minigun", "railgun", "crossbow", "laser_pistol", "grenade_launcher", "katana", "dual_pistols", "plasma_rifle", "boomerang", "whip", "freeze_ray", "harpoon_gun"];
 
-const ANTI_CHEAT = {
-  maxSessionScore: 10000,
-  maxScorePerMinute: 2200,
+// Default anti-cheat config - overridden by DB settings
+const DEFAULT_ANTI_CHEAT = {
+  maxSessionScore: 100000,
+  maxScorePerMinute: 10000,
   maxMapBoundsMultiplier: 4,
   maxAfkMs: 2 * 60 * 1000,
   banHours: 24 * 365 * 10,
+  maxAccuracyPercent: 98,
+  maxFlamethrowerKills: 100,
+  warningsBeforeBan: 3,
+  enabled: true,
 } as const;
 
 

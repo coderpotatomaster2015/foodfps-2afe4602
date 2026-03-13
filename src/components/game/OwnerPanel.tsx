@@ -161,8 +161,8 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
   const [aiLog, setAiLog] = useState<string[]>([]);
   const [aiTimeLeft, setAiTimeLeft] = useState(0);
   const [aiCurrentAction, setAiCurrentAction] = useState("");
-  const aiTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const aiIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const aiIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (open) {

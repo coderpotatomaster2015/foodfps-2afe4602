@@ -214,30 +214,95 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const killsRef = useRef(kills);
   killsRef.current = kills;
 
-  const banForCheating = useCallback(async (reason: string) => {
+  // Load anti-cheat settings from DB
+  useEffect(() => {
+    const loadAntiCheatSettings = async () => {
+      try {
+        const { data } = await supabase
+          .from("anti_cheat_settings")
+          .select("*")
+          .eq("id", "00000000-0000-0000-0000-000000000002")
+          .maybeSingle();
+        if (data) {
+          antiCheatRef.current = {
+            maxSessionScore: data.max_session_score,
+            maxScorePerMinute: data.max_score_per_minute,
+            maxMapBoundsMultiplier: data.max_map_bounds_multiplier,
+            maxAfkMs: data.max_afk_ms,
+            banHours: data.ban_hours,
+            maxAccuracyPercent: data.max_accuracy_percent,
+            maxFlamethrowerKills: data.max_flamethrower_kills,
+            warningsBeforeBan: data.warnings_before_ban,
+            enabled: data.enabled,
+          };
+        }
+      } catch (err) {
+        console.error("Failed to load anti-cheat settings:", err);
+      }
+    };
+    loadAntiCheatSettings();
+
+    // Load existing warning count
+    const loadWarnings = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { count } = await supabase
+          .from("anti_cheat_warnings")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id);
+        warningCountRef.current = count || 0;
+      } catch (err) {
+        console.error("Failed to load warnings:", err);
+      }
+    };
+    loadWarnings();
+  }, []);
+
+  const warnOrBan = useCallback(async (reason: string) => {
     if (antiCheatBanTriggeredRef.current) return;
-    antiCheatBanTriggeredRef.current = true;
+    if (!antiCheatRef.current.enabled) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + ANTI_CHEAT.banHours);
+      // Check if user is owner - owners are exempt
+      const { data: ownerCheck } = await supabase.rpc("is_owner", { _user_id: user.id });
+      if (ownerCheck) return;
 
-      await supabase.from("bans").insert({
+      warningCountRef.current += 1;
+
+      // Insert warning record
+      await supabase.from("anti_cheat_warnings").insert({
         user_id: user.id,
-        banned_by: user.id,
-        hours: ANTI_CHEAT.banHours,
-        reason: `Anti-cheat ban: ${reason}`,
-        expires_at: expiresAt.toISOString(),
+        reason: reason,
+        warning_number: warningCountRef.current,
       });
 
-      toast.error("Anti-cheat triggered. Account banned until further notice.");
-      setGameOver(true);
-      onBack();
+      if (warningCountRef.current >= antiCheatRef.current.warningsBeforeBan) {
+        // Ban after exhausting warnings
+        antiCheatBanTriggeredRef.current = true;
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + antiCheatRef.current.banHours);
+
+        await supabase.from("bans").insert({
+          user_id: user.id,
+          banned_by: user.id,
+          hours: antiCheatRef.current.banHours,
+          reason: `Anti-cheat ban (after ${antiCheatRef.current.warningsBeforeBan} warnings): ${reason}`,
+          expires_at: expiresAt.toISOString(),
+        });
+
+        toast.error("Anti-cheat: You have been banned for repeated violations.");
+        setGameOver(true);
+        onBack();
+      } else {
+        const remaining = antiCheatRef.current.warningsBeforeBan - warningCountRef.current;
+        toast.warning(`⚠️ Anti-cheat warning ${warningCountRef.current}/${antiCheatRef.current.warningsBeforeBan}: Do not ${reason} again. ${remaining} warning(s) remaining before permanent ban.`, { duration: 8000 });
+      }
     } catch (error) {
-      console.error("Anti-cheat ban failed:", error);
+      console.error("Anti-cheat warning/ban failed:", error);
     }
   }, [onBack]);
 

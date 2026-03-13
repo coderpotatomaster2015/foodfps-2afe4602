@@ -21,6 +21,7 @@ import { WeaponEditorPanel } from "./WeaponEditorPanel";
 import { PreMadeUpdatesPanel } from "./PreMadeUpdatesPanel";
 import { MathProblemsPanel } from "./MathProblemsPanel";
 import { AbuseSchedulePanel } from "./AbuseSchedulePanel";
+import { AntiCheatEditor } from "./AntiCheatEditor";
 
 interface OwnerPanelProps {
   open: boolean;

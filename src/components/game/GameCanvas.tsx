@@ -1985,7 +1985,11 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           <div><span className="text-primary font-mono">LMB</span> shoot</div>
           {!WEAPONS[currentWeapon].isMelee && <div><span className="text-primary font-mono">R</span> reload</div>}
           <div><span className="text-primary font-mono">1-{unlockedWeapons.length}</span> weapons</div>
+          {isOwnerUser && <div><span className="text-primary font-mono">F9</span> aimbot</div>}
         </div>
+        {aimbotOn && (
+          <div className="flex items-center gap-2 text-xs text-destructive font-bold animate-pulse">🎯 AIMBOT ACTIVE</div>
+        )}
       </div>
 
       <div className="fixed right-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4 space-y-3 min-w-[180px]"

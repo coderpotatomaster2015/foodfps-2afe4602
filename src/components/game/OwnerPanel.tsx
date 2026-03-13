@@ -1103,6 +1103,9 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
             <TabsTrigger value="aimbot" className="gap-1 text-xs">
               <Crosshair className="w-3 h-3" /> Aimbot
             </TabsTrigger>
+            <TabsTrigger value="anticheat" className="gap-1 text-xs">
+              <Shield className="w-3 h-3" /> Anti-Cheat
+            </TabsTrigger>
             <TabsTrigger value="aiplay" className="gap-1 text-xs">
               <Bot className="w-3 h-3" /> AI Player
             </TabsTrigger>

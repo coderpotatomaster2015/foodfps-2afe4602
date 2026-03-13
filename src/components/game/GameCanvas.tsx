@@ -1182,22 +1182,36 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       setDebugEnemyCount(enemies.length);
       setDebugPlayerPos({ x: player.x, y: player.y });
 
-      if (!antiCheatBanTriggeredRef.current) {
+      if (!antiCheatBanTriggeredRef.current && antiCheatRef.current.enabled) {
         const afkDuration = Date.now() - lastActivityRef.current;
-        if (afkDuration > ANTI_CHEAT.maxAfkMs) {
-          banForCheating("AFK abuse detected");
+        if (afkDuration > antiCheatRef.current.maxAfkMs) {
+          warnOrBan("AFK abuse detected");
           return;
         }
 
         if (!Number.isFinite(player.x) || !Number.isFinite(player.y)) {
-          banForCheating("invalid player coordinates (possible glitch/bug abuse)");
+          warnOrBan("invalid player coordinates (possible glitch/bug abuse)");
           return;
         }
 
-        if (gameStateRef.current.mapBoundsMultiplier > ANTI_CHEAT.maxMapBoundsMultiplier) {
-          banForCheating(`map bounds exploit detected (${gameStateRef.current.mapBoundsMultiplier.toFixed(2)})`);
+        if (gameStateRef.current.mapBoundsMultiplier > antiCheatRef.current.maxMapBoundsMultiplier) {
+          warnOrBan(`map bounds exploit detected (${gameStateRef.current.mapBoundsMultiplier.toFixed(2)})`);
           return;
         }
+
+        // Accuracy check - if player has fired enough shots
+        if (shotsFiredRef.current >= 50) {
+          const accuracy = (shotsHitRef.current / shotsFiredRef.current) * 100;
+          if (accuracy >= antiCheatRef.current.maxAccuracyPercent) {
+            warnOrBan(`impossible accuracy (${accuracy.toFixed(1)}%)`);
+          }
+        }
+
+        // Flamethrower kill check
+        if (flamethrowerKillsRef.current > antiCheatRef.current.maxFlamethrowerKills) {
+          warnOrBan(`using flamethrower to kill ${flamethrowerKillsRef.current} enemies`);
+        }
+      }
       }
 
       // Check if game over

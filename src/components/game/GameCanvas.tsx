@@ -1061,6 +1061,16 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     const handleKeyDown = (e: KeyboardEvent) => {
       lastActivityRef.current = Date.now();
       keys[e.key.toLowerCase()] = true;
+
+      // F9 - Owner aimbot toggle for 2D
+      if (e.key === "F9") {
+        e.preventDefault();
+        if (isOwnerUser) {
+          aimbotActiveRef.current = !aimbotActiveRef.current;
+          setAimbotOn(aimbotActiveRef.current);
+          toast.info(`2D Aimbot ${aimbotActiveRef.current ? "ON 🎯" : "OFF"}`);
+        }
+      }
       if (e.key.toLowerCase() === "r" && player.ammo < player.maxAmmo && !WEAPONS[player.weapon].isMelee) {
         player.ammo = player.maxAmmo;
         setAmmo(player.ammo);

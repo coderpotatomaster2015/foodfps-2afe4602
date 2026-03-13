@@ -1866,8 +1866,13 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           ctx.textAlign = "center";
           const nameWidth = ctx.measureText(otherPlayer.username).width + 10;
           ctx.fillStyle = "rgba(0,0,0,0.6)";
-          ctx.roundRect(-nameWidth / 2, -player.r - 26, nameWidth, 14, 3);
-          ctx.fill();
+          if (typeof ctx.roundRect === "function") {
+            ctx.beginPath();
+            ctx.roundRect(-nameWidth / 2, -player.r - 26, nameWidth, 14, 3);
+            ctx.fill();
+          } else {
+            ctx.fillRect(-nameWidth / 2, -player.r - 26, nameWidth, 14);
+          }
           ctx.fillStyle = "#fff";
           ctx.fillText(otherPlayer.username, 0, -player.r - 16);
           

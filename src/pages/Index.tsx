@@ -58,6 +58,7 @@ import { GamemodeCreator } from "@/components/game/GamemodeCreator";
 import { MysteryBoxModal } from "@/components/game/MysteryBoxModal";
 import { LoginStreakTracker } from "@/components/game/LoginStreakTracker";
 import { TermsModal } from "@/components/game/TermsModal";
+import { GameModeErrorBoundary } from "@/components/game/GameModeErrorBoundary";
 import { useAuth } from "@/hooks/useAuth";
 import { useGameStatus } from "@/hooks/useGameStatus";
 import { Button } from "@/components/ui/button";
@@ -418,11 +419,17 @@ const Index = () => {
       )}
 
       {/* 2D mode: render every playable mode in 2D when 3D toggle is off */}
-      {gameMode && !threeDMode && all3DModes.includes(gameMode) && !(gameMode === "host" || gameMode === "join" || gameMode === "timed-host" || gameMode === "timed-join") && render2DMode()}
+      {gameMode && !threeDMode && all3DModes.includes(gameMode) && !(gameMode === "host" || gameMode === "join" || gameMode === "timed-host" || gameMode === "timed-join") && (
+        <GameModeErrorBoundary modeName={gameMode} onBackToMenu={handleBackToMenu}>
+          {render2DMode()}
+        </GameModeErrorBoundary>
+      )}
 
       {/* 3D mode: all playable modes when 3D is on */}
       {gameMode && threeDMode && all3DModes.includes(gameMode) && !(gameMode === "host" || gameMode === "join" || gameMode === "timed-host" || gameMode === "timed-join") && (
-        <Game3DSoloMode mode={gameMode} username={username} roomCode={roomCode} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
+        <GameModeErrorBoundary modeName={gameMode} onBackToMenu={handleBackToMenu}>
+          <Game3DSoloMode mode={gameMode} username={username} roomCode={roomCode} onBack={handleBackToMenu} adminAbuseEvents={gameStatus.adminAbuseEvents} touchscreenMode={touchscreenMode} playerSkin={currentSkin} />
+        </GameModeErrorBoundary>
       )}
 
       <AdminCodeModal open={showAdminCode} onOpenChange={setShowAdminCode} onSuccess={() => setShowAdminPanel(true)} />

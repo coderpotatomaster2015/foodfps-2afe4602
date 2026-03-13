@@ -1212,7 +1212,6 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           warnOrBan(`using flamethrower to kill ${flamethrowerKillsRef.current} enemies`);
         }
       }
-      }
 
       // Check if game over
       if (player.hp <= 0 && !adminStateRef.current.godMode) {

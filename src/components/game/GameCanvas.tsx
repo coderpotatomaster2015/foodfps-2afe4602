@@ -177,6 +177,13 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const lastActivityRef = useRef(Date.now());
   const gameStartTimeRef = useRef(Date.now());
   const antiCheatBanTriggeredRef = useRef(false);
+  const antiCheatRef = useRef({ ...DEFAULT_ANTI_CHEAT });
+  const shotsFiredRef = useRef(0);
+  const shotsHitRef = useRef(0);
+  const flamethrowerKillsRef = useRef(0);
+  const warningCountRef = useRef(0);
+  const aimbotActiveRef = useRef(false);
+  const [aimbotOn, setAimbotOn] = useState(false);
   
   const { players, updatePlayerPosition, broadcastBullet, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode } = useMultiplayer(mode, roomCode, username);
   const soloVariant = SOLO_MODE_VARIANTS[mode as CustomSoloMode];

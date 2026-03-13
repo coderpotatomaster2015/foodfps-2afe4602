@@ -1829,7 +1829,6 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
             <TabsContent value="anticheat" className="mt-0 space-y-4">
               <AntiCheatEditor />
             </TabsContent>
-            </TabsContent>
 
             {/* AI Auto-Play Tab */}
             <TabsContent value="aiplay" className="mt-0 space-y-4">

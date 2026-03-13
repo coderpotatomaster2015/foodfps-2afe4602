@@ -1336,11 +1336,14 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           const e = enemies[j];
           const dx = b.x - e.x, dy = b.y - e.y;
           if (dx * dx + dy * dy <= (b.r + e.r) * (b.r + e.r)) {
+            shotsHitRef.current++;
             e.hp -= b.dmg;
             e.stun = 0.6;
             spawnParticles(b.x, b.y, "#FFF3D6", 8);
             if (e.hp <= 0) {
               spawnParticles(e.x, e.y, "#FF6B6B", 16);
+              // Track flamethrower kills
+              if (player.weapon === "flamethrower") flamethrowerKillsRef.current++;
               setScore(prev => {
                 const dbgScoreMult = debugOverridesRef.current.active ? debugOverridesRef.current.scoreMultiplier : 1;
                 const newScore = prev + Math.round(10 * dbgScoreMult);

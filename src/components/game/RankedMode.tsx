@@ -198,7 +198,7 @@ export const RankedMode = ({ username, onBack, touchscreenMode = false, playerSk
   const mouseRef = useRef({ x: 480, y: 320, down: false });
   const spawnedCountRef = useRef(0);
   const animationFrameRef = useRef<number>();
-  const spawnIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const spawnIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const adminStateRef = useRef<AdminState>({ active: false, godMode: false, speedMultiplier: 1, infiniteAmmo: false });
   const specialPowerRef = useRef<string | null>(null);
   const teleportCooldownRef = useRef(0);

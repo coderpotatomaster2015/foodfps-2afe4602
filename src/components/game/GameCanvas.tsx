@@ -71,12 +71,17 @@ const WEAPONS: Record<Weapon, WeaponConfig> = {
 
 const WEAPON_ORDER: Weapon[] = ["pistol", "shotgun", "sword", "rifle", "sniper", "smg", "knife", "rpg", "axe", "flamethrower", "minigun", "railgun", "crossbow", "laser_pistol", "grenade_launcher", "katana", "dual_pistols", "plasma_rifle", "boomerang", "whip", "freeze_ray", "harpoon_gun"];
 
-const ANTI_CHEAT = {
-  maxSessionScore: 10000,
-  maxScorePerMinute: 2200,
+// Default anti-cheat config - overridden by DB settings
+const DEFAULT_ANTI_CHEAT = {
+  maxSessionScore: 100000,
+  maxScorePerMinute: 10000,
   maxMapBoundsMultiplier: 4,
   maxAfkMs: 2 * 60 * 1000,
   banHours: 24 * 365 * 10,
+  maxAccuracyPercent: 98,
+  maxFlamethrowerKills: 100,
+  warningsBeforeBan: 3,
+  enabled: true,
 } as const;
 
 
@@ -165,13 +170,20 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const playerRef = useRef<any>(null);
   const spawnTimeRef = useRef(0);
   const spawnImmunityRef = useRef(true);
-  const positionUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const positionUpdateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const gameLoopRef = useRef<number | null>(null);
   const specialPowerRef = useRef<string | null>(null);
   const teleportCooldownRef = useRef(0);
   const lastActivityRef = useRef(Date.now());
   const gameStartTimeRef = useRef(Date.now());
   const antiCheatBanTriggeredRef = useRef(false);
+  const antiCheatRef = useRef({ ...DEFAULT_ANTI_CHEAT });
+  const shotsFiredRef = useRef(0);
+  const shotsHitRef = useRef(0);
+  const flamethrowerKillsRef = useRef(0);
+  const warningCountRef = useRef(0);
+  const aimbotActiveRef = useRef(false);
+  const [aimbotOn, setAimbotOn] = useState(false);
   
   const { players, updatePlayerPosition, broadcastBullet, otherPlayersBullets, isHost, sharedEnemies, broadcastEnemyUpdate, broadcastEnemyKilled, coopMode } = useMultiplayer(mode, roomCode, username);
   const soloVariant = SOLO_MODE_VARIANTS[mode as CustomSoloMode];
@@ -202,30 +214,96 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
   const killsRef = useRef(kills);
   killsRef.current = kills;
 
-  const banForCheating = useCallback(async (reason: string) => {
+  // Load anti-cheat settings from DB
+  useEffect(() => {
+    const loadAntiCheatSettings = async () => {
+      try {
+        const { data } = await supabase
+          .from("anti_cheat_settings" as any)
+          .select("*")
+          .eq("id", "00000000-0000-0000-0000-000000000002")
+          .maybeSingle();
+        if (data) {
+          const d = data as any;
+          antiCheatRef.current = {
+            maxSessionScore: d.max_session_score,
+            maxScorePerMinute: d.max_score_per_minute,
+            maxMapBoundsMultiplier: d.max_map_bounds_multiplier,
+            maxAfkMs: d.max_afk_ms,
+            banHours: d.ban_hours,
+            maxAccuracyPercent: d.max_accuracy_percent,
+            maxFlamethrowerKills: d.max_flamethrower_kills,
+            warningsBeforeBan: d.warnings_before_ban,
+            enabled: d.enabled,
+          };
+        }
+      } catch (err) {
+        console.error("Failed to load anti-cheat settings:", err);
+      }
+    };
+    loadAntiCheatSettings();
+
+    // Load existing warning count
+    const loadWarnings = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { count } = await supabase
+          .from("anti_cheat_warnings" as any)
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id);
+        warningCountRef.current = count || 0;
+      } catch (err) {
+        console.error("Failed to load warnings:", err);
+      }
+    };
+    loadWarnings();
+  }, []);
+
+  const warnOrBan = useCallback(async (reason: string) => {
     if (antiCheatBanTriggeredRef.current) return;
-    antiCheatBanTriggeredRef.current = true;
+    if (!antiCheatRef.current.enabled) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + ANTI_CHEAT.banHours);
+      // Check if user is owner - owners are exempt
+      const { data: ownerCheck } = await supabase.rpc("is_owner", { _user_id: user.id });
+      if (ownerCheck) return;
 
-      await supabase.from("bans").insert({
+      warningCountRef.current += 1;
+
+      // Insert warning record
+      await (supabase.from("anti_cheat_warnings" as any) as any).insert({
         user_id: user.id,
-        banned_by: user.id,
-        hours: ANTI_CHEAT.banHours,
-        reason: `Anti-cheat ban: ${reason}`,
-        expires_at: expiresAt.toISOString(),
+        reason: reason,
+        warning_number: warningCountRef.current,
       });
 
-      toast.error("Anti-cheat triggered. Account banned until further notice.");
-      setGameOver(true);
-      onBack();
+      if (warningCountRef.current >= antiCheatRef.current.warningsBeforeBan) {
+        // Ban after exhausting warnings
+        antiCheatBanTriggeredRef.current = true;
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + antiCheatRef.current.banHours);
+
+        await supabase.from("bans").insert({
+          user_id: user.id,
+          banned_by: user.id,
+          hours: antiCheatRef.current.banHours,
+          reason: `Anti-cheat ban (after ${antiCheatRef.current.warningsBeforeBan} warnings): ${reason}`,
+          expires_at: expiresAt.toISOString(),
+        });
+
+        toast.error("Anti-cheat: You have been banned for repeated violations.");
+        setGameOver(true);
+        onBack();
+      } else {
+        const remaining = antiCheatRef.current.warningsBeforeBan - warningCountRef.current;
+        toast.warning(`⚠️ Anti-cheat warning ${warningCountRef.current}/${antiCheatRef.current.warningsBeforeBan}: Do not ${reason} again. ${remaining} warning(s) remaining before permanent ban.`, { duration: 8000 });
+      }
     } catch (error) {
-      console.error("Anti-cheat ban failed:", error);
+      console.error("Anti-cheat warning/ban failed:", error);
     }
   }, [onBack]);
 
@@ -451,14 +529,14 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || newScore <= 0) return;
 
-      if (newScore > ANTI_CHEAT.maxSessionScore) {
-        await banForCheating(`session score too high (${newScore})`);
+      if (newScore > antiCheatRef.current.maxSessionScore) {
+        await warnOrBan(`session score too high (${newScore})`);
         return;
       }
 
       const elapsedMinutes = Math.max((Date.now() - gameStartTimeRef.current) / 60000, 1 / 6);
-      if (newScore / elapsedMinutes > ANTI_CHEAT.maxScorePerMinute) {
-        await banForCheating(`score rate too high (${Math.round(newScore / elapsedMinutes)}/min)`);
+      if (newScore / elapsedMinutes > antiCheatRef.current.maxScorePerMinute) {
+        await warnOrBan(`score rate too high (${Math.round(newScore / elapsedMinutes)}/min)`);
         return;
       }
 
@@ -983,6 +1061,16 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
     const handleKeyDown = (e: KeyboardEvent) => {
       lastActivityRef.current = Date.now();
       keys[e.key.toLowerCase()] = true;
+
+      // F9 - Owner aimbot toggle for 2D
+      if (e.key === "F9") {
+        e.preventDefault();
+        if (isOwnerUser) {
+          aimbotActiveRef.current = !aimbotActiveRef.current;
+          setAimbotOn(aimbotActiveRef.current);
+          toast.info(`2D Aimbot ${aimbotActiveRef.current ? "ON 🎯" : "OFF"}`);
+        }
+      }
       if (e.key.toLowerCase() === "r" && player.ammo < player.maxAmmo && !WEAPONS[player.weapon].isMelee) {
         player.ammo = player.maxAmmo;
         setAmmo(player.ammo);
@@ -1104,21 +1192,34 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       setDebugEnemyCount(enemies.length);
       setDebugPlayerPos({ x: player.x, y: player.y });
 
-      if (!antiCheatBanTriggeredRef.current) {
+      if (!antiCheatBanTriggeredRef.current && antiCheatRef.current.enabled) {
         const afkDuration = Date.now() - lastActivityRef.current;
-        if (afkDuration > ANTI_CHEAT.maxAfkMs) {
-          banForCheating("AFK abuse detected");
+        if (afkDuration > antiCheatRef.current.maxAfkMs) {
+          warnOrBan("AFK abuse detected");
           return;
         }
 
         if (!Number.isFinite(player.x) || !Number.isFinite(player.y)) {
-          banForCheating("invalid player coordinates (possible glitch/bug abuse)");
+          warnOrBan("invalid player coordinates (possible glitch/bug abuse)");
           return;
         }
 
-        if (gameStateRef.current.mapBoundsMultiplier > ANTI_CHEAT.maxMapBoundsMultiplier) {
-          banForCheating(`map bounds exploit detected (${gameStateRef.current.mapBoundsMultiplier.toFixed(2)})`);
+        if (gameStateRef.current.mapBoundsMultiplier > antiCheatRef.current.maxMapBoundsMultiplier) {
+          warnOrBan(`map bounds exploit detected (${gameStateRef.current.mapBoundsMultiplier.toFixed(2)})`);
           return;
+        }
+
+        // Accuracy check - if player has fired enough shots
+        if (shotsFiredRef.current >= 50) {
+          const accuracy = (shotsHitRef.current / shotsFiredRef.current) * 100;
+          if (accuracy >= antiCheatRef.current.maxAccuracyPercent) {
+            warnOrBan(`impossible accuracy (${accuracy.toFixed(1)}%)`);
+          }
+        }
+
+        // Flamethrower kill check
+        if (flamethrowerKillsRef.current > antiCheatRef.current.maxFlamethrowerKills) {
+          warnOrBan(`using flamethrower to kill ${flamethrowerKillsRef.current} enemies`);
         }
       }
 
@@ -1195,7 +1296,27 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         player.y = Math.max(20, Math.min(H * mult - 20, newY));
       }
 
+      // 2D Aimbot - auto-aim at nearest enemy for owners
+      if (aimbotActiveRef.current && enemies.length > 0) {
+        let nearest: any = null;
+        let nearestDist = Infinity;
+        for (const e of enemies) {
+          const dist = Math.hypot(e.x - player.x, e.y - player.y);
+          if (dist < nearestDist) { nearestDist = dist; nearest = e; }
+        }
+        if (nearest) {
+          mouse.x = nearest.x;
+          mouse.y = nearest.y;
+          mouse.down = true;
+          player.angle = Math.atan2(nearest.y - player.y, nearest.x - player.x);
+        }
+      }
+
+      // Track shots fired for accuracy anti-cheat
+      const prevBulletCount = bullets.length;
       tryShoot(time);
+      const newBulletsAdded = bullets.length - prevBulletCount;
+      if (newBulletsAdded > 0) shotsFiredRef.current += newBulletsAdded;
 
       // Update bullets
       const isMultiplayerCoopBullets = (mode === "host" || mode === "join") && coopModeRef.current;
@@ -1215,11 +1336,14 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           const e = enemies[j];
           const dx = b.x - e.x, dy = b.y - e.y;
           if (dx * dx + dy * dy <= (b.r + e.r) * (b.r + e.r)) {
+            shotsHitRef.current++;
             e.hp -= b.dmg;
             e.stun = 0.6;
             spawnParticles(b.x, b.y, "#FFF3D6", 8);
             if (e.hp <= 0) {
               spawnParticles(e.x, e.y, "#FF6B6B", 16);
+              // Track flamethrower kills
+              if (player.weapon === "flamethrower") flamethrowerKillsRef.current++;
               setScore(prev => {
                 const dbgScoreMult = debugOverridesRef.current.active ? debugOverridesRef.current.scoreMultiplier : 1;
                 const newScore = prev + Math.round(10 * dbgScoreMult);
@@ -1835,7 +1959,7 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       canvas.removeEventListener("mouseup", handleMouseUp);
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
     };
-  }, [mode, soloVariant, deviceProfile, username, banForCheating]);
+  }, [mode, soloVariant, deviceProfile, username, warnOrBan]);
 
   const handleBackWithScoreboard = async () => {
     // Save progress when leaving the game
@@ -1861,7 +1985,11 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
           <div><span className="text-primary font-mono">LMB</span> shoot</div>
           {!WEAPONS[currentWeapon].isMelee && <div><span className="text-primary font-mono">R</span> reload</div>}
           <div><span className="text-primary font-mono">1-{unlockedWeapons.length}</span> weapons</div>
+          {isOwnerUser && <div><span className="text-primary font-mono">F9</span> aimbot</div>}
         </div>
+        {aimbotOn && (
+          <div className="flex items-center gap-2 text-xs text-destructive font-bold animate-pulse">🎯 AIMBOT ACTIVE</div>
+        )}
       </div>
 
       <div className="fixed right-4 top-4 bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4 space-y-3 min-w-[180px]"

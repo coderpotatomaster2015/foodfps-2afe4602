@@ -97,7 +97,7 @@ export const removeRainbowFromDocument = () => {
 export const startRainbowEffect = (
   callback: (color: string) => void,
   intervalMs: number = 100
-): NodeJS.Timeout => {
+): ReturnType<typeof setInterval> => {
   let time = 0;
   return setInterval(() => {
     time += intervalMs;

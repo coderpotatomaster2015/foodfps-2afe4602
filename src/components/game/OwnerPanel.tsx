@@ -21,6 +21,7 @@ import { WeaponEditorPanel } from "./WeaponEditorPanel";
 import { PreMadeUpdatesPanel } from "./PreMadeUpdatesPanel";
 import { MathProblemsPanel } from "./MathProblemsPanel";
 import { AbuseSchedulePanel } from "./AbuseSchedulePanel";
+import { AntiCheatEditor } from "./AntiCheatEditor";
 
 interface OwnerPanelProps {
   open: boolean;
@@ -161,8 +162,8 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
   const [aiLog, setAiLog] = useState<string[]>([]);
   const [aiTimeLeft, setAiTimeLeft] = useState(0);
   const [aiCurrentAction, setAiCurrentAction] = useState("");
-  const aiTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const aiIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const aiIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -1103,6 +1104,9 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
             <TabsTrigger value="aimbot" className="gap-1 text-xs">
               <Crosshair className="w-3 h-3" /> Aimbot
             </TabsTrigger>
+            <TabsTrigger value="anticheat" className="gap-1 text-xs">
+              <Shield className="w-3 h-3" /> Anti-Cheat
+            </TabsTrigger>
             <TabsTrigger value="aiplay" className="gap-1 text-xs">
               <Bot className="w-3 h-3" /> AI Player
             </TabsTrigger>
@@ -1799,13 +1803,13 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
                   Owner Aimbot (F9)
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Press <span className="font-mono text-primary">F9</span> during any 3D game mode to toggle the aimbot. 
+                  Press <span className="font-mono text-primary">F9</span> during any game mode (2D or 3D) to toggle the aimbot. 
                   The AI will automatically aim at the nearest enemy and fire for you.
                 </p>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2">
                     <Crosshair className="w-4 h-4 text-destructive" />
-                    <span>Auto-aims at nearest enemy</span>
+                    <span>Auto-aims at nearest enemy (2D &amp; 3D)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Zap className="w-4 h-4 text-primary" />
@@ -1820,6 +1824,11 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
                   This feature is exclusive to owners and cannot be activated by admins or moderators.
                 </p>
               </Card>
+            </TabsContent>
+
+            {/* Anti-Cheat Tab */}
+            <TabsContent value="anticheat" className="mt-0 space-y-4">
+              <AntiCheatEditor />
             </TabsContent>
 
             {/* AI Auto-Play Tab */}

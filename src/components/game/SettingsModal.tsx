@@ -155,7 +155,7 @@ export const SettingsModal = ({
   const [selectedTheme, setSelectedTheme] = useState("default");
   const [threeDModeLocal, setThreeDModeLocal] = useState(threeDModeProp);
   const [tapCount, setTapCount] = useState(0);
-  const [tapTimer, setTapTimer] = useState<NodeJS.Timeout | null>(null);
+  const [tapTimer, setTapTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [cursorColor, setCursorColor] = useState("default");
 
 

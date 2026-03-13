@@ -131,7 +131,7 @@ export const SchoolMode = ({
   const keysRef = useRef<Record<string, boolean>>({});
   const mouseRef = useRef({ x: 480, y: 320, down: false });
   const animationFrameRef = useRef<number>();
-  const spawnIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const spawnIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const spawnImmunityRef = useRef(true);
   const lastShotRef = useRef<Record<ElementalPower, number>>({
     fire: 0, water: 0, earth: 0, air: 0

@@ -1296,7 +1296,27 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
         player.y = Math.max(20, Math.min(H * mult - 20, newY));
       }
 
+      // 2D Aimbot - auto-aim at nearest enemy for owners
+      if (aimbotActiveRef.current && enemies.length > 0) {
+        let nearest: any = null;
+        let nearestDist = Infinity;
+        for (const e of enemies) {
+          const dist = Math.hypot(e.x - player.x, e.y - player.y);
+          if (dist < nearestDist) { nearestDist = dist; nearest = e; }
+        }
+        if (nearest) {
+          mouse.x = nearest.x;
+          mouse.y = nearest.y;
+          mouse.down = true;
+          player.angle = Math.atan2(nearest.y - player.y, nearest.x - player.x);
+        }
+      }
+
+      // Track shots fired for accuracy anti-cheat
+      const prevBulletCount = bullets.length;
       tryShoot(time);
+      const newBulletsAdded = bullets.length - prevBulletCount;
+      if (newBulletsAdded > 0) shotsFiredRef.current += newBulletsAdded;
 
       // Update bullets
       const isMultiplayerCoopBullets = (mode === "host" || mode === "join") && coopModeRef.current;

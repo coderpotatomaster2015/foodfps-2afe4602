@@ -529,14 +529,14 @@ export const GameCanvas = ({ mode, username, roomCode, onBack, adminAbuseEvents 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || newScore <= 0) return;
 
-      if (newScore > ANTI_CHEAT.maxSessionScore) {
-        await banForCheating(`session score too high (${newScore})`);
+      if (newScore > antiCheatRef.current.maxSessionScore) {
+        await warnOrBan(`session score too high (${newScore})`);
         return;
       }
 
       const elapsedMinutes = Math.max((Date.now() - gameStartTimeRef.current) / 60000, 1 / 6);
-      if (newScore / elapsedMinutes > ANTI_CHEAT.maxScorePerMinute) {
-        await banForCheating(`score rate too high (${Math.round(newScore / elapsedMinutes)}/min)`);
+      if (newScore / elapsedMinutes > antiCheatRef.current.maxScorePerMinute) {
+        await warnOrBan(`score rate too high (${Math.round(newScore / elapsedMinutes)}/min)`);
         return;
       }
 

@@ -1802,13 +1802,13 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
                   Owner Aimbot (F9)
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Press <span className="font-mono text-primary">F9</span> during any 3D game mode to toggle the aimbot. 
+                  Press <span className="font-mono text-primary">F9</span> during any game mode (2D or 3D) to toggle the aimbot. 
                   The AI will automatically aim at the nearest enemy and fire for you.
                 </p>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2">
                     <Crosshair className="w-4 h-4 text-destructive" />
-                    <span>Auto-aims at nearest enemy</span>
+                    <span>Auto-aims at nearest enemy (2D &amp; 3D)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Zap className="w-4 h-4 text-primary" />
@@ -1823,6 +1823,12 @@ export const OwnerPanel = ({ open, onClose, onSetGameMode, onBackToMenu, onOpenG
                   This feature is exclusive to owners and cannot be activated by admins or moderators.
                 </p>
               </Card>
+            </TabsContent>
+
+            {/* Anti-Cheat Tab */}
+            <TabsContent value="anticheat" className="mt-0 space-y-4">
+              <AntiCheatEditor />
+            </TabsContent>
             </TabsContent>
 
             {/* AI Auto-Play Tab */}
